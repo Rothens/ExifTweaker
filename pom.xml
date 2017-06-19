@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>me.rothens</groupId>
+    <artifactId>GPSEditor</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+
+    <properties>
+        <java.version>1.7</java.version>
+    </properties>
+
+    <developers>
+        <developer>
+            <name>Máté Dávid</name>
+            <url>http://www.github.com/rothens</url>
+        </developer>
+    </developers>
+    <repositories>
+        <repository>
+            <id>Adobe</id>
+            <url>https://repo.adobe.com/nexus/content/repositories/public/</url>
+        </repository>
+    </repositories>
+    <dependencies>
+        <dependency>
+            <groupId>org.jxmapviewer</groupId>
+            <artifactId>jxmapviewer2</artifactId>
+            <version>2.0</version>
+        </dependency>
+
+        <!--TODO: replace this [discontinued library]-->
+         <dependency>
+             <groupId>org.apache.commons</groupId>
+             <artifactId>commons-imaging</artifactId>
+             <version>1.0-20170209.001022</version>
+             <scope>system</scope>
+             <systemPath>${basedir}/lib/commons-imaging-1.0-20170209.001022-116.jar</systemPath>
+         </dependency>
+
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.3</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
