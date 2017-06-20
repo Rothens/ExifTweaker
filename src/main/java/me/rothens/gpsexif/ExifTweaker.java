@@ -4,6 +4,7 @@ import me.rothens.gpsexif.model.ExifTableModel;
 import me.rothens.gpsexif.model.ImageFile;
 import me.rothens.gpsexif.model.ImageListRenderer;
 import me.rothens.gpsexif.util.PositionUtil;
+import me.rothens.gpsexif.util.Settings;
 import org.jxmapviewer.JXMapViewer;
 import org.jxmapviewer.OSMTileFactoryInfo;
 import org.jxmapviewer.VirtualEarthTileFactoryInfo;
@@ -25,6 +26,7 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.util.*;
 import java.util.List;
+import java.util.prefs.Preferences;
 
 /**
  * Created by Rothens on 2017. 04. 15..
@@ -51,9 +53,11 @@ public class ExifTweaker {
     private List<DefaultTileFactory> factories;
     private JXMapViewer mapViewer;
     private FileOpenListener fol;
+    private Preferences prefs;
     private static JFrame frame;
 
     public ExifTweaker() {
+        prefs = Preferences.userNodeForPackage(ExifTweaker.class);
         fol = new FileOpenListener() {
 
             @Override
@@ -72,13 +76,15 @@ public class ExifTweaker {
             public void actionPerformed(ActionEvent e) {
                 setButtons(false);
                 try {
-                    File[] f = new File(tfFolder.getText()).listFiles(new FilenameFilter() {
+                    String dir = tfFolder.getText();
+                    File[] f = new File(dir).listFiles(new FilenameFilter() {
 
                         @Override
                         public boolean accept(File dir, String name) {
                             return name.toLowerCase().endsWith(".jpg");
                         }
                     });
+                    prefs.put(Settings.LAST_DIRECTORY, dir);
                     progress.setValue(0);
                     progress.setMaximum(f.length);
                     new FileOpenThread(f, fol).start();
@@ -123,12 +129,17 @@ public class ExifTweaker {
         cbMapType.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                mapViewer.setTileFactory(factories.get(cbMapType.getSelectedIndex()));
+                int i = cbMapType.getSelectedIndex();
+                mapViewer.setTileFactory(factories.get(i));
+                prefs.putInt(Settings.MAP_TYPE, i);
             }
         });
 
+        tfFolder.setText(prefs.get(Settings.LAST_DIRECTORY, ""));
+
         //TODO: create position parsing methods for this
         btnCoordinate.setEnabled(false);
+        initMap();
 
     }
 
@@ -165,7 +176,7 @@ public class ExifTweaker {
                 }
             }
         });
-        initMap();
+
     }
 
     private void elementSelected() {
@@ -200,7 +211,7 @@ public class ExifTweaker {
             LocalResponseCache.installResponseCache(tf.getInfo().getBaseURL(), cacheDir, false);
 
         }
-        mapViewer.setTileFactory(factories.get(0));
+        mapViewer.setTileFactory(factories.get(prefs.getInt(Settings.MAP_TYPE, 0)));
 
 
         GeoPosition frankfurt = new GeoPosition(35.68, 139.71);
