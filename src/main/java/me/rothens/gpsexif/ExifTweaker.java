@@ -19,6 +19,8 @@ import me.rothens.gpsexif.model.MetadataTableModel;
 import me.rothens.gpsexif.metadata.MetadataChanges;
 import me.rothens.gpsexif.ui.GeotagDialog;
 import me.rothens.gpsexif.ui.SettingsDialog;
+import me.rothens.gpsexif.ui.ShiftTimeDialog;
+import me.rothens.gpsexif.gpx.PhotoTime;
 import me.rothens.gpsexif.ui.Theme;
 import me.rothens.gpsexif.util.ExitWatchdog;
 import me.rothens.gpsexif.util.ImageOrientation;
@@ -91,6 +93,7 @@ public class ExifTweaker {
     private final JMenuItem miUndo = new JMenuItem("Undo");
     private final JMenuItem miSave = new JMenuItem("Save location");
     private final JMenuItem miRemove = new JMenuItem("Remove location...");
+    private final JMenuItem miShiftTime = new JMenuItem("Shift date/time...");
     private final JMenuItem miCopy = new JMenuItem("Copy location");
     private final JMenuItem miPaste = new JMenuItem("Paste location");
     private final Map<Theme, JRadioButtonMenuItem> themeItems = new EnumMap<>(Theme.class);
@@ -257,6 +260,9 @@ public class ExifTweaker {
         edit.add(miSave);
         miRemove.addActionListener(e -> removeLocation());
         edit.add(miRemove);
+        miShiftTime.setAccelerator(KeyStroke.getKeyStroke('T', menuKey));
+        miShiftTime.addActionListener(e -> shiftTime());
+        edit.add(miShiftTime);
         edit.add(menuItem("Select all photos", KeyStroke.getKeyStroke('A', menuKey | shift), e -> {
             if (listModel.getSize() > 0) {
                 lFiles.setSelectionInterval(0, listModel.getSize() - 1);
@@ -388,6 +394,7 @@ public class ExifTweaker {
         btnSave.setEnabled(canWrite);
         miSave.setEnabled(canWrite);
         miRemove.setEnabled(canWrite && selection.stream().anyMatch(ImageFile::hasExifGPS));
+        miShiftTime.setEnabled(canWrite && selection.stream().anyMatch(p -> null != p.getTaken()));
         miPaste.setEnabled(!busy);
         miGeotag.setEnabled(!busy && !listModel.getAll().isEmpty());
         btnOpen.setEnabled(!busy);
@@ -568,6 +575,21 @@ public class ExifTweaker {
             return;
         }
         runBatch("Remove location from " + what, targets, ImageFile::removePosition);
+    }
+
+    private void shiftTime() {
+        if (busy || selection.isEmpty()) {
+            return;
+        }
+        ShiftTimeDialog dialog = new ShiftTimeDialog(frame, selection);
+        java.time.Duration shift = dialog.showDialog();
+        List<ImageFile> targets = dialog.getPhotos();
+        if (null == shift || targets.isEmpty()) {
+            return;
+        }
+        String what = targets.size() == 1 ? targets.get(0).getFile().getName() : targets.size() + " photos";
+        runBatch("Shift date/time of " + what + " by " + PhotoTime.formatOffset(shift), targets,
+                image -> image.apply(new MetadataChanges().shiftTime(shift)));
     }
 
     private boolean confirm(String message, String title) {

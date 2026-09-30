@@ -17,7 +17,8 @@ import java.util.regex.Pattern;
 public final class PhotoTime {
 
     private static final Pattern CLOCK = Pattern.compile("^([+-])?(?:(\\d+):)?(\\d+):(\\d{1,2})$");
-    private static final Pattern UNITS = Pattern.compile("^([+-])?\\s*(?:(\\d+)\\s*h)?\\s*(?:(\\d+)\\s*m(?:in)?)?\\s*(?:(\\d+)\\s*s)?$");
+    private static final Pattern UNITS = Pattern.compile(
+            "^([+-])?\\s*(?:(\\d+)\\s*d)?\\s*(?:(\\d+)\\s*h)?\\s*(?:(\\d+)\\s*m(?:in)?)?\\s*(?:(\\d+)\\s*s)?$");
 
     private PhotoTime() {
     }
@@ -47,7 +48,7 @@ public final class PhotoTime {
         return Duration.ofSeconds(diff).plusNanos(taken.getNano());
     }
 
-    /** Parses an offset like {@code +3:12} (m:ss), {@code -1:00:00} (h:mm:ss), {@code 2h 5m} or {@code -90s}. */
+    /** Parses an offset like {@code +3:12} (m:ss), {@code -1:00:00} (h:mm:ss), {@code 1d 2h 5m} or {@code -90s}. */
     public static Duration parseOffset(String text) {
         String t = text.trim().toLowerCase(Locale.ROOT);
         if (t.isEmpty() || t.equals("0")) {
@@ -64,20 +65,23 @@ public final class PhotoTime {
             return signed(m.group(1), Duration.ofHours(h).plusMinutes(minutes).plusSeconds(seconds));
         }
         m = UNITS.matcher(t);
-        if (m.matches() && (null != m.group(2) || null != m.group(3) || null != m.group(4))) {
+        if (m.matches() && (null != m.group(2) || null != m.group(3) || null != m.group(4) || null != m.group(5))) {
             Duration d = Duration.ZERO;
             if (null != m.group(2)) {
-                d = d.plusHours(Long.parseLong(m.group(2)));
+                d = d.plusDays(Long.parseLong(m.group(2)));
             }
             if (null != m.group(3)) {
-                d = d.plusMinutes(Long.parseLong(m.group(3)));
+                d = d.plusHours(Long.parseLong(m.group(3)));
             }
             if (null != m.group(4)) {
-                d = d.plusSeconds(Long.parseLong(m.group(4)));
+                d = d.plusMinutes(Long.parseLong(m.group(4)));
+            }
+            if (null != m.group(5)) {
+                d = d.plusSeconds(Long.parseLong(m.group(5)));
             }
             return signed(m.group(1), d);
         }
-        throw new IllegalArgumentException("Invalid time offset: " + text + " (use e.g. +3:12, -1:00:00 or 2h 5m)");
+        throw new IllegalArgumentException("Invalid time offset: " + text + " (use e.g. +3:12, -1:00:00 or 1d 2h 5m)");
     }
 
     /** Formats as {@code +h:mm:ss} / {@code -h:mm:ss}, parseable by {@link #parseOffset}. */

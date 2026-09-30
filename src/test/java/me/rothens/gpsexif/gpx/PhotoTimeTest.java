@@ -52,6 +52,8 @@ class PhotoTimeTest {
         assertEquals(Duration.ofHours(-1), PhotoTime.parseOffset("-1:00:00"));
         assertEquals(Duration.ofMinutes(125), PhotoTime.parseOffset("2h 5m"));
         assertEquals(Duration.ofSeconds(-90), PhotoTime.parseOffset("-90s"));
+        assertEquals(Duration.ofDays(1).plusHours(2), PhotoTime.parseOffset("+1d 2h"));
+        assertEquals(Duration.ofDays(-365), PhotoTime.parseOffset("-365d"));
         assertEquals(Duration.ZERO, PhotoTime.parseOffset(" 0 "));
         assertEquals(Duration.ZERO, PhotoTime.parseOffset(""));
         assertThrows(IllegalArgumentException.class, () -> PhotoTime.parseOffset("3:75"));

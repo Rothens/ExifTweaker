@@ -177,7 +177,7 @@ public class MetadataTableModel extends AbstractTableModel {
     }
 
     /** "2026-09-30 14:05:00", "2026-09-30 14:05", or EXIF's own "2026:09:30 14:05:00". */
-    static LocalDateTime parseDateTime(String text) {
+    public static LocalDateTime parseDateTime(String text) {
         String t = text.strip().replace('T', ' ');
         if (t.matches("\\d{4}:\\d{2}:\\d{2} .*")) {
             t = t.substring(0, 4) + "-" + t.substring(5, 7) + "-" + t.substring(8);
