@@ -8,6 +8,9 @@ import java.awt.*;
  */
 public class ImageListRenderer extends JLabel implements ListCellRenderer<ImageFile> {
 
+    private static final Color HAS_GPS = new Color(0, 140, 0);
+    private static final Color NO_GPS = new Color(190, 0, 0);
+
     public ImageListRenderer() {
         setOpaque(true);
     }
@@ -21,11 +24,12 @@ public class ImageListRenderer extends JLabel implements ListCellRenderer<ImageF
         }
 
         if (value.hasExifGPS()) {
-            setForeground(Color.GREEN);
+            setForeground(HAS_GPS);
         } else {
-            setForeground(Color.RED);
+            setForeground(NO_GPS);
         }
-        setText(value.file.getName());
+        setText(value.getFile().getName());
+        setToolTipText(value.hasExifGPS() ? "Has GPS position" : "No GPS position");
         return this;
     }
 }

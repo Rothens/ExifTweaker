@@ -1,6 +1,7 @@
 package me.rothens.gpsexif.model;
 
 import org.apache.commons.imaging.Imaging;
+import org.apache.commons.imaging.ImagingException;
 import org.apache.commons.imaging.common.ImageMetadata;
 import org.apache.commons.imaging.formats.jpeg.JpegImageMetadata;
 import org.apache.commons.imaging.formats.jpeg.exif.ExifRewriter;
@@ -9,75 +10,82 @@ import org.apache.commons.imaging.formats.tiff.TiffImageMetadata;
 import org.apache.commons.imaging.formats.tiff.write.TiffOutputSet;
 import org.jxmapviewer.viewer.GeoPosition;
 
-import java.io.*;
-import java.util.*;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Created by Rothens on 2017. 04. 15..
  */
 public class ImageFile {
 
-    private static final List<String> exifFields = Arrays.asList("Make", "Model", "Orientation", "XResolution", "YResolution", "ExposureTime", "FNumber", "DateTimeDigitized", "ExifImageWidth", "ExifImageLength");
-    File file;
-    GeoPosition gp;
-    List<ExifData> exifData;
+    private static final Set<String> EXIF_FIELDS = Set.of("Make", "Model", "Orientation", "XResolution", "YResolution",
+            "ExposureTime", "FNumber", "DateTimeOriginal", "DateTimeDigitized", "ExifImageWidth", "ExifImageLength");
+
+    private final File file;
+    private GeoPosition gp;
+    private List<ExifData> exifData;
 
     public ImageFile(File file) {
         this.file = file;
-        gp = getLocation(file);
-        exifData = fillExif(file);
+        reload();
     }
 
     public boolean hasExifGPS() {
         return null != gp;
     }
 
-    private static GeoPosition getLocation(File image) {
+    private void reload() {
+        TiffImageMetadata exif = readExif(file);
+        gp = getLocation(exif);
+        exifData = fillExif(exif);
+    }
+
+    private static TiffImageMetadata readExif(File image) {
         try {
             ImageMetadata metadata = Imaging.getMetadata(image);
-            if (metadata instanceof JpegImageMetadata) {
-                final JpegImageMetadata jpegMetadata = (JpegImageMetadata) metadata;
-                final TiffImageMetadata exifMetadata = jpegMetadata.getExif();
-                if (null != exifMetadata) {
-                    final TiffImageMetadata.GPSInfo gpsInfo = exifMetadata.getGPS();
-                    if (null != gpsInfo) {
-                        final double longitude = gpsInfo.getLongitudeAsDegreesEast();
-                        final double latitude = gpsInfo.getLatitudeAsDegreesNorth();
-
-                        return new GeoPosition(latitude, longitude);
-                    }
-                }
-
+            if (metadata instanceof JpegImageMetadata jpegMetadata) {
+                return jpegMetadata.getExif();
             }
-        } catch (Exception e) {
-
+        } catch (IOException e) {
+            System.err.println("Couldn't read metadata of " + image.getName() + ": " + e.getMessage());
         }
         return null;
     }
 
-    private static List<ExifData> fillExif(File image) {
-        Map<String, String> map = new HashMap<>();
-        try {
-
-            ImageMetadata metadata = Imaging.getMetadata(image);
-            if (metadata instanceof JpegImageMetadata) {
-                final JpegImageMetadata jpegMetadata = (JpegImageMetadata) metadata;
-                final TiffImageMetadata exifMetadata = jpegMetadata.getExif();
-                if (null != exifMetadata) {
-                    List<TiffField> allFields = exifMetadata.getAllFields();
-                    for (TiffField tf : allFields) {
-                        if (exifFields.contains(tf.getTagName()))
-                            map.put(tf.getTagName(), tf.getValue().toString());
-                    }
-                }
-
-            }
-        } catch (Exception e) {
-            System.out.println(e);
+    private static GeoPosition getLocation(TiffImageMetadata exif) {
+        if (null == exif) {
+            return null;
         }
+        try {
+            TiffImageMetadata.GpsInfo gpsInfo = exif.getGpsInfo();
+            if (null != gpsInfo) {
+                return new GeoPosition(gpsInfo.getLatitudeAsDegreesNorth(), gpsInfo.getLongitudeAsDegreesEast());
+            }
+        } catch (ImagingException | RuntimeException e) {
+            // Malformed GPS block - treat as "no position"
+        }
+        return null;
+    }
+
+    private static List<ExifData> fillExif(TiffImageMetadata exif) {
         List<ExifData> ret = new ArrayList<>();
-        for (String s : map.keySet()) {
-            ret.add(new ExifData(s, map.get(s)));
+        if (null == exif) {
+            return ret;
+        }
+        for (TiffField tf : exif.getAllFields()) {
+            if (EXIF_FIELDS.contains(tf.getTagName()) && ret.stream().noneMatch(d -> d.getKey().equals(tf.getTagName()))) {
+                ret.add(new ExifData(tf.getTagName(), tf.getValueDescription()));
+            }
         }
         Collections.sort(ret);
         return ret;
@@ -86,7 +94,6 @@ public class ImageFile {
     public List<ExifData> getExifData() {
         return exifData;
     }
-
 
     public File getFile() {
         return file;
@@ -100,67 +107,54 @@ public class ImageFile {
         this.gp = gp;
     }
 
-    public void save() {
-        final File dst = new File(file.getParent() + "\\image.tmp");
-        TiffOutputSet outputSet = null;
-        boolean success = true;
-        try (FileOutputStream fos = new FileOutputStream(dst);
-             OutputStream os = new BufferedOutputStream(fos)) {
-            final ImageMetadata metadata = Imaging.getMetadata(file);
-            final JpegImageMetadata jpegMetadata = (JpegImageMetadata) metadata;
-            if (null != jpegMetadata) {
-                final TiffImageMetadata exif = jpegMetadata.getExif();
-
-                if (null != exif) {
-                    outputSet = exif.getOutputSet();
-                }
-            }
-
-
-            if (null == outputSet) {
-                outputSet = new TiffOutputSet();
-            }
-            final double longitude = gp.getLongitude();
-            final double latitude = gp.getLatitude();
-
-            outputSet.setGPSInDegrees(longitude, latitude);
-
-            try {
-                new ExifRewriter().updateExifMetadataLossless(file, os,
-                        outputSet);
-            } catch (ExifRewriter.ExifOverflowException ex) {
-                System.out.println("Couldn't save location lossless for: " + file.getName() + " [ lon:" + longitude + ", lat:" + latitude + "]");
-                success = false;
-            }
-        } catch (Exception e) {
-            System.out.println(e);
-            return;
+    /**
+     * Writes the current GPS position into the file's EXIF block. The new image is written to a temporary
+     * file next to the original first and only moved over it once writing fully succeeded, so a failure
+     * never leaves a truncated original behind.
+     */
+    public void save() throws IOException {
+        if (null == gp) {
+            throw new IllegalStateException("No position set for " + file.getName());
         }
+        TiffImageMetadata exif = readExif(file);
+        TiffOutputSet outputSet = null != exif ? exif.getOutputSet() : null;
+        if (null == outputSet) {
+            outputSet = new TiffOutputSet();
+        }
+        outputSet.setGpsInDegrees(gp.getLongitude(), gp.getLatitude());
 
-        if (!success) {
-            success = true;
-            try (FileOutputStream fos = new FileOutputStream(dst);
-                 OutputStream os = new BufferedOutputStream(fos)) {
+        Path original = file.toPath();
+        Path tmp = Files.createTempFile(original.toAbsolutePath().getParent(), ".exiftweaker-", ".tmp");
+        try {
+            try {
+                write(tmp, outputSet, true);
+            } catch (ImagingException lossless) {
+                // Not enough room in the existing EXIF segment - rewrite it entirely.
+                write(tmp, outputSet, false);
+            }
+            try {
+                Files.move(tmp, original, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(tmp, original, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(tmp);
+        }
+        reload();
+    }
+
+    private void write(Path target, TiffOutputSet outputSet, boolean lossless) throws IOException {
+        try (OutputStream os = new BufferedOutputStream(Files.newOutputStream(target))) {
+            if (lossless) {
+                new ExifRewriter().updateExifMetadataLossless(file, os, outputSet);
+            } else {
                 new ExifRewriter().updateExifMetadataLossy(file, os, outputSet);
-            } catch (Exception e) {
-                System.out.println("Couldn't save location lossy for: " + file.getName());
-                success = false;
             }
         }
-        if (success) {
-            try {
-                File oldFile = new File(file.getParent() + "\\image.tmp");
-                File newFile = new File(file.getPath());
-                file.delete();
-                oldFile.renameTo(newFile);
-            } catch (Exception e) {
-                System.out.println(e);
-            }
-        } else {
-            File tmp = new File(file.getParent() + "\\image.tmp");
-            if (tmp.exists()) {
-                tmp.delete();
-            }
-        }
+    }
+
+    @Override
+    public String toString() {
+        return file.getName();
     }
 }
