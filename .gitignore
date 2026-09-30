@@ -1,5 +1,4 @@
-
 /.idea/
 /out/
 /target/
-/GPSEditor.iml
+*.iml
