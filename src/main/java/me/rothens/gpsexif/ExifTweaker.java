@@ -11,13 +11,15 @@ import me.rothens.gpsexif.map.PhotoMarkerLayer;
 import me.rothens.gpsexif.map.PlaceSearch;
 import me.rothens.gpsexif.map.TileDiskCache;
 import me.rothens.gpsexif.map.TrackPainter;
-import me.rothens.gpsexif.metadata.CommonsImagingBackend;
-import me.rothens.gpsexif.metadata.MetadataBackend;
+import me.rothens.gpsexif.metadata.ExifTool;
+import me.rothens.gpsexif.metadata.ExifToolBackend;
+import me.rothens.gpsexif.metadata.RoutingBackend;
 import me.rothens.gpsexif.model.ImageFile;
 import me.rothens.gpsexif.model.ImageListModel;
 import me.rothens.gpsexif.model.ImageListRenderer;
 import me.rothens.gpsexif.model.MetadataTableModel;
 import me.rothens.gpsexif.metadata.MetadataChanges;
+import me.rothens.gpsexif.ui.ExifToolDialog;
 import me.rothens.gpsexif.ui.GeotagDialog;
 import me.rothens.gpsexif.ui.SettingsDialog;
 import me.rothens.gpsexif.ui.ShiftTimeDialog;
@@ -92,7 +94,9 @@ public class ExifTweaker {
     private final JButton btnCoordinate = new JButton("Go!");
     private final JFrame frame;
     private final Settings settings = new Settings(Preferences.userNodeForPackage(ExifTweaker.class));
-    private final MetadataBackend backend = new CommonsImagingBackend();
+    private final RoutingBackend backend = new RoutingBackend();
+    private final JPanel exifToolBanner = new JPanel(new BorderLayout(8, 0));
+    private boolean bannerDismissed;
     private final EditHistory history = new EditHistory();
     private final PhotoWriter writer = new PhotoWriter(history, settings::isBackupsEnabled);
     private final TileDiskCache tileCache = new TileDiskCache(Path.of(System.getProperty("user.home"), ".jxmapviewer2"),
@@ -172,6 +176,8 @@ public class ExifTweaker {
         history.addChangeListener(() -> SwingUtilities.invokeLater(this::updateUndo));
         updateUndo();
 
+        detectExifTool();
+
         tfFolder.setText(settings.getLastDirectory());
         tfCoordinate.setToolTipText("Latitude;Longitude in decimal degrees, or e.g. 47°29'52\"N 19°2'24\"E");
         tfAltitude.setToolTipText("Metres above sea level (negative below); written with Save. Empty removes it.");
@@ -250,10 +256,129 @@ public class ExifTweaker {
         };
     }
 
+    /** Thin banner shown while ExifTool isn't available; clicking it opens the ExifTool dialog. */
+    private JPanel createExifToolBanner() {
+        JLabel text = new JLabel("HEIC, PNG, TIFF, WebP and RAW files need ExifTool, which wasn't found. "
+                + "Click here to set it up...");
+        text.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        JButton close = new JButton("\u00d7");
+        close.setToolTipText("Hide until the next start");
+        close.putClientProperty("JButton.buttonType", "toolBarButton");
+        close.addActionListener(e -> {
+            bannerDismissed = true;
+            exifToolBanner.setVisible(false);
+        });
+        exifToolBanner.add(text, BorderLayout.CENTER);
+        exifToolBanner.add(close, BorderLayout.EAST);
+        exifToolBanner.setBorder(BorderFactory.createEmptyBorder(3, 8, 3, 3));
+        exifToolBanner.setOpaque(true);
+        exifToolBanner.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        java.awt.event.MouseAdapter open = new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                showExifToolDialog(frame);
+            }
+        };
+        exifToolBanner.addMouseListener(open);
+        text.addMouseListener(open);
+        styleBanner();
+        exifToolBanner.setVisible(false);
+        return exifToolBanner;
+    }
+
+    /** Warning colours that work in the light and the dark theme. */
+    private void styleBanner() {
+        boolean dark = FlatLaf.isLafDark();
+        exifToolBanner.setBackground(dark ? new Color(84, 68, 20) : new Color(255, 244, 206));
+        for (Component c : exifToolBanner.getComponents()) {
+            c.setForeground(dark ? new Color(245, 225, 160) : new Color(90, 70, 0));
+        }
+    }
+
+    /** Looks for ExifTool in the background (starting it takes a moment) and switches it on if found. */
+    private void detectExifTool() {
+        String configured = settings.getExifToolPath();
+        new SwingWorker<String, Void>() {
+            @Override
+            protected String doInBackground() {
+                return ExifTool.locate(configured);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    activateExifTool(get());
+                } catch (InterruptedException | ExecutionException e) {
+                    activateExifTool(null);
+                }
+            }
+        }.execute();
+    }
+
+    private String activeExifTool;
+    private String activeExifToolVersion;
+
+    private void activateExifTool(String executable) {
+        if (java.util.Objects.equals(executable, activeExifTool) && backend.hasExifTool() == (null != executable)) {
+            exifToolBanner.setVisible(null == executable && !bannerDismissed);
+            return;
+        }
+        ExifToolBackend old = backend.getExifTool();
+        activeExifTool = executable;
+        activeExifToolVersion = null == executable ? null : ExifTool.version(executable);
+        backend.setExifTool(null == executable ? null : new ExifToolBackend(new ExifTool(executable)));
+        if (null != old) {
+            old.getExifTool().close();
+        }
+        exifToolBanner.setVisible(null == executable && !bannerDismissed);
+        reloadAll();
+    }
+
+    /** Re-reads all opened photos, e.g. after ExifTool became available. */
+    private void reloadAll() {
+        List<ImageFile> all = listModel.getAll();
+        if (all.isEmpty()) {
+            return;
+        }
+        setBusy(true);
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() {
+                all.forEach(ImageFile::reload);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                setBusy(false);
+                refreshList();
+            }
+        }.execute();
+    }
+
+    private String exifToolStatus() {
+        return null == activeExifTool ? "Not found - HEIC, PNG, TIFF, WebP and RAW files are read-only"
+                : "ExifTool " + activeExifToolVersion + " (" + activeExifTool + ")";
+    }
+
+    /** Opens the ExifTool dialog and applies the chosen executable; returns the new status text. */
+    private String showExifToolDialog(Window owner) {
+        String path = new ExifToolDialog(owner, settings.getExifToolPath(), activeExifTool).showDialog();
+        if (null != path) {
+            settings.setExifToolPath(path);
+            String executable = ExifTool.locate(path);
+            activateExifTool(executable);
+            if (null == executable) {
+                showError("ExifTool still wasn't found. HEIC, PNG, TIFF, WebP and RAW files stay read-only.");
+            }
+        }
+        return exifToolStatus();
+    }
+
     private void setUpMetadataTable() {
         jtExif.putClientProperty("terminateEditOnFocusLost", true);
-        jtExif.getColumnModel().getColumn(0).setPreferredWidth(100);
-        jtExif.getColumnModel().getColumn(0).setMaxWidth(130);
+        jtExif.getColumnModel().getColumn(0).setPreferredWidth(120);
+        jtExif.getColumnModel().getColumn(0).setMaxWidth(150);
         jtExif.getColumnModel().getColumn(1).setPreferredWidth(200);
         jtExif.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
             @Override
@@ -428,6 +553,9 @@ public class ExifTweaker {
             thumbnailWorker.cancel(true);
         }
         factories.values().forEach(DefaultTileFactory::dispose);
+        if (null != backend.getExifTool()) {
+            backend.getExifTool().getExifTool().close();
+        }
         history.close();
         frame.dispose();
     }
@@ -437,7 +565,7 @@ public class ExifTweaker {
     }
 
     private void showSettings() {
-        if (new SettingsDialog(frame, settings, tileCache).showDialog()) {
+        if (new SettingsDialog(frame, settings, tileCache, exifToolStatus(), this::showExifToolDialog).showDialog()) {
             setTheme(settings.getTheme());
             setMapLayer(settings.getMapLayer());
             markerLayer.recompute();
@@ -461,11 +589,12 @@ public class ExifTweaker {
         themeItems.get(theme).setSelected(true);
         theme.install();
         FlatLaf.updateUI();
+        styleBanner();
     }
 
     /** Enables the actions that make sense for the current selection, and updates the status line. */
     private void updateActions() {
-        boolean canWrite = !busy && !selection.isEmpty();
+        boolean canWrite = !busy && selection.stream().anyMatch(ImageFile::isWritable);
         btnSave.setEnabled(canWrite);
         miSave.setEnabled(canWrite);
         miRemove.setEnabled(canWrite && selection.stream().anyMatch(ImageFile::hasExifGPS));
@@ -507,6 +636,9 @@ public class ExifTweaker {
         topButtons.add(btnOpen);
         top.add(tfFolder, BorderLayout.CENTER);
         top.add(topButtons, BorderLayout.EAST);
+        JPanel north = new JPanel(new BorderLayout(0, 4));
+        north.add(createExifToolBanner(), BorderLayout.NORTH);
+        north.add(top, BorderLayout.CENTER);
 
         JPanel filePanel = new JPanel(new BorderLayout(0, 2));
         filePanel.add(chkOnlyWithoutLocation, BorderLayout.NORTH);
@@ -554,7 +686,7 @@ public class ExifTweaker {
         bottom.add(coordinatePanel);
 
         mainPanel.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
-        mainPanel.add(top, BorderLayout.NORTH);
+        mainPanel.add(north, BorderLayout.NORTH);
         mainPanel.add(centerSplit, BorderLayout.CENTER);
         mainPanel.add(bottom, BorderLayout.SOUTH);
     }
@@ -719,7 +851,13 @@ public class ExifTweaker {
     }
 
     /** Applies an edit to photos in the background, with progress, Cancel, a failure summary and undo. */
-    private void runBatch(String description, List<ImageFile> targets, PhotoWriter.Edit edit) {
+    private void runBatch(String description, List<ImageFile> requested, PhotoWriter.Edit edit) {
+        List<ImageFile> targets = requested.stream().filter(ImageFile::isWritable).toList();
+        int readOnly = requested.size() - targets.size();
+        if (targets.isEmpty()) {
+            showError("The selected files are read-only: their file type needs ExifTool (see the banner at the top).");
+            return;
+        }
         boolean undoable = writer.canUndo(targets);
         if (!undoable) {
             String backups = settings.isBackupsEnabled()
@@ -764,6 +902,10 @@ public class ExifTweaker {
                 try {
                     PhotoWriter.Result result = get();
                     reportFailures(result);
+                    if (readOnly > 0) {
+                        lblStatus.setText(readOnly + (readOnly == 1 ? " file was" : " files were")
+                                + " skipped: needs ExifTool");
+                    }
                     if (result.skipped() > 0) {
                         lblStatus.setText("Cancelled after " + (targets.size() - result.skipped()) + " of "
                                 + targets.size() + " photos");
@@ -1097,7 +1239,18 @@ public class ExifTweaker {
         thumbnailWorker = new SwingWorker<>() {
             @Override
             protected BufferedImage doInBackground() throws IOException {
-                BufferedImage thumbnail = readSubsampled(image.getFile(), THUMBNAIL_MAX_SIZE);
+                BufferedImage thumbnail = null;
+                try {
+                    thumbnail = readSubsampled(image.getFile(), THUMBNAIL_MAX_SIZE);
+                } catch (IOException | RuntimeException e) {
+                    // Not decodable by Java (HEIC, RAW) - try the embedded preview below
+                }
+                if (null == thumbnail) {
+                    byte[] preview = backend.preview(image.getPath());
+                    if (null != preview) {
+                        thumbnail = ImageIO.read(new java.io.ByteArrayInputStream(preview));
+                    }
+                }
                 return ImageOrientation.apply(thumbnail, image.getOrientation());
             }
 
@@ -1107,9 +1260,15 @@ public class ExifTweaker {
                     return;
                 }
                 try {
-                    pnThumbnail.setImage(get());
+                    BufferedImage thumbnail = get();
+                    if (null != thumbnail) {
+                        pnThumbnail.setImage(thumbnail);
+                    } else {
+                        pnThumbnail.setMessage(backend.needsExifTool(image.getPath())
+                                ? "No preview - needs ExifTool" : "No preview for this file type");
+                    }
                 } catch (InterruptedException | ExecutionException e) {
-                    pnThumbnail.setImage(null);
+                    pnThumbnail.setMessage("No preview");
                 }
             }
         };

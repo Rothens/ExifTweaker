@@ -106,16 +106,19 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 
 ---
 
-## 0.8 — More formats via ExifTool
+## 0.8 — More formats via ExifTool ✅
 
-- [ ] **ExifTool backend** (implements the 0.3 `MetadataBackend`).
+- [x] **ExifTool backend** (implements the 0.3 `MetadataBackend`).
   - Used automatically when `exiftool` is on the PATH (or configured in settings); otherwise the built-in
     commons-imaging backend is used for JPEG.
   - One long-running `exiftool -stay_open` process for speed, instead of one process per file.
-- [ ] **HEIC/HEIF** (iPhone), **PNG**, **TIFF**, **WebP**.
-- [ ] **RAW formats** (CR2/CR3, NEF, ARW, DNG, ...), writing to an **XMP sidecar** by default so the RAW file
+- [x] **HEIC/HEIF** (iPhone), **PNG**, **TIFF**, **WebP**.
+- [x] **RAW formats** (CR2/CR3, NEF, ARW, DNG, ...), writing to an **XMP sidecar** by default so the RAW file
       itself is never modified.
-- [ ] The file list shows which files can be written with the current backend.
+- [x] The file list shows which files can be written with the current backend.
+- [x] ExifTool is **not bundled**. When it isn't found, a banner explains which formats need it; clicking it
+      links to the download page and lets you pick the executable (no need to add it to the PATH).
+- [x] Thumbnails for WebP (pure-Java plugin) and embedded previews of RAW files via ExifTool.
 
 **Done when:** a mixed folder of JPEG, HEIC and RAW files can be geotagged, with ExifTool installed.
 
@@ -135,6 +138,6 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 
 - **Esri terms**: Esri World Imagery is free with attribution for non-commercial use; check the terms again
   before the 1.0 release, and keep OSM as the default layer.
-- **ExifTool distribution**: rely on the user's installation, or bundle it in the installers
-  (it needs Perl on macOS/Linux, and the Windows build is a standalone exe)?
+- ~~**ExifTool distribution**~~: decided in 0.8 - not bundled; the app points users to exiftool.org and lets
+  them pick the executable.
 - **Java version**: stay on 17, or move to 21 once `jpackage` installers bundle their own runtime anyway?

@@ -22,9 +22,17 @@ public class SettingsDialog extends JDialog {
     private final TileDiskCache tileCache;
     private boolean accepted;
 
-    public SettingsDialog(Frame owner, Settings settings, TileDiskCache tileCache) {
+    /**
+     * @param exifToolStatus describes the ExifTool in use (shown in the dialog)
+     * @param onExifTool     opens the ExifTool dialog; returns the new status
+     */
+    public SettingsDialog(Frame owner, Settings settings, TileDiskCache tileCache, String exifToolStatus,
+                          java.util.function.Function<Window, String> onExifTool) {
         super(owner, "Settings", true);
         this.tileCache = tileCache;
+        JLabel lblExifTool = new JLabel(exifToolStatus);
+        JButton btnExifTool = new JButton("ExifTool...");
+        btnExifTool.addActionListener(e -> lblExifTool.setText(onExifTool.apply(this)));
         spCacheLimit.setValue(settings.getTileCacheMaxMb());
         spMaxMarkers.setValue(settings.getMaxPhotoMarkers());
         updateCacheSize();
@@ -105,6 +113,14 @@ public class SettingsDialog extends JDialog {
         markerHint.putClientProperty("FlatLaf.styleClass", "small");
         markerHint.setEnabled(false);
         form.add(markerHint, c);
+
+        c.gridx = 0;
+        c.gridy = 9;
+        c.gridwidth = 1;
+        c.insets = new Insets(12, 4, 4, 4);
+        form.add(btnExifTool, c);
+        c.gridx = 1;
+        form.add(lblExifTool, c);
 
         JButton ok = new JButton("OK");
         JButton cancel = new JButton("Cancel");

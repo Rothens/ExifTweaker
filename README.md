@@ -41,6 +41,11 @@ java -jar target/GPSEditor-*-all.jar
  > **Camera direction**: drag the handle next to a photo's pin to show which way the camera pointed, or type the
  > degrees next to the coordinate field. The altitude field there is written along with the location on Save.
 
+ > **HEIC, PNG, TIFF, WebP and RAW files** (CR2, CR3, NEF, ARW, DNG, ...) need the free
+ > [ExifTool](https://exiftool.org/). If it isn't found, a banner at the top links to the download and lets you pick
+ > the executable. RAW files are never modified - their metadata is written to an `.xmp` sidecar next to them,
+ > which Lightroom, darktable and most photo tools read.
+
  > Copy a photo's location with Ctrl+C on the file list and paste it onto others with Ctrl+V, then Save.
  > Edit → Remove location strips the GPS data, e.g. before sharing photos.
 
@@ -57,3 +62,5 @@ on the map, EXIF editing, and HEIC/RAW support through ExifTool.
  - [Apache Commons-Imaging](https://commons.apache.org/proper/commons-imaging/) (from Maven Central)
  - [JXMapViewer2](https://github.com/msteiger/jxmapviewer2) from @msteiger
  - [FlatLaf](https://www.formdev.com/flatlaf/)
+ - [TwelveMonkeys ImageIO](https://github.com/haraldk/TwelveMonkeys) (WebP thumbnails)
+ - Optional, not bundled: [ExifTool](https://exiftool.org/) by Phil Harvey

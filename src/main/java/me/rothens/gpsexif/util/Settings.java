@@ -21,6 +21,7 @@ public class Settings {
 
     public static final int DEFAULT_GPX_MAX_GAP_MINUTES = 10;
     private static final String SHOW_PHOTO_MARKERS = "SHOW_PHOTO_MARKERS";
+    private static final String EXIFTOOL_PATH = "EXIFTOOL_PATH";
     private static final String MAX_PHOTO_MARKERS = "MAX_PHOTO_MARKERS";
     public static final int DEFAULT_MAX_PHOTO_MARKERS = 200;
     public static final int MIN_PHOTO_MARKERS = 10;
@@ -73,6 +74,15 @@ public class Settings {
 
     public void setGpxMaxGapMinutes(int minutes) {
         prefs.putInt(GPX_MAX_GAP_MINUTES, Math.max(1, minutes));
+    }
+
+    /** Configured ExifTool executable; empty means "look for it on the PATH". */
+    public String getExifToolPath() {
+        return prefs.get(EXIFTOOL_PATH, "");
+    }
+
+    public void setExifToolPath(String path) {
+        prefs.put(EXIFTOOL_PATH, null == path ? "" : path.strip());
     }
 
     /** Whether the opened photos are shown on the map. Off by default. */
