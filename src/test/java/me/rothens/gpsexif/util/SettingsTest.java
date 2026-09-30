@@ -27,6 +27,15 @@ class SettingsTest {
         assertTrue(settings.isBackupsEnabled());
         assertEquals(MapLayer.OPENSTREETMAP, settings.getMapLayer());
         assertEquals(Theme.SYSTEM, settings.getTheme());
+        assertEquals(500, settings.getTileCacheMaxMb());
+    }
+
+    @Test
+    void tileCacheLimitHasAMinimum() {
+        settings.setTileCacheMaxMb(2000);
+        assertEquals(2000, settings.getTileCacheMaxMb());
+        settings.setTileCacheMaxMb(1);
+        assertEquals(Settings.MIN_TILE_CACHE_MAX_MB, settings.getTileCacheMaxMb());
     }
 
     @Test

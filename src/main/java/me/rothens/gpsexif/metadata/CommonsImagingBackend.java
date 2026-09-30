@@ -8,7 +8,10 @@ import org.apache.commons.imaging.formats.jpeg.JpegImageMetadata;
 import org.apache.commons.imaging.formats.jpeg.exif.ExifRewriter;
 import org.apache.commons.imaging.formats.tiff.TiffField;
 import org.apache.commons.imaging.formats.tiff.TiffImageMetadata;
+import org.apache.commons.imaging.formats.tiff.constants.ExifTagConstants;
+import org.apache.commons.imaging.formats.tiff.constants.TiffDirectoryConstants;
 import org.apache.commons.imaging.formats.tiff.constants.TiffTagConstants;
+import org.apache.commons.imaging.formats.tiff.write.TiffOutputDirectory;
 import org.apache.commons.imaging.formats.tiff.write.TiffOutputSet;
 import org.jxmapviewer.viewer.GeoPosition;
 
@@ -17,6 +20,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -101,12 +105,38 @@ public class CommonsImagingBackend implements MetadataBackend {
 
     @Override
     public void writePosition(Path source, Path target, GeoPosition position) throws IOException {
+        TiffOutputSet outputSet = outputSetOf(source);
+        outputSet.setGpsInDegrees(position.getLongitude(), position.getLatitude());
+        write(source, target, outputSet);
+    }
+
+    @Override
+    public void removePosition(Path source, Path target) throws IOException {
+        TiffOutputSet original = outputSetOf(source);
+        // TiffOutputSet can't remove a directory, so copy everything except the GPS directory into a new set.
+        // The GPS pointer in the root directory is regenerated when writing, based on the directories present.
+        TiffOutputSet withoutGps = new TiffOutputSet(original.byteOrder);
+        for (TiffOutputDirectory directory : original) {
+            if (directory.getType() != TiffDirectoryConstants.DIRECTORY_TYPE_GPS) {
+                withoutGps.addDirectory(directory);
+            }
+        }
+        if (!withoutGps.iterator().hasNext()) {
+            // No EXIF at all, so there's nothing to remove
+            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+            return;
+        }
+        withoutGps.removeField(ExifTagConstants.EXIF_TAG_GPSINFO);
+        write(source, target, withoutGps);
+    }
+
+    private static TiffOutputSet outputSetOf(Path source) throws IOException {
         TiffImageMetadata exif = readExif(source);
         TiffOutputSet outputSet = null != exif ? exif.getOutputSet() : null;
-        if (null == outputSet) {
-            outputSet = new TiffOutputSet();
-        }
-        outputSet.setGpsInDegrees(position.getLongitude(), position.getLatitude());
+        return null != outputSet ? outputSet : new TiffOutputSet();
+    }
+
+    private static void write(Path source, Path target, TiffOutputSet outputSet) throws IOException {
         try {
             write(source, target, outputSet, true);
         } catch (ImagingException lossless) {

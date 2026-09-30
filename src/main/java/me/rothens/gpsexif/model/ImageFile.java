@@ -18,7 +18,8 @@ public class ImageFile {
 
     private final File file;
     private final MetadataBackend backend;
-    private PhotoMetadata metadata = PhotoMetadata.EMPTY;
+    // Replaced as a whole, possibly from a background thread (batch writes) while the UI reads it
+    private volatile PhotoMetadata metadata = PhotoMetadata.EMPTY;
 
     public ImageFile(File file, MetadataBackend backend) {
         this.file = file;
@@ -65,10 +66,23 @@ public class ImageFile {
      * first and only moved over it once writing fully succeeded, so a failure never leaves a truncated original.
      */
     public void savePosition(GeoPosition position) throws IOException {
+        rewrite((source, target) -> backend.writePosition(source, target, position));
+    }
+
+    /** Removes all GPS data from the file, as safely as {@link #savePosition}. */
+    public void removePosition() throws IOException {
+        rewrite(backend::removePosition);
+    }
+
+    private interface Rewrite {
+        void write(Path source, Path target) throws IOException;
+    }
+
+    private void rewrite(Rewrite rewrite) throws IOException {
         Path original = getPath();
         Path tmp = FileUtil.createSiblingTempFile(original);
         try {
-            backend.writePosition(original, tmp, position);
+            rewrite.write(original, tmp);
             FileUtil.replace(tmp, original);
         } finally {
             Files.deleteIfExists(tmp);

@@ -75,4 +75,37 @@ class CommonsImagingBackendTest {
         assertEquals(6, metadata.orientation());
         assertNotNull(metadata.position());
     }
+
+    @Test
+    void removesPositionButKeepsOtherMetadata() throws Exception {
+        Path plain = createJpeg("plain.jpg");
+        Path rotated = dir.resolve("rotated.jpg");
+        TiffOutputSet outputSet = new TiffOutputSet();
+        outputSet.getOrCreateRootDirectory().add(TiffTagConstants.TIFF_TAG_ORIENTATION, (short) 3);
+        try (OutputStream os = Files.newOutputStream(rotated)) {
+            new ExifRewriter().updateExifMetadataLossless(plain.toFile(), os, outputSet);
+        }
+        Path tagged = dir.resolve("tagged.jpg");
+        backend.writePosition(rotated, tagged, new GeoPosition(1, 2));
+        assertNotNull(backend.read(tagged).position());
+
+        Path cleaned = dir.resolve("cleaned.jpg");
+        backend.removePosition(tagged, cleaned);
+
+        PhotoMetadata metadata = backend.read(cleaned);
+        assertNull(metadata.position());
+        assertEquals(3, metadata.orientation());
+        // The position can be written again afterwards
+        Path retagged = dir.resolve("retagged.jpg");
+        backend.writePosition(cleaned, retagged, new GeoPosition(5, 6));
+        assertEquals(5, backend.read(retagged).position().getLatitude(), 1e-4);
+    }
+
+    @Test
+    void removingFromPhotoWithoutExifIsHarmless() throws Exception {
+        Path plain = createJpeg("plain.jpg");
+        Path out = dir.resolve("out.jpg");
+        backend.removePosition(plain, out);
+        assertNull(backend.read(out).position());
+    }
 }

@@ -125,4 +125,27 @@ class EditHistoryTest {
         assertFalse(history.canUndo());
         assertEquals(0, calls.get(), "close() runs during shutdown and must not call back into the UI");
     }
+
+    @Test
+    void oldestEditsAreDroppedBeyondByteBudget() throws IOException {
+        EditHistory budget = new EditHistory(20, 25);
+        try {
+            Path f = file("b.jpg", "0123456789"); // 10 bytes per snapshot
+            for (int i = 0; i < 4; i++) {
+                try (EditHistory.Transaction tx = budget.begin("e" + i)) {
+                    tx.snapshot(f);
+                    Files.writeString(f, "abcdefghi" + i);
+                    tx.commit();
+                }
+            }
+            int undos = 0;
+            while (budget.canUndo()) {
+                budget.undo();
+                undos++;
+            }
+            assertEquals(2, undos, "only 2 x 10 bytes fit into 25 bytes");
+        } finally {
+            budget.close();
+        }
+    }
 }
