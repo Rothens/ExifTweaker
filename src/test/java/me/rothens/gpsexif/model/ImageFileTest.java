@@ -1,5 +1,7 @@
 package me.rothens.gpsexif.model;
 
+import me.rothens.gpsexif.metadata.CommonsImagingBackend;
+import me.rothens.gpsexif.metadata.MetadataBackend;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.jxmapviewer.viewer.GeoPosition;
@@ -16,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ImageFileTest {
 
+    private final MetadataBackend backend = new CommonsImagingBackend();
+
     @TempDir
     Path dir;
 
@@ -27,7 +31,7 @@ class ImageFileTest {
 
     @Test
     void imageWithoutExifHasNoPosition() throws IOException {
-        ImageFile image = new ImageFile(createJpeg("plain.jpg"));
+        ImageFile image = new ImageFile(createJpeg("plain.jpg"), backend);
         assertFalse(image.hasExifGPS());
         assertTrue(image.getExifData().isEmpty());
     }
@@ -35,26 +39,24 @@ class ImageFileTest {
     @Test
     void savedPositionCanBeReadBack() throws IOException {
         File f = createJpeg("photo.jpg");
-        ImageFile image = new ImageFile(f);
-        image.setGp(new GeoPosition(-33.8568, 151.2153));
-        image.save();
+        ImageFile image = new ImageFile(f, backend);
+        image.savePosition(new GeoPosition(-33.8568, 151.2153));
+        assertEquals(-33.8568, image.getGp().getLatitude(), 1e-4, "model is refreshed after saving");
 
-        ImageFile reloaded = new ImageFile(f);
+        ImageFile reloaded = new ImageFile(f, backend);
         assertTrue(reloaded.hasExifGPS());
         assertEquals(-33.8568, reloaded.getGp().getLatitude(), 1e-4);
         assertEquals(151.2153, reloaded.getGp().getLongitude(), 1e-4);
 
         // Saving again over existing EXIF data must work too
-        reloaded.setGp(new GeoPosition(47.4979, 19.0402));
-        reloaded.save();
-        assertEquals(47.4979, new ImageFile(f).getGp().getLatitude(), 1e-4);
+        reloaded.savePosition(new GeoPosition(47.4979, 19.0402));
+        assertEquals(47.4979, new ImageFile(f, backend).getGp().getLatitude(), 1e-4);
     }
 
     @Test
     void saveLeavesNoTemporaryFilesBehind() throws IOException {
-        ImageFile image = new ImageFile(createJpeg("photo.jpg"));
-        image.setGp(new GeoPosition(1, 2));
-        image.save();
+        ImageFile image = new ImageFile(createJpeg("photo.jpg"), backend);
+        image.savePosition(new GeoPosition(1, 2));
         try (Stream<Path> files = Files.list(dir)) {
             assertEquals(1, files.count());
         }

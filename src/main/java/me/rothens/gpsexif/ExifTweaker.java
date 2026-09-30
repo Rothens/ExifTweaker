@@ -1,5 +1,7 @@
 package me.rothens.gpsexif;
 
+import me.rothens.gpsexif.metadata.CommonsImagingBackend;
+import me.rothens.gpsexif.metadata.MetadataBackend;
 import me.rothens.gpsexif.model.ExifTableModel;
 import me.rothens.gpsexif.model.ImageFile;
 import me.rothens.gpsexif.model.ImageListRenderer;
@@ -52,6 +54,7 @@ public class ExifTweaker {
     private final JButton btnCoordinate = new JButton("Go!");
     private final JFrame frame;
     private final Preferences prefs = Preferences.userNodeForPackage(ExifTweaker.class);
+    private final MetadataBackend backend = new CommonsImagingBackend();
 
     private WaypointPainter<Waypoint> waypointPainter;
     private final Set<Waypoint> waypoints = new HashSet<>();
@@ -148,10 +151,7 @@ public class ExifTweaker {
 
     private void openFolder() {
         String dir = tfFolder.getText();
-        File[] files = new File(dir).listFiles((d, name) -> {
-            String lower = name.toLowerCase(Locale.ROOT);
-            return lower.endsWith(".jpg") || lower.endsWith(".jpeg");
-        });
+        File[] files = new File(dir).listFiles(f -> f.isFile() && backend.canRead(f.toPath()));
         if (files == null) {
             showError("Couldn't open folder:\n" + dir);
             return;
@@ -167,7 +167,7 @@ public class ExifTweaker {
             protected DefaultListModel<ImageFile> doInBackground() {
                 List<ImageFile> loaded = new ArrayList<>();
                 for (File f : files) {
-                    loaded.add(new ImageFile(f));
+                    loaded.add(new ImageFile(f, backend));
                     publish(loaded.size());
                 }
                 DefaultListModel<ImageFile> model = new DefaultListModel<>();
@@ -207,8 +207,7 @@ public class ExifTweaker {
             return;
         }
         try {
-            selected.setGp(position);
-            selected.save();
+            selected.savePosition(position);
             exifTableModel.setData(selected.getExifData());
             lFiles.repaint();
         } catch (IOException | RuntimeException e) {
