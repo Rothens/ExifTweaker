@@ -12,10 +12,11 @@ import me.rothens.gpsexif.map.TileDiskCache;
 import me.rothens.gpsexif.map.TrackPainter;
 import me.rothens.gpsexif.metadata.CommonsImagingBackend;
 import me.rothens.gpsexif.metadata.MetadataBackend;
-import me.rothens.gpsexif.model.ExifTableModel;
 import me.rothens.gpsexif.model.ImageFile;
 import me.rothens.gpsexif.model.ImageListModel;
 import me.rothens.gpsexif.model.ImageListRenderer;
+import me.rothens.gpsexif.model.MetadataTableModel;
+import me.rothens.gpsexif.metadata.MetadataChanges;
 import me.rothens.gpsexif.ui.GeotagDialog;
 import me.rothens.gpsexif.ui.SettingsDialog;
 import me.rothens.gpsexif.ui.Theme;
@@ -72,8 +73,8 @@ public class ExifTweaker {
     private final JPanel mainPanel = new JPanel(new BorderLayout(4, 4));
     private final JXMapViewer mapViewer = new JXMapViewer();
     private final ImagePanel pnThumbnail = new ImagePanel();
-    private final ExifTableModel exifTableModel = new ExifTableModel();
-    private final JTable jtExif = new JTable(exifTableModel);
+    private final MetadataTableModel metadataModel = new MetadataTableModel();
+    private final JTable jtExif = new JTable(metadataModel);
     private final JComboBox<MapLayer> cbMapType = new JComboBox<>(MapLayer.values());
     private final JTextField tfCoordinate = new JTextField();
     private final JTextField tfSearch = new JTextField();
@@ -127,6 +128,7 @@ public class ExifTweaker {
         lFiles.getActionMap().put(TransferHandler.getCopyAction().getValue(Action.NAME), action(this::copyLocation));
         lFiles.getActionMap().put(TransferHandler.getPasteAction().getValue(Action.NAME), action(this::pasteLocation));
         lFiles.setComponentPopupMenu(createListPopup());
+        setUpMetadataTable();
         chkOnlyWithoutLocation.addActionListener(e -> {
             List<ImageFile> keep = selection;
             listModel.setOnlyWithoutLocation(chkOnlyWithoutLocation.isSelected());
@@ -171,6 +173,46 @@ public class ExifTweaker {
                 runnable.run();
             }
         };
+    }
+
+    private void setUpMetadataTable() {
+        jtExif.putClientProperty("terminateEditOnFocusLost", true);
+        jtExif.getColumnModel().getColumn(0).setPreferredWidth(110);
+        jtExif.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                           boolean hasFocus, int row, int column) {
+                super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                boolean editableRow = metadataModel.isEditableRow(row);
+                setFont(getFont().deriveFont(metadataModel.isMultiple(row) && column == 1 ? Font.ITALIC : Font.PLAIN));
+                if (!isSelected) {
+                    setForeground(editableRow && !metadataModel.isMultiple(row) ? table.getForeground()
+                            : UIManager.getColor("Label.disabledForeground"));
+                }
+                setToolTipText(editableRow && column == 1 ? "Double-click to edit" : null);
+                return this;
+            }
+        });
+        metadataModel.setEditHandler(new MetadataTableModel.EditHandler() {
+            @Override
+            public void edit(String field, String value, List<ImageFile> photos, MetadataChanges changes) {
+                if (busy) {
+                    return;
+                }
+                String what = photos.size() == 1 ? photos.get(0).getFile().getName() : photos.size() + " photos";
+                if (photos.size() > 1 && !confirm((value.isEmpty() ? "Remove " + field + " from "
+                        : "Set " + field + " to \"" + value + "\" for ") + photos.size() + " photos?", field)) {
+                    return;
+                }
+                runBatch((value.isEmpty() ? "Remove " + field + " from " : "Set " + field + " of ") + what,
+                        List.copyOf(photos), image -> image.apply(changes));
+            }
+
+            @Override
+            public void invalid(String message) {
+                showError(message);
+            }
+        });
     }
 
     private JPopupMenu createListPopup() {
@@ -351,6 +393,7 @@ public class ExifTweaker {
         btnOpen.setEnabled(!busy);
         btnBrowse.setEnabled(!busy);
         chkOnlyWithoutLocation.setEnabled(!busy);
+        jtExif.setEnabled(!busy);
         btnSave.setToolTipText(selection.size() > 1
                 ? "Write the location to the " + selection.size() + " selected photos" : null);
         updateUndo();
@@ -869,11 +912,11 @@ public class ExifTweaker {
         waypoints.clear();
         pnThumbnail.setImage(null);
         if (null == selected) {
-            exifTableModel.clear();
+            metadataModel.clear();
             tfCoordinate.setText("");
         } else {
             loadThumbnail(selected);
-            exifTableModel.setData(selected.getExifData());
+            metadataModel.setPhotos(selection, selected);
             if (selected.hasExifGPS()) {
                 mapViewer.setAddressLocation(selected.getGp());
                 waypoints.add(new DefaultWaypoint(selected.getGp()));
