@@ -4,6 +4,7 @@ import me.rothens.gpsexif.history.EditHistory;
 import me.rothens.gpsexif.history.PhotoWriter;
 import me.rothens.gpsexif.map.AttributionPainter;
 import me.rothens.gpsexif.map.MapLayer;
+import me.rothens.gpsexif.map.PlaceSearch;
 import me.rothens.gpsexif.map.TileDiskCache;
 import me.rothens.gpsexif.metadata.CommonsImagingBackend;
 import me.rothens.gpsexif.metadata.MetadataBackend;
@@ -49,6 +50,8 @@ import java.util.prefs.Preferences;
 public class ExifTweaker {
     private static final String APP_NAME = "ExifTweaker";
     private static final int THUMBNAIL_MAX_SIZE = 800;
+    /** Required by the OSM tile and Nominatim usage policies. */
+    private static final String USER_AGENT = APP_NAME + " (https://github.com/rothens/ExifTweaker)";
 
     private final JTextField tfFolder = new JTextField();
     private final JButton btnBrowse = new JButton("...");
@@ -68,6 +71,8 @@ public class ExifTweaker {
     private final JTable jtExif = new JTable(exifTableModel);
     private final JComboBox<MapLayer> cbMapType = new JComboBox<>(MapLayer.values());
     private final JTextField tfCoordinate = new JTextField();
+    private final JTextField tfSearch = new JTextField();
+    private final PlaceSearch placeSearch = new PlaceSearch(USER_AGENT);
     private final JButton btnCoordinate = new JButton("Go!");
     private final JFrame frame;
     private final Settings settings = new Settings(Preferences.userNodeForPackage(ExifTweaker.class));
@@ -128,6 +133,9 @@ public class ExifTweaker {
         btnBrowse.addActionListener(e -> browse());
         btnCoordinate.addActionListener(e -> goToCoordinate());
         tfCoordinate.addActionListener(e -> goToCoordinate());
+        tfSearch.addActionListener(e -> searchPlace());
+        tfSearch.putClientProperty("JTextField.placeholderText", "Search for a place and press Enter");
+        tfSearch.putClientProperty("JTextField.showClearButton", true);
         cbMapType.addActionListener(e -> setMapLayer((MapLayer) cbMapType.getSelectedItem()));
 
         btnUndo.addActionListener(e -> undo());
@@ -362,7 +370,10 @@ public class ExifTweaker {
         rightSplit.setResizeWeight(0.6);
         rightSplit.setPreferredSize(new Dimension(300, 0));
 
-        JSplitPane mapSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, mapViewer, rightSplit);
+        JPanel mapPanel = new JPanel(new BorderLayout(0, 4));
+        mapPanel.add(tfSearch, BorderLayout.NORTH);
+        mapPanel.add(mapViewer, BorderLayout.CENTER);
+        JSplitPane mapSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, mapPanel, rightSplit);
         mapSplit.setResizeWeight(1.0);
         mapSplit.setDividerSize(5);
 
@@ -655,6 +666,63 @@ public class ExifTweaker {
         miUndo.setText(canUndo ? "Undo " + history.getUndoDescription() : "Undo");
     }
 
+    /** Searches in the background; one result is shown right away, several are offered in a menu. */
+    private void searchPlace() {
+        String query = tfSearch.getText();
+        if (query.isBlank()) {
+            return;
+        }
+        tfSearch.setEnabled(false);
+        lblStatus.setText("Searching...");
+        new SwingWorker<List<PlaceSearch.Place>, Void>() {
+            @Override
+            protected List<PlaceSearch.Place> doInBackground() throws Exception {
+                return placeSearch.search(query);
+            }
+
+            @Override
+            protected void done() {
+                tfSearch.setEnabled(true);
+                updateActions();
+                List<PlaceSearch.Place> places;
+                try {
+                    places = get();
+                } catch (InterruptedException | ExecutionException e) {
+                    Throwable cause = null != e.getCause() ? e.getCause() : e;
+                    showError("Couldn't search for places (nominatim.openstreetmap.org).\n"
+                            + "Check your internet connection.\n\nDetails: " + cause.getMessage());
+                    return;
+                }
+                if (places.isEmpty()) {
+                    lblStatus.setText("No place found for \"" + query.trim() + "\"");
+                } else if (places.size() == 1) {
+                    showPlace(places.get(0));
+                } else {
+                    JPopupMenu menu = new JPopupMenu();
+                    for (PlaceSearch.Place place : places) {
+                        String name = place.name().length() > 90 ? place.name().substring(0, 87) + "..." : place.name();
+                        JMenuItem item = new JMenuItem(name);
+                        item.setToolTipText(place.name());
+                        item.addActionListener(e -> showPlace(place));
+                        menu.add(item);
+                    }
+                    menu.show(tfSearch, 0, tfSearch.getHeight());
+                }
+            }
+        }.execute();
+    }
+
+    /** Moves the map to a place. This only navigates; right-click to pick the exact location. */
+    private void showPlace(PlaceSearch.Place place) {
+        if (place.hasBounds()) {
+            mapViewer.zoomToBestFit(Set.of(new GeoPosition(place.south(), place.west()),
+                    new GeoPosition(place.north(), place.east())), 0.8);
+        } else {
+            mapViewer.setAddressLocation(place.position());
+        }
+        lblStatus.setText(place.name().split(",")[0] + " - right-click to pick the exact spot");
+    }
+
     private void goToCoordinate() {
         try {
             GeoPosition position = PositionUtil.parse(tfCoordinate.getText());
@@ -805,7 +873,7 @@ public class ExifTweaker {
             DefaultTileFactory tf = new DefaultTileFactory(layer.createInfo());
             tf.setThreadPoolSize(8);
             // The OSM tile usage policy requires an identifying User-Agent
-            tf.setUserAgent(APP_NAME + " (https://github.com/rothens/ExifTweaker)");
+            tf.setUserAgent(USER_AGENT);
             tf.setLocalCache(tileCache);
             factories.put(layer, tf);
         }

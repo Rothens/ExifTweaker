@@ -16,17 +16,22 @@ java -jar target/GPSEditor-*-all.jar
 # Usage
 
  - Open a folder using the top part of the window
- - Select the image you'd like to edit
- - Use the map to find the desired location and rightclick on it, or type a coordinate
-   (`47.4979;19.0402` or `47°29'52"N 19°2'24"E`) into the field below the map and press Go!
- - Press the save button (or Ctrl+S / Cmd+S)
- - Changed your mind? Edit → Undo (Ctrl+Z / Cmd+Z) restores the photo
- > If a picture already has GPS data, it'll have a green color in the filelist
+ - Select one or more photos (Shift/Ctrl-click; tick *Only without location* to hide the ones already tagged)
+ - Find the place: search for it above the map (e.g. `Eiffel Tower`, then Enter), or pan and zoom
+ - Right-click the exact spot on the map, or type a coordinate (`47.4979;19.0402` or `47°29'52"N 19°2'24"E`)
+   into the field below the map and press Go!
+ - Press Save (Ctrl+S / Cmd+S): the location is written to all selected photos
+ - Changed your mind? Edit → Undo (Ctrl+Z / Cmd+Z) restores the photos - a whole batch at once
+
+ > Photos with a location are green in the file list, the others are red
+
+ > Copy a photo's location with Ctrl+C on the file list and paste it onto others with Ctrl+V, then Save.
+ > Edit → Remove location strips the GPS data, e.g. before sharing photos.
 
  > You can choose between two map layers: OpenStreetMap and satellite imagery (Esri)
 
  > Before a photo is changed for the first time, a copy of the original is kept next to it as `<name>.bak`.
- > This can be turned off in Settings, where you can also pick a light or dark theme.
+ > This can be turned off in Settings, where you can also pick a light or dark theme and limit the map cache.
 
 # Planned features
 See the [roadmap](ROADMAP.md): batch tagging, GPX track geotagging, place search, an opt-in photo overview

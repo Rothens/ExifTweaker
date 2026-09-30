@@ -40,18 +40,20 @@ Groundwork the later milestones depend on. Nothing here changes how photos are w
 
 ---
 
-## 0.4 — Bulk location editing
+## 0.4 — Bulk location editing ✅
 
-- [ ] **Multi-select** in the file list (Shift/Ctrl, Select all, filter "without GPS only").
-- [ ] **Batch tagging**: apply the selected map position to all selected photos, with a progress bar and a
+- [x] **Multi-select** in the file list (Shift/Ctrl, Select all, filter "without GPS only").
+- [x] **Batch tagging**: apply the selected map position to all selected photos, with a progress bar and a
       summary of failures at the end.
-- [ ] **Copy / paste location** between photos (Ctrl+C / Ctrl+V on the file list).
-- [ ] **Remove GPS data** from the selected photos (privacy before sharing), with a confirmation.
-- [ ] **Place search**: search box backed by OpenStreetMap Nominatim.
+- [x] **Copy / paste location** between photos (Ctrl+C / Ctrl+V on the file list).
+- [x] **Remove GPS data** from the selected photos (privacy before sharing), with a confirmation.
+- [x] **Place search**: search box backed by OpenStreetMap Nominatim.
   - Respect the usage policy: at most 1 request/second, identifying User-Agent, results cached,
     search only on Enter (no search-as-you-type).
+- [x] **Tile cache limits** (#29): size limit (Settings, default 500 MB), 30-day expiry, "Clear map cache".
+- [x] Undo keeps up to 2 GB of copies; larger batches can run without undo after a confirmation.
 
-**Done when:** a folder of 500 photos can be tagged in a few clicks, and every batch operation can be undone.
+**Done when:** a folder of 500 photos can be tagged in a few clicks, and batch operations can be undone.
 
 ---
 
