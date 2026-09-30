@@ -119,4 +119,19 @@ class TileDiskCacheTest {
         put(tile(2), 5);
         assertEquals(15, cache.getSize());
     }
+
+    @Test
+    void temporaryFilesAreNotCountedAndStaleOnesAreDeleted() throws IOException {
+        put(tile(1), 10);
+        Path writing = Files.writeString(dir.resolve("tile.openstreetmap.org/13/.tile-123.tmp"), "12345");
+        Path stale = Files.writeString(dir.resolve("tile.openstreetmap.org/13/.tile-456.tmp"), "12345");
+        Files.setLastModifiedTime(stale, FileTime.from(now.minus(Duration.ofHours(2))));
+        Files.setLastModifiedTime(writing, FileTime.from(now));
+
+        cache.enforceLimit();
+
+        assertEquals(10, cache.getSize());
+        assertTrue(Files.exists(writing));
+        assertFalse(Files.exists(stale));
+    }
 }

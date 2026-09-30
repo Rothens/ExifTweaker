@@ -42,6 +42,11 @@ public class TileDiskCache implements LocalCache {
     public static final Duration DEFAULT_MAX_AGE = Duration.ofDays(30);
     public static final long DEFAULT_MAX_BYTES = 500L * 1024 * 1024;
 
+    private static final String TMP_PREFIX = ".tile-";
+    private static final String TMP_SUFFIX = ".tmp";
+    /** Temp files older than this are leftovers of an interrupted download and get deleted. */
+    private static final Duration STALE_TMP_AGE = Duration.ofHours(1);
+
     private final Path dir;
     private final Duration maxAge;
     private final LongSupplier maxBytes;
@@ -97,12 +102,15 @@ public class TileDiskCache implements LocalCache {
         long oldSize = Files.exists(file) ? Files.size(file) : 0;
         Files.createDirectories(file.getParent());
         // Write next to the target and move it into place, so a crash never leaves a half-written tile behind
-        Path tmp = Files.createTempFile(file.getParent(), ".tile-", ".tmp");
+        Path tmp = Files.createTempFile(file.getParent(), TMP_PREFIX, TMP_SUFFIX);
         try {
             Files.copy(data, tmp, StandardCopyOption.REPLACE_EXISTING);
             long newSize = Files.size(tmp);
-            FileUtil.replace(tmp, file);
-            size.getAndUpdate(s -> s < 0 ? s : s - oldSize + newSize);
+            // Atomic with respect to enforceLimit(), whose scan would otherwise count this tile a second time
+            synchronized (this) {
+                FileUtil.replace(tmp, file);
+                size.getAndUpdate(s -> s < 0 ? s : s - oldSize + newSize);
+            }
         } finally {
             Files.deleteIfExists(tmp);
         }
@@ -174,9 +182,18 @@ public class TileDiskCache implements LocalCache {
             files.forEach(p -> {
                 try {
                     BasicFileAttributes attrs = Files.readAttributes(p, BasicFileAttributes.class);
-                    if (attrs.isRegularFile()) {
-                        tiles.add(new Tile(p, attrs.size(), attrs.lastModifiedTime().toMillis()));
+                    if (!attrs.isRegularFile()) {
+                        return;
                     }
+                    String name = p.getFileName().toString();
+                    if (name.startsWith(TMP_PREFIX) && name.endsWith(TMP_SUFFIX)) {
+                        // A tile being written right now - put() counts it once it's moved into place
+                        if (clock.millis() - attrs.lastModifiedTime().toMillis() > STALE_TMP_AGE.toMillis()) {
+                            Files.deleteIfExists(p);
+                        }
+                        return;
+                    }
+                    tiles.add(new Tile(p, attrs.size(), attrs.lastModifiedTime().toMillis()));
                 } catch (IOException ignored) {
                     // Deleted while scanning
                 }
