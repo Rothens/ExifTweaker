@@ -24,7 +24,15 @@ public interface MetadataBackend {
      * Writes a copy of {@code source} to {@code target} with its GPS position set to {@code position}.
      * {@code source} itself is never modified; replacing it is up to the caller.
      */
-    void writePosition(Path source, Path target, GeoPosition position) throws IOException;
+    default void writePosition(Path source, Path target, GeoPosition position) throws IOException {
+        writePosition(source, target, position, null);
+    }
+
+    /**
+     * Like {@link #writePosition(Path, Path, GeoPosition)}, also writing the altitude (metres above sea level,
+     * negative below). A {@code null} altitude leaves an existing altitude untouched.
+     */
+    void writePosition(Path source, Path target, GeoPosition position, Double altitude) throws IOException;
 
     /**
      * Writes a copy of {@code source} to {@code target} without any GPS data. Other metadata is kept.

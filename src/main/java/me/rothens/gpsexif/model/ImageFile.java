@@ -45,6 +45,20 @@ public class ImageFile {
         return metadata.position();
     }
 
+    /** When the photo was taken according to the camera's clock, or {@code null}. */
+    public java.time.LocalDateTime getTaken() {
+        return metadata.taken();
+    }
+
+    /** The camera's UTC offset when the photo was taken, if the camera recorded it, or {@code null}. */
+    public java.time.ZoneOffset getTakenOffset() {
+        return metadata.takenOffset();
+    }
+
+    public Double getAltitude() {
+        return metadata.altitude();
+    }
+
     public int getOrientation() {
         return metadata.orientation();
     }
@@ -66,7 +80,12 @@ public class ImageFile {
      * first and only moved over it once writing fully succeeded, so a failure never leaves a truncated original.
      */
     public void savePosition(GeoPosition position) throws IOException {
-        rewrite((source, target) -> backend.writePosition(source, target, position));
+        savePosition(position, null);
+    }
+
+    /** Writes a position and, unless {@code null}, an altitude in metres. */
+    public void savePosition(GeoPosition position, Double altitude) throws IOException {
+        rewrite((source, target) -> backend.writePosition(source, target, position, altitude));
     }
 
     /** Removes all GPS data from the file, as safely as {@link #savePosition}. */

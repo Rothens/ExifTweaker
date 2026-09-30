@@ -8,9 +8,12 @@ import org.apache.commons.imaging.formats.jpeg.JpegImageMetadata;
 import org.apache.commons.imaging.formats.jpeg.exif.ExifRewriter;
 import org.apache.commons.imaging.formats.tiff.TiffField;
 import org.apache.commons.imaging.formats.tiff.TiffImageMetadata;
+import org.apache.commons.imaging.common.RationalNumber;
 import org.apache.commons.imaging.formats.tiff.constants.ExifTagConstants;
+import org.apache.commons.imaging.formats.tiff.constants.GpsTagConstants;
 import org.apache.commons.imaging.formats.tiff.constants.TiffDirectoryConstants;
 import org.apache.commons.imaging.formats.tiff.constants.TiffTagConstants;
+import org.apache.commons.imaging.formats.tiff.taginfos.TagInfo;
 import org.apache.commons.imaging.formats.tiff.write.TiffOutputDirectory;
 import org.apache.commons.imaging.formats.tiff.write.TiffOutputSet;
 import org.jxmapviewer.viewer.GeoPosition;
@@ -21,6 +24,10 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -54,7 +61,8 @@ public class CommonsImagingBackend implements MetadataBackend {
         if (null == exif) {
             return PhotoMetadata.EMPTY;
         }
-        return new PhotoMetadata(readPosition(exif), readOrientation(exif), readFields(exif));
+        return new PhotoMetadata(readPosition(exif), readOrientation(exif), readFields(exif), readTaken(exif),
+                readTakenOffset(exif), readAltitude(exif));
     }
 
     private static TiffImageMetadata readExif(Path file) throws IOException {
@@ -92,6 +100,74 @@ public class CommonsImagingBackend implements MetadataBackend {
         return 1;
     }
 
+    private static final DateTimeFormatter EXIF_DATE_TIME = DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss");
+    /** OffsetTimeOriginal (EXIF 2.31), e.g. "+02:00". commons-imaging has no constant for it. */
+    private static final int TAG_OFFSET_TIME_ORIGINAL = 0x9011;
+
+    /** DateTimeOriginal (with sub-seconds), falling back to DateTimeDigitized and DateTime. */
+    static LocalDateTime readTaken(TiffImageMetadata exif) {
+        LocalDateTime taken = parseDateTime(asciiValue(exif, ExifTagConstants.EXIF_TAG_DATE_TIME_ORIGINAL));
+        if (null != taken) {
+            String subSec = asciiValue(exif, ExifTagConstants.EXIF_TAG_SUB_SEC_TIME_ORIGINAL);
+            if (null != subSec && subSec.trim().matches("\\d{1,9}")) {
+                String digits = (subSec.trim() + "000000000").substring(0, 9);
+                taken = taken.withNano(Integer.parseInt(digits));
+            }
+            return taken;
+        }
+        taken = parseDateTime(asciiValue(exif, ExifTagConstants.EXIF_TAG_DATE_TIME_DIGITIZED));
+        return null != taken ? taken : parseDateTime(asciiValue(exif, TiffTagConstants.TIFF_TAG_DATE_TIME));
+    }
+
+    private static ZoneOffset readTakenOffset(TiffImageMetadata exif) {
+        for (TiffField field : exif.getAllFields()) {
+            if (field.getTag() == TAG_OFFSET_TIME_ORIGINAL) {
+                try {
+                    return ZoneOffset.of(field.getStringValue().trim());
+                } catch (ImagingException | RuntimeException e) {
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static Double readAltitude(TiffImageMetadata exif) {
+        try {
+            TiffField altitude = exif.findField(GpsTagConstants.GPS_TAG_GPS_ALTITUDE);
+            if (null == altitude) {
+                return null;
+            }
+            double value = altitude.getDoubleValue();
+            TiffField ref = exif.findField(GpsTagConstants.GPS_TAG_GPS_ALTITUDE_REF);
+            boolean below = null != ref
+                    && ref.getIntValue() == GpsTagConstants.GPS_TAG_GPS_ALTITUDE_REF_VALUE_BELOW_SEA_LEVEL;
+            return below ? -value : value;
+        } catch (ImagingException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    private static String asciiValue(TiffImageMetadata exif, TagInfo tag) {
+        try {
+            TiffField field = exif.findField(tag, true);
+            return null != field ? field.getStringValue() : null;
+        } catch (ImagingException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    private static LocalDateTime parseDateTime(String text) {
+        if (null == text) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(text.trim(), EXIF_DATE_TIME);
+        } catch (DateTimeParseException e) {
+            return null; // e.g. "0000:00:00 00:00:00" written by cameras without a set clock
+        }
+    }
+
     private static List<ExifData> readFields(TiffImageMetadata exif) {
         List<ExifData> ret = new ArrayList<>();
         for (TiffField tf : exif.getAllFields()) {
@@ -104,9 +180,18 @@ public class CommonsImagingBackend implements MetadataBackend {
     }
 
     @Override
-    public void writePosition(Path source, Path target, GeoPosition position) throws IOException {
+    public void writePosition(Path source, Path target, GeoPosition position, Double altitude) throws IOException {
         TiffOutputSet outputSet = outputSetOf(source);
         outputSet.setGpsInDegrees(position.getLongitude(), position.getLatitude());
+        if (null != altitude) {
+            TiffOutputDirectory gps = outputSet.getOrCreateGpsDirectory();
+            gps.removeField(GpsTagConstants.GPS_TAG_GPS_ALTITUDE);
+            gps.removeField(GpsTagConstants.GPS_TAG_GPS_ALTITUDE_REF);
+            gps.add(GpsTagConstants.GPS_TAG_GPS_ALTITUDE, RationalNumber.valueOf(Math.abs(altitude)));
+            gps.add(GpsTagConstants.GPS_TAG_GPS_ALTITUDE_REF, (byte) (altitude < 0
+                    ? GpsTagConstants.GPS_TAG_GPS_ALTITUDE_REF_VALUE_BELOW_SEA_LEVEL
+                    : GpsTagConstants.GPS_TAG_GPS_ALTITUDE_REF_VALUE_ABOVE_SEA_LEVEL));
+        }
         write(source, target, outputSet);
     }
 

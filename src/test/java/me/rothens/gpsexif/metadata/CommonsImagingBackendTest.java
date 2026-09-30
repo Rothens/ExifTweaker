@@ -108,4 +108,71 @@ class CommonsImagingBackendTest {
         backend.removePosition(plain, out);
         assertNull(backend.read(out).position());
     }
+
+    private Path withExif(String name, java.util.function.Consumer<TiffOutputSet> tags) throws Exception {
+        Path plain = createJpeg("plain-" + name);
+        Path out = dir.resolve(name);
+        TiffOutputSet outputSet = new TiffOutputSet();
+        tags.accept(outputSet);
+        try (OutputStream os = Files.newOutputStream(out)) {
+            new ExifRewriter().updateExifMetadataLossless(plain.toFile(), os, outputSet);
+        }
+        return out;
+    }
+
+    private static void add(TiffOutputSet set, org.apache.commons.imaging.formats.tiff.taginfos.TagInfoAscii tag,
+                            String value) {
+        try {
+            set.getOrCreateExifDirectory().add(tag, value);
+        } catch (org.apache.commons.imaging.ImagingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    void readsCaptureTimeWithSubSecondsAndOffset() throws Exception {
+        var offsetTag = new org.apache.commons.imaging.formats.tiff.taginfos.TagInfoAscii("OffsetTimeOriginal",
+                0x9011, 7, org.apache.commons.imaging.formats.tiff.constants.TiffDirectoryType.EXIF_DIRECTORY_EXIF_IFD);
+        Path photo = withExif("timed.jpg", set -> {
+            add(set, org.apache.commons.imaging.formats.tiff.constants.ExifTagConstants.EXIF_TAG_DATE_TIME_ORIGINAL,
+                    "2026:09:30 10:15:30");
+            add(set, org.apache.commons.imaging.formats.tiff.constants.ExifTagConstants.EXIF_TAG_SUB_SEC_TIME_ORIGINAL,
+                    "25");
+            add(set, offsetTag, "+02:00");
+        });
+        PhotoMetadata metadata = backend.read(photo);
+        assertEquals(java.time.LocalDateTime.of(2026, 9, 30, 10, 15, 30, 250_000_000), metadata.taken());
+        assertEquals(java.time.ZoneOffset.ofHours(2), metadata.takenOffset());
+    }
+
+    @Test
+    void fallsBackToDigitizedTimeAndIgnoresUnsetClocks() throws Exception {
+        Path digitized = withExif("digitized.jpg", set -> add(set,
+                org.apache.commons.imaging.formats.tiff.constants.ExifTagConstants.EXIF_TAG_DATE_TIME_DIGITIZED,
+                "2025:01:02 03:04:05"));
+        assertEquals(java.time.LocalDateTime.of(2025, 1, 2, 3, 4, 5), backend.read(digitized).taken());
+        assertNull(backend.read(digitized).takenOffset());
+
+        Path unset = withExif("unset.jpg", set -> add(set,
+                org.apache.commons.imaging.formats.tiff.constants.ExifTagConstants.EXIF_TAG_DATE_TIME_ORIGINAL,
+                "0000:00:00 00:00:00"));
+        assertNull(backend.read(unset).taken());
+    }
+
+    @Test
+    void writesAltitudeAboveAndBelowSeaLevel() throws Exception {
+        Path plain = createJpeg("plain.jpg");
+        Path high = dir.resolve("high.jpg");
+        backend.writePosition(plain, high, new GeoPosition(46.5, 7.9), 3454.5);
+        assertEquals(3454.5, backend.read(high).altitude(), 1e-6);
+
+        Path low = dir.resolve("low.jpg");
+        backend.writePosition(high, low, new GeoPosition(31.5, 35.5), -430.0);
+        assertEquals(-430.0, backend.read(low).altitude(), 1e-6);
+
+        Path moved = dir.resolve("moved.jpg");
+        backend.writePosition(low, moved, new GeoPosition(31.6, 35.6));
+        assertEquals(-430.0, backend.read(moved).altitude(), 1e-6, "no altitude given: existing one is kept");
+        assertNull(backend.read(plain).altitude());
+    }
 }
