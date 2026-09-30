@@ -7,6 +7,7 @@ import me.rothens.gpsexif.metadata.MetadataBackend;
 import me.rothens.gpsexif.model.ExifTableModel;
 import me.rothens.gpsexif.model.ImageFile;
 import me.rothens.gpsexif.model.ImageListRenderer;
+import me.rothens.gpsexif.util.ImageOrientation;
 import me.rothens.gpsexif.util.PositionUtil;
 import me.rothens.gpsexif.util.Settings;
 import org.jxmapviewer.JXMapViewer;
@@ -297,7 +298,7 @@ public class ExifTweaker {
             exifTableModel.clear();
             tfCoordinate.setText("");
         } else {
-            loadThumbnail(selected.getFile());
+            loadThumbnail(selected);
             exifTableModel.setData(selected.getExifData());
             if (selected.hasExifGPS()) {
                 mapViewer.setAddressLocation(selected.getGp());
@@ -311,14 +312,15 @@ public class ExifTweaker {
         mapViewer.repaint();
     }
 
-    private void loadThumbnail(File file) {
+    private void loadThumbnail(ImageFile image) {
         if (null != thumbnailWorker) {
             thumbnailWorker.cancel(true);
         }
         thumbnailWorker = new SwingWorker<>() {
             @Override
             protected BufferedImage doInBackground() throws IOException {
-                return readSubsampled(file, THUMBNAIL_MAX_SIZE);
+                BufferedImage thumbnail = readSubsampled(image.getFile(), THUMBNAIL_MAX_SIZE);
+                return ImageOrientation.apply(thumbnail, image.getOrientation());
             }
 
             @Override
