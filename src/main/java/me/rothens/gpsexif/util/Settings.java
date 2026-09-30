@@ -16,6 +16,10 @@ public class Settings {
     private static final String MAP_LAYER = "MAP_LAYER";
     private static final String THEME = "THEME";
     private static final String TILE_CACHE_MAX_MB = "TILE_CACHE_MAX_MB";
+    private static final String CAMERA_ZONE = "CAMERA_ZONE";
+    private static final String GPX_MAX_GAP_MINUTES = "GPX_MAX_GAP_MINUTES";
+
+    public static final int DEFAULT_GPX_MAX_GAP_MINUTES = 10;
 
     public static final int DEFAULT_TILE_CACHE_MAX_MB = 500;
     public static final int MIN_TILE_CACHE_MAX_MB = 50;
@@ -43,6 +47,27 @@ public class Settings {
 
     public void setTileCacheMaxMb(int megabytes) {
         prefs.putInt(TILE_CACHE_MAX_MB, Math.max(MIN_TILE_CACHE_MAX_MB, megabytes));
+    }
+
+    /** Time zone the camera's clock is set to (for GPX matching); the system zone by default. */
+    public java.time.ZoneId getCameraZone() {
+        try {
+            return java.time.ZoneId.of(prefs.get(CAMERA_ZONE, java.time.ZoneId.systemDefault().getId()));
+        } catch (java.time.DateTimeException e) {
+            return java.time.ZoneId.systemDefault();
+        }
+    }
+
+    public void setCameraZone(java.time.ZoneId zone) {
+        prefs.put(CAMERA_ZONE, zone.getId());
+    }
+
+    public int getGpxMaxGapMinutes() {
+        return Math.max(1, prefs.getInt(GPX_MAX_GAP_MINUTES, DEFAULT_GPX_MAX_GAP_MINUTES));
+    }
+
+    public void setGpxMaxGapMinutes(int minutes) {
+        prefs.putInt(GPX_MAX_GAP_MINUTES, Math.max(1, minutes));
     }
 
     public Theme getTheme() {

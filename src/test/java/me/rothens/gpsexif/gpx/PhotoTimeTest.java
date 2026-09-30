@@ -69,6 +69,7 @@ class PhotoTimeTest {
     void describesGaps() {
         assertEquals("45 s", PhotoTime.describe(Duration.ofSeconds(45)));
         assertEquals("12 min", PhotoTime.describe(Duration.ofMinutes(12)));
+        assertEquals("3 min 30 s", PhotoTime.describe(Duration.ofSeconds(210)));
         assertEquals("3 h 5 min", PhotoTime.describe(Duration.ofMinutes(185)));
         assertEquals("3 days", PhotoTime.describe(Duration.ofDays(3)));
     }

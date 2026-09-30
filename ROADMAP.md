@@ -57,17 +57,17 @@ Groundwork the later milestones depend on. Nothing here changes how photos are w
 
 ---
 
-## 0.5 — GPX track geotagging
+## 0.5 — GPX track geotagging ✅
 
-- [ ] **Import GPX** track files (one or more; phone/watch exports). Parsed with the JDK's XML APIs, no new dependency.
-- [ ] **Time matching**: match each photo's `DateTimeOriginal` against the track, interpolating between
+- [x] **Import GPX** track files (one or more; phone/watch exports). Parsed with the JDK's XML APIs, no new dependency.
+- [x] **Time matching**: match each photo's `DateTimeOriginal` against the track, interpolating between
       track points.
   - Camera **time offset** (e.g. "camera clock was 3 min 12 s behind") and **time zone** of the camera clock.
   - Helper: pick a photo of a known place or of a clock to compute the offset automatically.
   - **Maximum gap** setting: photos taken more than *N* minutes from any track point stay unmatched.
-- [ ] **Preview before writing**: draw the track on the map and list proposed positions (matched / unmatched)
+- [x] **Preview before writing**: draw the track on the map and list proposed positions (matched / unmatched)
       so the user can review and deselect before applying.
-- [ ] Apply through the same batch writer as 0.4 (progress, failure summary, undo).
+- [x] Apply through the same batch writer as 0.4 (progress, failure summary, undo).
 
 **Done when:** a day of photos plus a GPX file from the same day can be geotagged in one pass, with a preview.
 

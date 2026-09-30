@@ -88,14 +88,14 @@ public final class PhotoTime {
         return String.format(Locale.ROOT, "%s%d:%02d:%02d", sign, s / 3600, (s / 60) % 60, s % 60);
     }
 
-    /** Human-readable duration for gaps, e.g. "45 s", "12 min", "3 h 5 min", "2 days". */
+    /** Human-readable duration, e.g. "45 s", "3 min 30 s", "3 h 5 min", "2 days". */
     public static String describe(Duration d) {
         long s = d.abs().getSeconds();
         if (s < 60) {
             return s + " s";
         }
         if (s < 3600) {
-            return (s / 60) + " min";
+            return (s / 60) + " min" + (s % 60 > 0 ? " " + (s % 60) + " s" : "");
         }
         if (s < 48 * 3600) {
             long minutes = (s / 60) % 60;

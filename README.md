@@ -25,6 +25,11 @@ java -jar target/GPSEditor-*-all.jar
 
  > Photos with a location are green in the file list, the others are red
 
+ > **Geotag from a GPX track** (File → Geotag from GPX, Ctrl+G): load the track your phone, watch or GPS logger
+ > recorded, pick the time zone your camera's clock was set to, and review where each photo lands before applying.
+ > If the camera's clock was off, enter by how much - or let ExifTweaker work it out from a photo of a clock, or
+ > from a photo whose location you right-click on the map. Altitude is taken from the track too.
+
  > Copy a photo's location with Ctrl+C on the file list and paste it onto others with Ctrl+V, then Save.
  > Edit → Remove location strips the GPS data, e.g. before sharing photos.
 

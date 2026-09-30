@@ -2,16 +2,20 @@ package me.rothens.gpsexif;
 
 import me.rothens.gpsexif.history.EditHistory;
 import me.rothens.gpsexif.history.PhotoWriter;
+import me.rothens.gpsexif.gpx.Track;
+import me.rothens.gpsexif.gpx.TrackMatcher;
 import me.rothens.gpsexif.map.AttributionPainter;
 import me.rothens.gpsexif.map.MapLayer;
 import me.rothens.gpsexif.map.PlaceSearch;
 import me.rothens.gpsexif.map.TileDiskCache;
+import me.rothens.gpsexif.map.TrackPainter;
 import me.rothens.gpsexif.metadata.CommonsImagingBackend;
 import me.rothens.gpsexif.metadata.MetadataBackend;
 import me.rothens.gpsexif.model.ExifTableModel;
 import me.rothens.gpsexif.model.ImageFile;
 import me.rothens.gpsexif.model.ImageListModel;
 import me.rothens.gpsexif.model.ImageListRenderer;
+import me.rothens.gpsexif.ui.GeotagDialog;
 import me.rothens.gpsexif.ui.SettingsDialog;
 import me.rothens.gpsexif.ui.Theme;
 import me.rothens.gpsexif.util.ExitWatchdog;
@@ -90,6 +94,10 @@ public class ExifTweaker {
     private final Map<Theme, JRadioButtonMenuItem> themeItems = new EnumMap<>(Theme.class);
     private final Map<MapLayer, JRadioButtonMenuItem> mapLayerItems = new EnumMap<>(MapLayer.class);
     private boolean updatingMapLayer;
+
+    private final JMenuItem miGeotag = new JMenuItem("Geotag from GPX...");
+    private final TrackPainter trackPainter = new TrackPainter();
+    private GeotagDialog geotagDialog;
 
     private WaypointPainter<Waypoint> waypointPainter;
     private final Set<Waypoint> waypoints = new HashSet<>();
@@ -177,6 +185,9 @@ public class ExifTweaker {
         JMenu file = new JMenu("File");
         file.setMnemonic('F');
         file.add(menuItem("Open folder...", KeyStroke.getKeyStroke('O', menuKey), e -> browse()));
+        miGeotag.setAccelerator(KeyStroke.getKeyStroke('G', menuKey));
+        miGeotag.addActionListener(e -> openGeotag());
+        file.add(miGeotag);
         if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.APP_QUIT_HANDLER)) {
             file.addSeparator();
             file.add(menuItem("Exit", KeyStroke.getKeyStroke('Q', menuKey), e -> exit()));
@@ -324,6 +335,7 @@ public class ExifTweaker {
         miSave.setEnabled(canWrite);
         miRemove.setEnabled(canWrite && selection.stream().anyMatch(ImageFile::hasExifGPS));
         miPaste.setEnabled(!busy);
+        miGeotag.setEnabled(!busy && !listModel.getAll().isEmpty());
         btnOpen.setEnabled(!busy);
         btnBrowse.setEnabled(!busy);
         chkOnlyWithoutLocation.setEnabled(!busy);
@@ -414,6 +426,9 @@ public class ExifTweaker {
     }
 
     private void openFolder() {
+        if (null != geotagDialog) {
+            geotagDialog.dispose();
+        }
         String dir = tfFolder.getText();
         File[] files = new File(dir).listFiles(f -> f.isFile() && backend.canRead(f.toPath()));
         if (files == null) {
@@ -666,6 +681,54 @@ public class ExifTweaker {
         miUndo.setText(canUndo ? "Undo " + history.getUndoDescription() : "Undo");
     }
 
+    /** Opens the GPX geotagging dialog for the selected photos, or all opened photos if at most one is selected. */
+    private void openGeotag() {
+        if (busy || listModel.getAll().isEmpty()) {
+            return;
+        }
+        if (null != geotagDialog && geotagDialog.isDisplayable()) {
+            geotagDialog.toFront();
+            return;
+        }
+        List<ImageFile> photos = selection.size() > 1 ? selection : listModel.getAll();
+        geotagDialog = new GeotagDialog(frame, photos, settings, new GeotagDialog.Host() {
+            @Override
+            public void showPreview(List<Track> tracks, List<GeoPosition> proposed, GeoPosition highlight) {
+                trackPainter.set(tracks, proposed, highlight);
+                mapViewer.repaint();
+            }
+
+            @Override
+            public void clearPreview() {
+                trackPainter.clear();
+                mapViewer.repaint();
+            }
+
+            @Override
+            public void zoomTo(List<GeoPosition> positions) {
+                if (!positions.isEmpty()) {
+                    mapViewer.zoomToBestFit(new HashSet<>(positions), 0.8);
+                }
+            }
+
+            @Override
+            public GeoPosition pickedPosition() {
+                return pendingPosition();
+            }
+
+            @Override
+            public void apply(Map<ImageFile, TrackMatcher.Match> matches, boolean writeAltitude) {
+                List<ImageFile> targets = List.copyOf(matches.keySet());
+                runBatch("Geotag " + targets.size() + (targets.size() == 1 ? " photo" : " photos") + " from GPX",
+                        targets, image -> {
+                            TrackMatcher.Match match = matches.get(image);
+                            image.savePosition(match.position(), writeAltitude ? match.elevation() : null);
+                        });
+            }
+        });
+        geotagDialog.setVisible(true);
+    }
+
     /** Searches in the background; one result is shown right away, several are offered in a menu. */
     private void searchPlace() {
         String query = tfSearch.getText();
@@ -887,7 +950,7 @@ public class ExifTweaker {
         waypointPainter = new WaypointPainter<>();
         waypointPainter.setRenderer(new SelectionWaypointRenderer());
         waypointPainter.setWaypoints(waypoints);
-        mapViewer.setOverlayPainter(new CompoundPainter<>(waypointPainter, new AttributionPainter()));
+        mapViewer.setOverlayPainter(new CompoundPainter<>(trackPainter, waypointPainter, new AttributionPainter()));
 
         MouseInputListener mia = new PanMouseInputListener(mapViewer);
         mapViewer.addMouseListener(mia);
