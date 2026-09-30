@@ -15,6 +15,10 @@ public class Settings {
     private static final String BACKUPS_ENABLED = "BACKUPS_ENABLED";
     private static final String MAP_LAYER = "MAP_LAYER";
     private static final String THEME = "THEME";
+    private static final String TILE_CACHE_MAX_MB = "TILE_CACHE_MAX_MB";
+
+    public static final int DEFAULT_TILE_CACHE_MAX_MB = 500;
+    public static final int MIN_TILE_CACHE_MAX_MB = 50;
     /** Pre-0.3 setting: index into [OpenStreetMap, VirtualEarth]. */
     private static final String LEGACY_MAP_TYPE = "MAP_TYPE";
 
@@ -30,6 +34,15 @@ public class Settings {
 
     public void setLastDirectory(String directory) {
         prefs.put(LAST_DIRECTORY, directory);
+    }
+
+    /** Size limit of the map tile disk cache, in MB. */
+    public int getTileCacheMaxMb() {
+        return Math.max(MIN_TILE_CACHE_MAX_MB, prefs.getInt(TILE_CACHE_MAX_MB, DEFAULT_TILE_CACHE_MAX_MB));
+    }
+
+    public void setTileCacheMaxMb(int megabytes) {
+        prefs.putInt(TILE_CACHE_MAX_MB, Math.max(MIN_TILE_CACHE_MAX_MB, megabytes));
     }
 
     public Theme getTheme() {

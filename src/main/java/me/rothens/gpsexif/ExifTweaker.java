@@ -4,6 +4,7 @@ import me.rothens.gpsexif.history.EditHistory;
 import me.rothens.gpsexif.history.PhotoWriter;
 import me.rothens.gpsexif.map.AttributionPainter;
 import me.rothens.gpsexif.map.MapLayer;
+import me.rothens.gpsexif.map.TileDiskCache;
 import me.rothens.gpsexif.metadata.CommonsImagingBackend;
 import me.rothens.gpsexif.metadata.MetadataBackend;
 import me.rothens.gpsexif.model.ExifTableModel;
@@ -47,7 +48,6 @@ import java.util.prefs.Preferences;
 public class ExifTweaker {
     private static final String APP_NAME = "ExifTweaker";
     private static final int THUMBNAIL_MAX_SIZE = 800;
-    private static final File TILE_CACHE_DIR = new File(System.getProperty("user.home"), ".jxmapviewer2");
 
     private final JTextField tfFolder = new JTextField();
     private final JButton btnBrowse = new JButton("...");
@@ -69,6 +69,8 @@ public class ExifTweaker {
     private final MetadataBackend backend = new CommonsImagingBackend();
     private final EditHistory history = new EditHistory();
     private final PhotoWriter writer = new PhotoWriter(history, settings::isBackupsEnabled);
+    private final TileDiskCache tileCache = new TileDiskCache(Path.of(System.getProperty("user.home"), ".jxmapviewer2"),
+            () -> settings.getTileCacheMaxMb() * 1024L * 1024L);
 
     private final JMenuItem miUndo = new JMenuItem("Undo");
     private final JMenuItem miSave = new JMenuItem("Save location");
@@ -219,7 +221,7 @@ public class ExifTweaker {
     }
 
     private void showSettings() {
-        if (new SettingsDialog(frame, settings).showDialog()) {
+        if (new SettingsDialog(frame, settings, tileCache).showDialog()) {
             setTheme(settings.getTheme());
             setMapLayer(settings.getMapLayer());
         }
@@ -540,10 +542,7 @@ public class ExifTweaker {
         } finally {
             updatingMapLayer = false;
         }
-        DefaultTileFactory factory = factories.get(layer);
-        // LocalResponseCache is JVM-global and only caches URLs under one base URL, so point it at the active layer
-        LocalResponseCache.installResponseCache(factory.getInfo().getBaseURL(), TILE_CACHE_DIR, false);
-        MapLayer.switchTileFactory(mapViewer, factory);
+        MapLayer.switchTileFactory(mapViewer, factories.get(layer));
         settings.setMapLayer(layer);
     }
 
@@ -553,8 +552,10 @@ public class ExifTweaker {
             tf.setThreadPoolSize(8);
             // The OSM tile usage policy requires an identifying User-Agent
             tf.setUserAgent(APP_NAME + " (https://github.com/rothens/ExifTweaker)");
+            tf.setLocalCache(tileCache);
             factories.put(layer, tf);
         }
+        tileCache.scheduleMaintenance();
         setMapLayer(settings.getMapLayer());
 
         GeoPosition tokyo = new GeoPosition(35.68, 139.71);
