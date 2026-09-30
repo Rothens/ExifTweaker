@@ -112,4 +112,17 @@ class EditHistoryTest {
         history.undo();
         assertEquals(2, calls.get());
     }
+
+    @Test
+    void closeDeletesSnapshotsWithoutNotifyingListeners() throws IOException {
+        Path f = file("a.jpg", "x");
+        edit("e", f, "y");
+        AtomicInteger calls = new AtomicInteger();
+        history.addChangeListener(calls::incrementAndGet);
+
+        history.close();
+
+        assertFalse(history.canUndo());
+        assertEquals(0, calls.get(), "close() runs during shutdown and must not call back into the UI");
+    }
 }

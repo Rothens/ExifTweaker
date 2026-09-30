@@ -105,7 +105,8 @@ public class ExifTweaker {
         cbMapType.addActionListener(e -> setMapLayer((MapLayer) cbMapType.getSelectedItem()));
 
         btnUndo.addActionListener(e -> undo());
-        history.addChangeListener(this::updateUndo);
+        // History changes may come from background threads; Swing must only be touched on the event thread
+        history.addChangeListener(() -> SwingUtilities.invokeLater(this::updateUndo));
         updateUndo();
 
         tfFolder.setText(settings.getLastDirectory());
@@ -195,10 +196,20 @@ public class ExifTweaker {
         }
         if (desktop.isSupported(Desktop.Action.APP_QUIT_HANDLER)) {
             desktop.setQuitHandler((e, response) -> {
-                history.close();
+                shutdown();
                 response.performQuit();
             });
         }
+    }
+
+    /** Releases background work and temp files. Called on the event thread before the JVM exits. */
+    private void shutdown() {
+        if (null != thumbnailWorker) {
+            thumbnailWorker.cancel(true);
+        }
+        factories.values().forEach(DefaultTileFactory::dispose);
+        history.close();
+        frame.dispose();
     }
 
     private void exit() {
@@ -418,8 +429,16 @@ public class ExifTweaker {
             JFrame frame = new JFrame(APP_NAME);
             ExifTweaker app = new ExifTweaker(frame);
             frame.setContentPane(app.mainPanel);
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            Runtime.getRuntime().addShutdownHook(new Thread(app.history::close));
+            frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+            frame.addWindowListener(new java.awt.event.WindowAdapter() {
+                @Override
+                public void windowClosing(java.awt.event.WindowEvent e) {
+                    app.shutdown();
+                    System.exit(0);
+                }
+            });
+            // Only deletes temp files (no Swing access), for when the JVM is stopped some other way (e.g. Ctrl+C)
+            Runtime.getRuntime().addShutdownHook(new Thread(app.history::close, "exiftweaker-cleanup"));
             frame.setSize(1200, 700);
             frame.setLocationRelativeTo(null);
             frame.setVisible(true);
@@ -518,7 +537,7 @@ public class ExifTweaker {
         DefaultTileFactory factory = factories.get(layer);
         // LocalResponseCache is JVM-global and only caches URLs under one base URL, so point it at the active layer
         LocalResponseCache.installResponseCache(factory.getInfo().getBaseURL(), TILE_CACHE_DIR, false);
-        mapViewer.setTileFactory(factory);
+        MapLayer.switchTileFactory(mapViewer, factory);
         settings.setMapLayer(layer);
     }
 

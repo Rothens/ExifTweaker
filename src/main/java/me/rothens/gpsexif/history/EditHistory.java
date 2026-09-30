@@ -39,7 +39,10 @@ public class EditHistory implements AutoCloseable {
         this.maxEdits = maxEdits;
     }
 
-    /** Registers a listener that's called whenever {@link #canUndo()} or the undo description may have changed. */
+    /**
+     * Registers a listener that's called whenever {@link #canUndo()} or the undo description may have changed.
+     * Listeners run on the thread that changed the history, which isn't necessarily the Swing event thread.
+     */
     public void addChangeListener(Runnable listener) {
         listeners.add(listener);
     }
@@ -98,15 +101,17 @@ public class EditHistory implements AutoCloseable {
 
     /** Forgets all edits and deletes their snapshots. */
     public synchronized void clear() {
-        while (!edits.isEmpty()) {
-            delete(edits.poll());
-        }
+        deleteAllEdits();
         fireChanged();
     }
 
+    /**
+     * Deletes all snapshots. Doesn't notify listeners, so it's safe to call while shutting down (e.g. from a
+     * shutdown hook, where touching Swing components can deadlock).
+     */
     @Override
     public synchronized void close() {
-        clear();
+        deleteAllEdits();
         if (null != snapshotDir) {
             try (Stream<Path> files = Files.walk(snapshotDir)) {
                 files.sorted(Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
@@ -114,6 +119,12 @@ public class EditHistory implements AutoCloseable {
                 // Temp directory - the OS cleans it up eventually
             }
             snapshotDir = null;
+        }
+    }
+
+    private void deleteAllEdits() {
+        while (!edits.isEmpty()) {
+            delete(edits.poll());
         }
     }
 
