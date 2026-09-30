@@ -9,6 +9,7 @@ import me.rothens.gpsexif.metadata.MetadataBackend;
 import me.rothens.gpsexif.model.ExifTableModel;
 import me.rothens.gpsexif.model.ImageFile;
 import me.rothens.gpsexif.model.ImageListRenderer;
+import me.rothens.gpsexif.ui.Theme;
 import me.rothens.gpsexif.util.ImageOrientation;
 import me.rothens.gpsexif.util.PositionUtil;
 import me.rothens.gpsexif.util.Settings;
@@ -270,12 +271,11 @@ public class ExifTweaker {
     }
 
     public static void main(String[] args) {
+        // macOS: native window title bar colour that follows the system appearance
+        System.setProperty("apple.awt.application.appearance", "system");
+        Theme theme = new Settings(Preferences.userNodeForPackage(ExifTweaker.class)).getTheme();
         SwingUtilities.invokeLater(() -> {
-            try {
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception ignored) {
-                // Fall back to the default look and feel
-            }
+            theme.install();
             JFrame frame = new JFrame(APP_NAME);
             ExifTweaker app = new ExifTweaker(frame);
             frame.setContentPane(app.mainPanel);

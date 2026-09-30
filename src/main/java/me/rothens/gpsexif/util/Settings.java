@@ -1,6 +1,7 @@
 package me.rothens.gpsexif.util;
 
 import me.rothens.gpsexif.map.MapLayer;
+import me.rothens.gpsexif.ui.Theme;
 
 import java.util.prefs.Preferences;
 
@@ -13,6 +14,7 @@ public class Settings {
     private static final String LAST_DIRECTORY = "LAST_DIRECTORY";
     private static final String BACKUPS_ENABLED = "BACKUPS_ENABLED";
     private static final String MAP_LAYER = "MAP_LAYER";
+    private static final String THEME = "THEME";
     /** Pre-0.3 setting: index into [OpenStreetMap, VirtualEarth]. */
     private static final String LEGACY_MAP_TYPE = "MAP_TYPE";
 
@@ -28,6 +30,14 @@ public class Settings {
 
     public void setLastDirectory(String directory) {
         prefs.put(LAST_DIRECTORY, directory);
+    }
+
+    public Theme getTheme() {
+        return Theme.fromName(prefs.get(THEME, null));
+    }
+
+    public void setTheme(Theme theme) {
+        prefs.put(THEME, theme.name());
     }
 
     public MapLayer getMapLayer() {

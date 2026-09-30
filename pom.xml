@@ -28,6 +28,11 @@
             <version>2.8.1</version>
         </dependency>
         <dependency>
+            <groupId>com.formdev</groupId>
+            <artifactId>flatlaf</artifactId>
+            <version>3.7.2</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-imaging</artifactId>
             <version>1.0.0-alpha6</version>

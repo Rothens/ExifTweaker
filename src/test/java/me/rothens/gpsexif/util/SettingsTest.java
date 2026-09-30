@@ -1,6 +1,7 @@
 package me.rothens.gpsexif.util;
 
 import me.rothens.gpsexif.map.MapLayer;
+import me.rothens.gpsexif.ui.Theme;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -25,6 +26,13 @@ class SettingsTest {
         assertEquals("", settings.getLastDirectory());
         assertTrue(settings.isBackupsEnabled());
         assertEquals(MapLayer.OPENSTREETMAP, settings.getMapLayer());
+        assertEquals(Theme.SYSTEM, settings.getTheme());
+    }
+
+    @Test
+    void storesTheme() {
+        settings.setTheme(Theme.DARK);
+        assertEquals(Theme.DARK, new Settings(prefs).getTheme());
     }
 
     @Test
