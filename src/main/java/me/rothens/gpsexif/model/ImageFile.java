@@ -87,6 +87,20 @@ public class ImageFile {
         return file.toPath();
     }
 
+    /** The file that edits actually change: the photo itself, or its XMP sidecar for RAW files. */
+    public Path getWritePath() {
+        return backend.writeTarget(getPath());
+    }
+
+    /** Whether edits can be written (e.g. not when a format needs ExifTool and it isn't installed). */
+    public boolean isWritable() {
+        return backend.canWrite(getPath());
+    }
+
+    public MetadataBackend getBackend() {
+        return backend;
+    }
+
     /**
      * Writes {@code position} into the file. The new image is written to a temporary file next to the original
      * first and only moved over it once writing fully succeeded, so a failure never leaves a truncated original.
@@ -115,11 +129,15 @@ public class ImageFile {
     }
 
     private void rewrite(Rewrite rewrite) throws IOException {
-        Path original = getPath();
-        Path tmp = FileUtil.createSiblingTempFile(original);
+        if (!isWritable()) {
+            throw new IOException(file.getName() + " can't be written (" + file.getName().replaceAll(".*\\.", "")
+                    .toUpperCase(java.util.Locale.ROOT) + " files need ExifTool)");
+        }
+        Path written = getWritePath();
+        Path tmp = FileUtil.createSiblingTempFile(written);
         try {
-            rewrite.write(original, tmp);
-            FileUtil.replace(tmp, original);
+            rewrite.write(getPath(), tmp);
+            FileUtil.replace(tmp, written);
         } finally {
             Files.deleteIfExists(tmp);
         }

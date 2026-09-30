@@ -71,7 +71,8 @@ public class PhotoWriter {
         long total = 0;
         for (ImageFile image : images) {
             try {
-                total += Files.size(image.getPath());
+                Path written = image.getWritePath();
+                total += Files.exists(written) ? Files.size(written) : 0;
             } catch (IOException e) {
                 // Missing file - it'll fail in the batch anyway
             }
@@ -93,10 +94,11 @@ public class PhotoWriter {
                     break;
                 }
                 try {
-                    if (backupsEnabled.getAsBoolean()) {
-                        createBackupIfMissing(image.getPath());
+                    Path written = image.getWritePath();
+                    if (backupsEnabled.getAsBoolean() && Files.exists(written)) {
+                        createBackupIfMissing(written);
                     }
-                    tx.snapshot(image.getPath());
+                    tx.snapshot(written);
                     edit.apply(image);
                     changed.add(image);
                 } catch (IOException | UncheckedIOException | IllegalStateException e) {

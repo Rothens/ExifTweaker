@@ -22,6 +22,7 @@ public class EditHistory implements AutoCloseable {
     /** How much disk space all snapshots together may use; older edits are dropped beyond that. */
     public static final long DEFAULT_MAX_BYTES = 2L * 1024 * 1024 * 1024;
 
+    /** {@code copy} is {@code null} if the file didn't exist yet; undoing then deletes it. */
     private record Snapshot(Path original, Path copy, long size) {
     }
 
@@ -104,6 +105,11 @@ public class EditHistory implements AutoCloseable {
         List<String> failures = new ArrayList<>();
         for (Snapshot s : edit.snapshots()) {
             try {
+                if (null == s.copy()) {
+                    Files.deleteIfExists(s.original());
+                    restored.add(s.original());
+                    continue;
+                }
                 Path tmp = FileUtil.createSiblingTempFile(s.original());
                 try {
                     Files.copy(s.copy(), tmp, StandardCopyOption.REPLACE_EXISTING);
@@ -176,6 +182,9 @@ public class EditHistory implements AutoCloseable {
 
     private static void delete(Collection<Snapshot> snapshots) {
         for (Snapshot s : snapshots) {
+            if (null == s.copy()) {
+                continue;
+            }
             try {
                 Files.deleteIfExists(s.copy());
             } catch (IOException ignored) {
@@ -203,11 +212,18 @@ public class EditHistory implements AutoCloseable {
             this.undoable = undoable;
         }
 
-        /** Keeps a copy of {@code file} as it is now. Only the first snapshot of a file per transaction counts. */
+        /**
+         * Keeps a copy of {@code file} as it is now (or remembers that it doesn't exist). Only the first snapshot
+         * of a file per transaction counts.
+         */
         public void snapshot(Path file) throws IOException {
             changedFiles = true;
             Path key = file.toAbsolutePath().normalize();
             if (!undoable || snapshots.containsKey(key)) {
+                return;
+            }
+            if (!Files.exists(key)) {
+                snapshots.put(key, new Snapshot(key, null, 0));
                 return;
             }
             Path copy = Files.createTempFile(snapshotDir(), "snapshot-", ".bin");
