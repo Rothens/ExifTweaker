@@ -11,6 +11,7 @@ import me.rothens.gpsexif.model.ImageFile;
 import me.rothens.gpsexif.model.ImageListRenderer;
 import me.rothens.gpsexif.ui.SettingsDialog;
 import me.rothens.gpsexif.ui.Theme;
+import me.rothens.gpsexif.util.ExitWatchdog;
 import me.rothens.gpsexif.util.ImageOrientation;
 import me.rothens.gpsexif.util.PositionUtil;
 import me.rothens.gpsexif.util.Settings;
@@ -196,6 +197,7 @@ public class ExifTweaker {
         }
         if (desktop.isSupported(Desktop.Action.APP_QUIT_HANDLER)) {
             desktop.setQuitHandler((e, response) -> {
+                ExitWatchdog.arm();
                 shutdown();
                 response.performQuit();
             });
@@ -433,12 +435,16 @@ public class ExifTweaker {
             frame.addWindowListener(new java.awt.event.WindowAdapter() {
                 @Override
                 public void windowClosing(java.awt.event.WindowEvent e) {
+                    ExitWatchdog.arm();
                     app.shutdown();
                     System.exit(0);
                 }
             });
             // Only deletes temp files (no Swing access), for when the JVM is stopped some other way (e.g. Ctrl+C)
-            Runtime.getRuntime().addShutdownHook(new Thread(app.history::close, "exiftweaker-cleanup"));
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                ExitWatchdog.arm();
+                app.history.close();
+            }, "exiftweaker-cleanup"));
             frame.setSize(1200, 700);
             frame.setLocationRelativeTo(null);
             frame.setVisible(true);
