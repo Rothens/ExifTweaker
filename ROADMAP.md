@@ -73,19 +73,19 @@ Groundwork the later milestones depend on. Nothing here changes how photos are w
 
 ---
 
-## 0.6 — Photo overview on the map (opt-in)
+## 0.6 — Photo overview on the map (opt-in) ✅
 
 Showing every photo on the map is useful, but it's easy to clutter it, so this feature is **off by default** and limited.
 
-- [ ] **Opt-in toggle** ("Show photos on map"), off by default and remembered between sessions.
-- [ ] **Only the current folder / selection**, never the whole disk.
-- [ ] **Clustering**: markers closer than ~60 px at the current zoom merge into one marker with a count badge.
+- [x] **Opt-in toggle** ("Show photos on map"), off by default and remembered between sessions.
+- [x] **Only the current folder / selection**, never the whole disk.
+- [x] **Clustering**: markers closer than ~60 px at the current zoom merge into one marker with a count badge.
       2000 photos taken at the same spot show up as **one** marker labelled "2000".
       Clicking a cluster zooms in; at max zoom it lists its photos.
-- [ ] **Hard cap** on drawn markers (default 200, configurable), counting only markers inside the visible
+- [x] **Hard cap** on drawn markers (default 200, configurable), counting only markers inside the visible
       map area. When the cap is hit, the map shows "showing 200 of 1 834 — zoom in to see more".
-- [ ] Clicking a single marker selects that photo in the file list; the selected photo's marker is highlighted.
-- [ ] Clustering is recomputed only when zooming or panning stops, not on every repaint, so the map stays smooth.
+- [x] Clicking a single marker selects that photo in the file list; the selected photo's marker is highlighted.
+- [x] Clustering is recomputed only when zooming or panning stops, not on every repaint, so the map stays smooth.
 
 **Done when:** a folder of 2000 photos from one location renders as a single, readable cluster with no lag.
 

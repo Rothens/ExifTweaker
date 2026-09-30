@@ -30,6 +30,10 @@ java -jar target/GPSEditor-*-all.jar
  > If the camera's clock was off, enter by how much - or let ExifTweaker work it out from a photo of a clock, or
  > from a photo whose location you right-click on the map. Altitude is taken from the track too.
 
+ > **See your photos on the map** with View → Show photos on map (off by default). Photos close to each other are
+ > grouped into one marker with a count; click a group to zoom in, or a single photo to select it. To keep the map
+ > readable, at most 200 markers are drawn (adjustable in Settings) - zoom in to see the rest.
+
  > Copy a photo's location with Ctrl+C on the file list and paste it onto others with Ctrl+V, then Save.
  > Edit → Remove location strips the GPS data, e.g. before sharing photos.
 

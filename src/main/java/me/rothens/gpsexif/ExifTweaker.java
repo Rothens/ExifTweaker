@@ -6,6 +6,7 @@ import me.rothens.gpsexif.gpx.Track;
 import me.rothens.gpsexif.gpx.TrackMatcher;
 import me.rothens.gpsexif.map.AttributionPainter;
 import me.rothens.gpsexif.map.MapLayer;
+import me.rothens.gpsexif.map.PhotoMarkerLayer;
 import me.rothens.gpsexif.map.PlaceSearch;
 import me.rothens.gpsexif.map.TileDiskCache;
 import me.rothens.gpsexif.map.TrackPainter;
@@ -97,6 +98,8 @@ public class ExifTweaker {
 
     private final JMenuItem miGeotag = new JMenuItem("Geotag from GPX...");
     private final TrackPainter trackPainter = new TrackPainter();
+    private final JCheckBoxMenuItem miShowMarkers = new JCheckBoxMenuItem("Show photos on map");
+    private PhotoMarkerLayer markerLayer;
     private GeotagDialog geotagDialog;
 
     private WaypointPainter<Waypoint> waypointPainter;
@@ -245,6 +248,14 @@ public class ExifTweaker {
             mapLayerItems.put(layer, item);
         }
         view.add(layerMenu);
+        view.addSeparator();
+        miShowMarkers.setSelected(settings.isShowPhotoMarkers());
+        miShowMarkers.setToolTipText("Show the opened photos that have a location on the map (nearby photos are grouped)");
+        miShowMarkers.addActionListener(e -> {
+            settings.setShowPhotoMarkers(miShowMarkers.isSelected());
+            markerLayer.setEnabled(miShowMarkers.isSelected());
+        });
+        view.add(miShowMarkers);
 
         JMenuBar bar = new JMenuBar();
         bar.add(file);
@@ -306,6 +317,7 @@ public class ExifTweaker {
         if (new SettingsDialog(frame, settings, tileCache).showDialog()) {
             setTheme(settings.getTheme());
             setMapLayer(settings.getMapLayer());
+            markerLayer.recompute();
         }
     }
 
@@ -462,6 +474,7 @@ public class ExifTweaker {
             protected void done() {
                 try {
                     listModel.setAll(get());
+                    markerLayer.setPhotos(listModel.getAll());
                 } catch (InterruptedException | ExecutionException e) {
                     showError("Error while opening folder:\n" + e.getMessage());
                 }
@@ -658,6 +671,8 @@ public class ExifTweaker {
     private void refreshList() {
         List<ImageFile> keep = selection;
         listModel.refresh();
+        // Positions may have changed
+        markerLayer.recompute();
         reselect(keep);
         lFiles.repaint();
         elementSelected();
@@ -679,6 +694,19 @@ public class ExifTweaker {
         btnUndo.setToolTipText(canUndo ? "Undo: " + history.getUndoDescription() : null);
         miUndo.setEnabled(canUndo);
         miUndo.setText(canUndo ? "Undo " + history.getUndoDescription() : "Undo");
+    }
+
+    /** A photo marker was clicked: select that photo in the list, un-hiding it if the filter hides it. */
+    private void selectFromMap(ImageFile photo) {
+        if (listModel.indexOf(photo) < 0 && chkOnlyWithoutLocation.isSelected()) {
+            chkOnlyWithoutLocation.setSelected(false);
+            listModel.setOnlyWithoutLocation(false);
+        }
+        int index = listModel.indexOf(photo);
+        if (index >= 0) {
+            lFiles.setSelectedIndex(index);
+            lFiles.ensureIndexIsVisible(index);
+        }
     }
 
     /** Opens the GPX geotagging dialog for the selected photos, or all opened photos if at most one is selected. */
@@ -836,6 +864,7 @@ public class ExifTweaker {
         int lead = lFiles.getLeadSelectionIndex();
         selected = lead >= 0 && lFiles.isSelectedIndex(lead) ? listModel.getElementAt(lead) : lFiles.getSelectedValue();
         GeoPosition pending = pendingPosition();
+        markerLayer.setHighlighted(selection);
         updateActions();
         waypoints.clear();
         pnThumbnail.setImage(null);
@@ -950,7 +979,10 @@ public class ExifTweaker {
         waypointPainter = new WaypointPainter<>();
         waypointPainter.setRenderer(new SelectionWaypointRenderer());
         waypointPainter.setWaypoints(waypoints);
-        mapViewer.setOverlayPainter(new CompoundPainter<>(trackPainter, waypointPainter, new AttributionPainter()));
+        markerLayer = new PhotoMarkerLayer(mapViewer, settings::getMaxPhotoMarkers, this::selectFromMap);
+        mapViewer.setOverlayPainter(new CompoundPainter<>(trackPainter, markerLayer, waypointPainter,
+                new AttributionPainter()));
+        markerLayer.setEnabled(settings.isShowPhotoMarkers());
 
         MouseInputListener mia = new PanMouseInputListener(mapViewer);
         mapViewer.addMouseListener(mia);

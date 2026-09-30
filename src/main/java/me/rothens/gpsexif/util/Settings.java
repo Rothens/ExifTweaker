@@ -20,6 +20,11 @@ public class Settings {
     private static final String GPX_MAX_GAP_MINUTES = "GPX_MAX_GAP_MINUTES";
 
     public static final int DEFAULT_GPX_MAX_GAP_MINUTES = 10;
+    private static final String SHOW_PHOTO_MARKERS = "SHOW_PHOTO_MARKERS";
+    private static final String MAX_PHOTO_MARKERS = "MAX_PHOTO_MARKERS";
+    public static final int DEFAULT_MAX_PHOTO_MARKERS = 200;
+    public static final int MIN_PHOTO_MARKERS = 10;
+    public static final int MAX_PHOTO_MARKERS_LIMIT = 2000;
 
     public static final int DEFAULT_TILE_CACHE_MAX_MB = 500;
     public static final int MIN_TILE_CACHE_MAX_MB = 50;
@@ -68,6 +73,28 @@ public class Settings {
 
     public void setGpxMaxGapMinutes(int minutes) {
         prefs.putInt(GPX_MAX_GAP_MINUTES, Math.max(1, minutes));
+    }
+
+    /** Whether the opened photos are shown on the map. Off by default. */
+    public boolean isShowPhotoMarkers() {
+        return prefs.getBoolean(SHOW_PHOTO_MARKERS, false);
+    }
+
+    public void setShowPhotoMarkers(boolean show) {
+        prefs.putBoolean(SHOW_PHOTO_MARKERS, show);
+    }
+
+    /** At most this many photo markers (single photos or clusters) are drawn at once. */
+    public int getMaxPhotoMarkers() {
+        return clampMarkers(prefs.getInt(MAX_PHOTO_MARKERS, DEFAULT_MAX_PHOTO_MARKERS));
+    }
+
+    public void setMaxPhotoMarkers(int max) {
+        prefs.putInt(MAX_PHOTO_MARKERS, clampMarkers(max));
+    }
+
+    private static int clampMarkers(int max) {
+        return Math.max(MIN_PHOTO_MARKERS, Math.min(MAX_PHOTO_MARKERS_LIMIT, max));
     }
 
     public Theme getTheme() {

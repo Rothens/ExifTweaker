@@ -28,6 +28,16 @@ class SettingsTest {
         assertEquals(MapLayer.OPENSTREETMAP, settings.getMapLayer());
         assertEquals(Theme.SYSTEM, settings.getTheme());
         assertEquals(500, settings.getTileCacheMaxMb());
+        assertFalse(settings.isShowPhotoMarkers(), "photo markers are opt-in");
+        assertEquals(200, settings.getMaxPhotoMarkers());
+    }
+
+    @Test
+    void photoMarkerLimitIsClamped() {
+        settings.setMaxPhotoMarkers(1);
+        assertEquals(Settings.MIN_PHOTO_MARKERS, settings.getMaxPhotoMarkers());
+        settings.setMaxPhotoMarkers(1_000_000);
+        assertEquals(Settings.MAX_PHOTO_MARKERS_LIMIT, settings.getMaxPhotoMarkers());
     }
 
     @Test

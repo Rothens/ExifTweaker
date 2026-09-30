@@ -16,6 +16,8 @@ public class SettingsDialog extends JDialog {
     private final JSpinner spCacheLimit = new JSpinner(new SpinnerNumberModel(Settings.DEFAULT_TILE_CACHE_MAX_MB,
             Settings.MIN_TILE_CACHE_MAX_MB, 100_000, 50));
     private final JLabel lblCacheSize = new JLabel();
+    private final JSpinner spMaxMarkers = new JSpinner(new SpinnerNumberModel(Settings.DEFAULT_MAX_PHOTO_MARKERS,
+            Settings.MIN_PHOTO_MARKERS, Settings.MAX_PHOTO_MARKERS_LIMIT, 10));
     private final JButton btnClearCache = new JButton("Clear map cache");
     private final TileDiskCache tileCache;
     private boolean accepted;
@@ -24,6 +26,7 @@ public class SettingsDialog extends JDialog {
         super(owner, "Settings", true);
         this.tileCache = tileCache;
         spCacheLimit.setValue(settings.getTileCacheMaxMb());
+        spMaxMarkers.setValue(settings.getMaxPhotoMarkers());
         updateCacheSize();
         btnClearCache.addActionListener(e -> clearCache());
         cbTheme.setSelectedItem(settings.getTheme());
@@ -86,6 +89,23 @@ public class SettingsDialog extends JDialog {
         cacheHint.setEnabled(false);
         form.add(cacheHint, c);
 
+        c.gridy = 7;
+        c.gridwidth = 1;
+        c.insets = new Insets(12, 4, 4, 4);
+        form.add(new JLabel("Max. photo markers:"), c);
+        c.gridx = 1;
+        c.fill = GridBagConstraints.NONE;
+        form.add(spMaxMarkers, c);
+        c.gridx = 0;
+        c.gridy = 8;
+        c.gridwidth = 2;
+        c.insets = new Insets(0, 4, 4, 4);
+        JLabel markerHint = new JLabel("View > Show photos on map: nearby photos are grouped; more markers than this "
+                + "ask you to zoom in.");
+        markerHint.putClientProperty("FlatLaf.styleClass", "small");
+        markerHint.setEnabled(false);
+        form.add(markerHint, c);
+
         JButton ok = new JButton("OK");
         JButton cancel = new JButton("Cancel");
         ok.addActionListener(e -> {
@@ -93,6 +113,7 @@ public class SettingsDialog extends JDialog {
             settings.setMapLayer((MapLayer) cbMapLayer.getSelectedItem());
             settings.setBackupsEnabled(chkBackups.isSelected());
             settings.setTileCacheMaxMb((Integer) spCacheLimit.getValue());
+            settings.setMaxPhotoMarkers((Integer) spMaxMarkers.getValue());
             tileCache.scheduleMaintenance();
             accepted = true;
             dispose();
