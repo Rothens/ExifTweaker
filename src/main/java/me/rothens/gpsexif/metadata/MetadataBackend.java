@@ -25,4 +25,10 @@ public interface MetadataBackend {
      * {@code source} itself is never modified; replacing it is up to the caller.
      */
     void writePosition(Path source, Path target, GeoPosition position) throws IOException;
+
+    /**
+     * Writes a copy of {@code source} to {@code target} without any GPS data. Other metadata is kept.
+     * {@code source} itself is never modified; replacing it is up to the caller.
+     */
+    void removePosition(Path source, Path target) throws IOException;
 }

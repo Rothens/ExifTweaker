@@ -19,24 +19,41 @@ public class EditHistory implements AutoCloseable {
 
     /** How many edits can be undone; older snapshots are deleted to bound disk usage. */
     public static final int DEFAULT_MAX_EDITS = 20;
+    /** How much disk space all snapshots together may use; older edits are dropped beyond that. */
+    public static final long DEFAULT_MAX_BYTES = 2L * 1024 * 1024 * 1024;
 
-    private record Snapshot(Path original, Path copy) {
+    private record Snapshot(Path original, Path copy, long size) {
     }
 
     private record Edit(String description, List<Snapshot> snapshots) {
+        long size() {
+            return snapshots.stream().mapToLong(Snapshot::size).sum();
+        }
     }
 
     private final Deque<Edit> edits = new ArrayDeque<>();
     private final List<Runnable> listeners = new ArrayList<>();
     private final int maxEdits;
+    private final long maxBytes;
+    private long bytes;
     private Path snapshotDir;
 
     public EditHistory() {
-        this(DEFAULT_MAX_EDITS);
+        this(DEFAULT_MAX_EDITS, DEFAULT_MAX_BYTES);
     }
 
     public EditHistory(int maxEdits) {
+        this(maxEdits, DEFAULT_MAX_BYTES);
+    }
+
+    public EditHistory(int maxEdits, long maxBytes) {
         this.maxEdits = maxEdits;
+        this.maxBytes = maxBytes;
+    }
+
+    /** Whether an edit that modifies files of this total size can be made undoable. */
+    public boolean canUndoEditOfSize(long totalBytes) {
+        return totalBytes <= maxBytes;
     }
 
     /**
@@ -58,7 +75,15 @@ public class EditHistory implements AutoCloseable {
 
     /** Starts recording an edit. Call {@link Transaction#snapshot(Path)} before modifying each file. */
     public Transaction begin(String description) {
-        return new Transaction(description);
+        return new Transaction(description, true);
+    }
+
+    /**
+     * Starts an edit that can't be undone, e.g. because it's too large to snapshot. Committing it clears the whole
+     * history, as undoing older edits would otherwise silently revert this one for the files they share.
+     */
+    public Transaction beginWithoutUndo(String description) {
+        return new Transaction(description, false);
     }
 
     /**
@@ -137,13 +162,15 @@ public class EditHistory implements AutoCloseable {
 
     private synchronized void push(Edit edit) {
         edits.push(edit);
-        while (edits.size() > maxEdits) {
+        bytes += edit.size();
+        while (edits.size() > maxEdits || (bytes > maxBytes && edits.size() > 1)) {
             delete(edits.removeLast());
         }
         fireChanged();
     }
 
-    private static void delete(Edit edit) {
+    private void delete(Edit edit) {
+        bytes -= edit.size();
         delete(edit.snapshots());
     }
 
@@ -166,22 +193,26 @@ public class EditHistory implements AutoCloseable {
     /** One undoable edit in progress. Closing it without {@link #commit()} discards its snapshots. */
     public final class Transaction implements AutoCloseable {
         private final String description;
+        private final boolean undoable;
         private final Map<Path, Snapshot> snapshots = new LinkedHashMap<>();
         private boolean committed;
+        private boolean changedFiles;
 
-        private Transaction(String description) {
+        private Transaction(String description, boolean undoable) {
             this.description = description;
+            this.undoable = undoable;
         }
 
         /** Keeps a copy of {@code file} as it is now. Only the first snapshot of a file per transaction counts. */
         public void snapshot(Path file) throws IOException {
+            changedFiles = true;
             Path key = file.toAbsolutePath().normalize();
-            if (snapshots.containsKey(key)) {
+            if (!undoable || snapshots.containsKey(key)) {
                 return;
             }
             Path copy = Files.createTempFile(snapshotDir(), "snapshot-", ".bin");
             Files.copy(key, copy, StandardCopyOption.REPLACE_EXISTING);
-            snapshots.put(key, new Snapshot(key, copy));
+            snapshots.put(key, new Snapshot(key, copy, Files.size(copy)));
         }
 
         /** Makes the edit undoable. Transactions without snapshots are dropped. */
@@ -190,7 +221,11 @@ public class EditHistory implements AutoCloseable {
                 return;
             }
             committed = true;
-            if (!snapshots.isEmpty()) {
+            if (!undoable) {
+                if (changedFiles) {
+                    clear();
+                }
+            } else if (!snapshots.isEmpty()) {
                 push(new Edit(description, List.copyOf(snapshots.values())));
             }
         }
