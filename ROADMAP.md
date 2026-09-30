@@ -78,10 +78,10 @@ Groundwork the later milestones depend on. Nothing here changes how photos are w
 Showing every photo on the map is useful, but it's easy to clutter it, so this feature is **off by default** and limited.
 
 - [x] **Opt-in toggle** ("Show photos on map"), off by default and remembered between sessions.
-- [x] **Only the current folder / selection**, never the whole disk.
+- [x] **Only the opened folder**, never the whole disk; the selected photos' markers are highlighted.
 - [x] **Clustering**: markers closer than ~60 px at the current zoom merge into one marker with a count badge.
       2000 photos taken at the same spot show up as **one** marker labelled "2000".
-      Clicking a cluster zooms in; at max zoom it lists its photos.
+      Clicking a cluster zooms in; photos at the same spot (or at max zoom) are listed in a menu.
 - [x] **Hard cap** on drawn markers (default 200, configurable), counting only markers inside the visible
       map area. When the cap is hit, the map shows "showing 200 of 1 834 — zoom in to see more".
 - [x] Clicking a single marker selects that photo in the file list; the selected photo's marker is highlighted.
