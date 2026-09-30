@@ -25,8 +25,8 @@ java -jar target/GPSEditor-*-all.jar
  > You can choose from two map types, one hybrid (VirtualEarth) and one map (OSM)
 
 # Planned features
- - Set other EXIF information as well
- - Other stuff
+See the [roadmap](ROADMAP.md): batch tagging, GPX track geotagging, place search, an opt-in photo overview
+on the map, EXIF editing, and HEIC/RAW support through ExifTool.
 
 # Used libraries
  - [Apache Commons-Imaging](https://commons.apache.org/proper/commons-imaging/) (from Maven Central)
