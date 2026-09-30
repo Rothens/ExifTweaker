@@ -2,6 +2,8 @@ package me.rothens.gpsexif;
 
 import me.rothens.gpsexif.history.EditHistory;
 import me.rothens.gpsexif.history.PhotoWriter;
+import me.rothens.gpsexif.map.AttributionPainter;
+import me.rothens.gpsexif.map.MapLayer;
 import me.rothens.gpsexif.metadata.CommonsImagingBackend;
 import me.rothens.gpsexif.metadata.MetadataBackend;
 import me.rothens.gpsexif.model.ExifTableModel;
@@ -11,12 +13,11 @@ import me.rothens.gpsexif.util.ImageOrientation;
 import me.rothens.gpsexif.util.PositionUtil;
 import me.rothens.gpsexif.util.Settings;
 import org.jxmapviewer.JXMapViewer;
-import org.jxmapviewer.OSMTileFactoryInfo;
-import org.jxmapviewer.VirtualEarthTileFactoryInfo;
 import org.jxmapviewer.input.CenterMapListener;
 import org.jxmapviewer.input.PanKeyListener;
 import org.jxmapviewer.input.PanMouseInputListener;
 import org.jxmapviewer.input.ZoomMouseWheelListenerCursor;
+import org.jxmapviewer.painter.CompoundPainter;
 import org.jxmapviewer.viewer.*;
 
 import javax.imageio.ImageIO;
@@ -41,6 +42,7 @@ import java.util.prefs.Preferences;
 public class ExifTweaker {
     private static final String APP_NAME = "ExifTweaker";
     private static final int THUMBNAIL_MAX_SIZE = 800;
+    private static final File TILE_CACHE_DIR = new File(System.getProperty("user.home"), ".jxmapviewer2");
 
     private final JTextField tfFolder = new JTextField();
     private final JButton btnBrowse = new JButton("...");
@@ -54,7 +56,7 @@ public class ExifTweaker {
     private final ImagePanel pnThumbnail = new ImagePanel();
     private final ExifTableModel exifTableModel = new ExifTableModel();
     private final JTable jtExif = new JTable(exifTableModel);
-    private final JComboBox<String> cbMapType = new JComboBox<>(new String[]{"OpenStreetMap", "VirtualEarth"});
+    private final JComboBox<MapLayer> cbMapType = new JComboBox<>(MapLayer.values());
     private final JTextField tfCoordinate = new JTextField();
     private final JButton btnCoordinate = new JButton("Go!");
     private final JFrame frame;
@@ -67,7 +69,7 @@ public class ExifTweaker {
     private final Set<Waypoint> waypoints = new HashSet<>();
     private ImageFile selected;
     private SwingWorker<BufferedImage, Void> thumbnailWorker;
-    private List<DefaultTileFactory> factories;
+    private final Map<MapLayer, DefaultTileFactory> factories = new EnumMap<>(MapLayer.class);
 
     public ExifTweaker(JFrame frame) {
         this.frame = frame;
@@ -88,11 +90,7 @@ public class ExifTweaker {
         btnBrowse.addActionListener(e -> browse());
         btnCoordinate.addActionListener(e -> goToCoordinate());
         tfCoordinate.addActionListener(e -> goToCoordinate());
-        cbMapType.addActionListener(e -> {
-            int i = cbMapType.getSelectedIndex();
-            mapViewer.setTileFactory(factories.get(i));
-            settings.setMapType(i);
-        });
+        cbMapType.addActionListener(e -> setMapLayer((MapLayer) cbMapType.getSelectedItem()));
 
         btnUndo.addActionListener(e -> undo());
         history.addChangeListener(this::updateUndo);
@@ -367,20 +365,25 @@ public class ExifTweaker {
         mapViewer.repaint();
     }
 
+    private void setMapLayer(MapLayer layer) {
+        DefaultTileFactory factory = factories.get(layer);
+        // LocalResponseCache is JVM-global and only caches URLs under one base URL, so point it at the active layer
+        LocalResponseCache.installResponseCache(factory.getInfo().getBaseURL(), TILE_CACHE_DIR, false);
+        mapViewer.setTileFactory(factory);
+        settings.setMapLayer(layer);
+    }
+
     private void initMap() {
-        File cacheDir = new File(System.getProperty("user.home") + File.separator + ".jxmapviewer2");
-        factories = new ArrayList<>();
-        factories.add(new DefaultTileFactory(new OSMTileFactoryInfo()));
-        factories.add(new DefaultTileFactory(new VirtualEarthTileFactoryInfo(VirtualEarthTileFactoryInfo.HYBRID)));
-        for (DefaultTileFactory tf : factories) {
+        for (MapLayer layer : MapLayer.values()) {
+            DefaultTileFactory tf = new DefaultTileFactory(layer.createInfo());
             tf.setThreadPoolSize(8);
             // The OSM tile usage policy requires an identifying User-Agent
             tf.setUserAgent(APP_NAME + " (https://github.com/rothens/ExifTweaker)");
-            LocalResponseCache.installResponseCache(tf.getInfo().getBaseURL(), cacheDir, false);
+            factories.put(layer, tf);
         }
-        int mapType = Math.max(0, Math.min(factories.size() - 1, settings.getMapType()));
-        cbMapType.setSelectedIndex(mapType);
-        mapViewer.setTileFactory(factories.get(mapType));
+        MapLayer layer = settings.getMapLayer();
+        cbMapType.setSelectedItem(layer);
+        setMapLayer(layer);
 
         GeoPosition tokyo = new GeoPosition(35.68, 139.71);
         mapViewer.setZoom(5);
@@ -389,7 +392,7 @@ public class ExifTweaker {
         waypointPainter = new WaypointPainter<>();
         waypointPainter.setRenderer(new SelectionWaypointRenderer());
         waypointPainter.setWaypoints(waypoints);
-        mapViewer.setOverlayPainter(waypointPainter);
+        mapViewer.setOverlayPainter(new CompoundPainter<>(waypointPainter, new AttributionPainter()));
 
         MouseInputListener mia = new PanMouseInputListener(mapViewer);
         mapViewer.addMouseListener(mia);

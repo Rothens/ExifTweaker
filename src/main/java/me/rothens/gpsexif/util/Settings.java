@@ -1,5 +1,7 @@
 package me.rothens.gpsexif.util;
 
+import me.rothens.gpsexif.map.MapLayer;
+
 import java.util.prefs.Preferences;
 
 /**
@@ -10,7 +12,9 @@ import java.util.prefs.Preferences;
 public class Settings {
     private static final String LAST_DIRECTORY = "LAST_DIRECTORY";
     private static final String BACKUPS_ENABLED = "BACKUPS_ENABLED";
-    private static final String MAP_TYPE = "MAP_TYPE";
+    private static final String MAP_LAYER = "MAP_LAYER";
+    /** Pre-0.3 setting: index into [OpenStreetMap, VirtualEarth]. */
+    private static final String LEGACY_MAP_TYPE = "MAP_TYPE";
 
     private final Preferences prefs;
 
@@ -26,12 +30,17 @@ public class Settings {
         prefs.put(LAST_DIRECTORY, directory);
     }
 
-    public int getMapType() {
-        return prefs.getInt(MAP_TYPE, 0);
+    public MapLayer getMapLayer() {
+        String name = prefs.get(MAP_LAYER, null);
+        if (null != name) {
+            return MapLayer.fromName(name);
+        }
+        // The retired VirtualEarth satellite layer maps to its replacement
+        return prefs.getInt(LEGACY_MAP_TYPE, 0) == 1 ? MapLayer.ESRI_WORLD_IMAGERY : MapLayer.OPENSTREETMAP;
     }
 
-    public void setMapType(int index) {
-        prefs.putInt(MAP_TYPE, index);
+    public void setMapLayer(MapLayer layer) {
+        prefs.put(MAP_LAYER, layer.name());
     }
 
     /** Whether a {@code .bak} copy of each photo is kept before it's first modified. On by default. */
