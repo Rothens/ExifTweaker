@@ -1,7 +1,7 @@
 package me.rothens.gpsexif.model;
 
 import me.rothens.gpsexif.metadata.MetadataChanges;
-import me.rothens.gpsexif.metadata.TextField;
+import me.rothens.gpsexif.metadata.TextTag;
 
 import javax.swing.table.AbstractTableModel;
 import java.time.LocalDateTime;
@@ -35,17 +35,17 @@ public class MetadataTableModel extends AbstractTableModel {
     /** One editable field: how to show it, and how to turn user input into changes. */
     enum Editable {
         TAKEN("Date taken", p -> null == p.getTaken() ? null : DATE_TIME.format(p.getTaken().withNano(0))),
-        MAKE(TextField.MAKE),
-        MODEL(TextField.MODEL),
-        ARTIST(TextField.ARTIST),
-        COPYRIGHT(TextField.COPYRIGHT),
-        DESCRIPTION(TextField.DESCRIPTION),
+        MAKE(TextTag.MAKE),
+        MODEL(TextTag.MODEL),
+        ARTIST(TextTag.ARTIST),
+        COPYRIGHT(TextTag.COPYRIGHT),
+        DESCRIPTION(TextTag.DESCRIPTION),
         ALTITUDE("Altitude (m)", p -> null == p.getAltitude() ? null : number(p.getAltitude())),
         DIRECTION("Direction (°)", p -> null == p.getDirection() ? null : number(p.getDirection()));
 
         final String label;
         final Function<ImageFile, String> value;
-        final TextField textField;
+        final TextTag textField;
 
         Editable(String label, Function<ImageFile, String> value) {
             this.label = label;
@@ -53,7 +53,7 @@ public class MetadataTableModel extends AbstractTableModel {
             this.textField = null;
         }
 
-        Editable(TextField field) {
+        Editable(TextTag field) {
             this.label = field.label();
             this.value = p -> p.getText(field);
             this.textField = field;
@@ -176,6 +176,17 @@ public class MetadataTableModel extends AbstractTableModel {
         return changes;
     }
 
+    /** Parses an altitude in metres; blank gives {@code null}. */
+    public static Double parseAltitude(String text) {
+        return text.isBlank() ? null : parseNumber(text.strip(), "Altitude", -1000, 100_000);
+    }
+
+    /** Parses a direction in degrees (normalized to 0..360); blank gives {@code null}. */
+    public static Double parseDirection(String text) {
+        return text.isBlank() ? null
+                : MetadataChanges.normalizeDegrees(parseNumber(text.strip(), "Direction", -360, 360));
+    }
+
     /** "2026-09-30 14:05:00", "2026-09-30 14:05", or EXIF's own "2026:09:30 14:05:00". */
     public static LocalDateTime parseDateTime(String text) {
         String t = text.strip().replace('T', ' ');
@@ -206,7 +217,7 @@ public class MetadataTableModel extends AbstractTableModel {
     }
 
     /** At most one decimal, no trailing ".0". */
-    static String number(double value) {
+    public static String number(double value) {
         String s = String.format(Locale.ROOT, "%.1f", value);
         return s.endsWith(".0") ? s.substring(0, s.length() - 2) : s;
     }

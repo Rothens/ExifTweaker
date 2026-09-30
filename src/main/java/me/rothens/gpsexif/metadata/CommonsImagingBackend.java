@@ -45,12 +45,12 @@ public class CommonsImagingBackend implements MetadataBackend {
     private static final Set<String> EXIF_FIELDS = Set.of("Orientation", "XResolution", "YResolution",
             "ExposureTime", "FNumber", "ISO", "FocalLength", "LensModel", "ExifImageWidth", "ExifImageLength");
 
-    private static final Map<TextField, TagInfoAscii> TEXT_TAGS = Map.of(
-            TextField.MAKE, TiffTagConstants.TIFF_TAG_MAKE,
-            TextField.MODEL, TiffTagConstants.TIFF_TAG_MODEL,
-            TextField.ARTIST, TiffTagConstants.TIFF_TAG_ARTIST,
-            TextField.COPYRIGHT, TiffTagConstants.TIFF_TAG_COPYRIGHT,
-            TextField.DESCRIPTION, TiffTagConstants.TIFF_TAG_IMAGE_DESCRIPTION);
+    private static final Map<TextTag, TagInfoAscii> TEXT_TAGS = Map.of(
+            TextTag.MAKE, TiffTagConstants.TIFF_TAG_MAKE,
+            TextTag.MODEL, TiffTagConstants.TIFF_TAG_MODEL,
+            TextTag.ARTIST, TiffTagConstants.TIFF_TAG_ARTIST,
+            TextTag.COPYRIGHT, TiffTagConstants.TIFF_TAG_COPYRIGHT,
+            TextTag.DESCRIPTION, TiffTagConstants.TIFF_TAG_IMAGE_DESCRIPTION);
 
     @Override
     public boolean canRead(Path file) {
@@ -169,9 +169,9 @@ public class CommonsImagingBackend implements MetadataBackend {
         }
     }
 
-    private static Map<TextField, String> readText(TiffImageMetadata exif) {
-        Map<TextField, String> text = new EnumMap<>(TextField.class);
-        for (Map.Entry<TextField, TagInfoAscii> entry : TEXT_TAGS.entrySet()) {
+    private static Map<TextTag, String> readText(TiffImageMetadata exif) {
+        Map<TextTag, String> text = new EnumMap<>(TextTag.class);
+        for (Map.Entry<TextTag, TagInfoAscii> entry : TEXT_TAGS.entrySet()) {
             String value = asciiValue(exif, entry.getValue());
             if (null != value && !value.isBlank()) {
                 text.put(entry.getKey(), value.strip());
@@ -252,7 +252,7 @@ public class CommonsImagingBackend implements MetadataBackend {
                 }
             }
         }
-        for (Map.Entry<TextField, String> entry : changes.getText().entrySet()) {
+        for (Map.Entry<TextTag, String> entry : changes.getText().entrySet()) {
             TagInfoAscii tag = TEXT_TAGS.get(entry.getKey());
             TiffOutputDirectory root = outputSet.getOrCreateRootDirectory();
             root.removeField(tag);

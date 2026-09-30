@@ -2,7 +2,7 @@ package me.rothens.gpsexif.model;
 
 import me.rothens.gpsexif.metadata.CommonsImagingBackend;
 import me.rothens.gpsexif.metadata.MetadataChanges;
-import me.rothens.gpsexif.metadata.TextField;
+import me.rothens.gpsexif.metadata.TextTag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.jxmapviewer.viewer.GeoPosition;
@@ -58,10 +58,10 @@ class MetadataTableModelTest {
 
     @Test
     void showsSharedValuesAndMarksDifferentOnes() throws IOException {
-        ImageFile a = photo("a.jpg", new MetadataChanges().text(TextField.ARTIST, "Máté")
-                .text(TextField.COPYRIGHT, "CC-BY").position(new GeoPosition(1, 2)).altitude(123.456).direction(90.0));
-        ImageFile b = photo("b.jpg", new MetadataChanges().text(TextField.ARTIST, "Máté")
-                .text(TextField.COPYRIGHT, "All rights reserved"));
+        ImageFile a = photo("a.jpg", new MetadataChanges().text(TextTag.ARTIST, "Máté")
+                .text(TextTag.COPYRIGHT, "CC-BY").position(new GeoPosition(1, 2)).altitude(123.456).direction(90.0));
+        ImageFile b = photo("b.jpg", new MetadataChanges().text(TextTag.ARTIST, "Máté")
+                .text(TextTag.COPYRIGHT, "All rights reserved"));
         MetadataTableModel model = model(List.of(a, b));
 
         assertEquals("Máté", model.getValueAt(row("Artist"), 1));
@@ -79,8 +79,8 @@ class MetadataTableModelTest {
 
     @Test
     void unchangedValuesAreNotWritten() throws IOException {
-        ImageFile a = photo("a.jpg", new MetadataChanges().text(TextField.ARTIST, "X"));
-        ImageFile b = photo("b.jpg", new MetadataChanges().text(TextField.ARTIST, "Y"));
+        ImageFile a = photo("a.jpg", new MetadataChanges().text(TextTag.ARTIST, "X"));
+        ImageFile b = photo("b.jpg", new MetadataChanges().text(TextTag.ARTIST, "Y"));
         MetadataTableModel model = model(List.of(a, b));
         model.setValueAt(MetadataTableModel.MULTIPLE, row("Artist"), 1);
         MetadataTableModel single = model(List.of(a));
@@ -92,7 +92,7 @@ class MetadataTableModelTest {
         model.setValueAt("tomorrow", row("Date taken"), 1);
         assertEquals(1, edits.size(), "invalid input isn't passed on");
         assertTrue(invalid.get(0).contains("isn't a date"), invalid.toString());
-        assertEquals("Z", changes.get(0).getText().get(TextField.ARTIST));
+        assertEquals("Z", changes.get(0).getText().get(TextTag.ARTIST));
     }
 
     @Test
@@ -111,6 +111,6 @@ class MetadataTableModelTest {
         assertThrows(IllegalArgumentException.class,
                 () -> MetadataTableModel.parse(MetadataTableModel.Editable.TAKEN, ""));
         assertEquals("", MetadataTableModel.parse(MetadataTableModel.Editable.DESCRIPTION, "  ")
-                .getText().get(TextField.DESCRIPTION), "blank removes a text field");
+                .getText().get(TextTag.DESCRIPTION), "blank removes a text field");
     }
 }

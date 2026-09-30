@@ -181,19 +181,19 @@ class CommonsImagingBackendTest {
         Path plain = createJpeg("plain.jpg");
         Path named = dir.resolve("named.jpg");
         backend.write(plain, named, new MetadataChanges()
-                .text(TextField.ARTIST, "  Máté Dávid ")
-                .text(TextField.COPYRIGHT, "© 2026 Máté Dávid")
-                .text(TextField.DESCRIPTION, "Sunset over the Danube"));
+                .text(TextTag.ARTIST, "  Máté Dávid ")
+                .text(TextTag.COPYRIGHT, "© 2026 Máté Dávid")
+                .text(TextTag.DESCRIPTION, "Sunset over the Danube"));
         PhotoMetadata metadata = backend.read(named);
-        assertEquals("Máté Dávid", metadata.text().get(TextField.ARTIST));
-        assertEquals("© 2026 Máté Dávid", metadata.text().get(TextField.COPYRIGHT));
-        assertEquals("Sunset over the Danube", metadata.text().get(TextField.DESCRIPTION));
+        assertEquals("Máté Dávid", metadata.text().get(TextTag.ARTIST));
+        assertEquals("© 2026 Máté Dávid", metadata.text().get(TextTag.COPYRIGHT));
+        assertEquals("Sunset over the Danube", metadata.text().get(TextTag.DESCRIPTION));
 
         Path cleared = dir.resolve("cleared.jpg");
-        backend.write(named, cleared, new MetadataChanges().text(TextField.DESCRIPTION, ""));
+        backend.write(named, cleared, new MetadataChanges().text(TextTag.DESCRIPTION, ""));
         PhotoMetadata after = backend.read(cleared);
-        assertNull(after.text().get(TextField.DESCRIPTION));
-        assertEquals("Máté Dávid", after.text().get(TextField.ARTIST), "other fields are kept");
+        assertNull(after.text().get(TextTag.DESCRIPTION));
+        assertEquals("Máté Dávid", after.text().get(TextTag.ARTIST), "other fields are kept");
     }
 
     @Test

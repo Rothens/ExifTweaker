@@ -19,7 +19,7 @@ public final class MetadataChanges {
     private boolean removeAltitude;
     private Double direction;
     private boolean removeDirection;
-    private final Map<TextField, String> text = new EnumMap<>(TextField.class);
+    private final Map<TextTag, String> text = new EnumMap<>(TextTag.class);
     private LocalDateTime taken;
     private Duration timeShift;
 
@@ -49,7 +49,7 @@ public final class MetadataChanges {
     }
 
     /** Sets a text field; blank removes it. */
-    public MetadataChanges text(TextField field, String value) {
+    public MetadataChanges text(TextTag field, String value) {
         text.put(field, null == value ? "" : value.strip());
         return this;
     }
@@ -90,7 +90,7 @@ public final class MetadataChanges {
         return removeDirection;
     }
 
-    public Map<TextField, String> getText() {
+    public Map<TextTag, String> getText() {
         return Collections.unmodifiableMap(text);
     }
 

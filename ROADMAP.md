@@ -91,14 +91,16 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 
 ---
 
-## 0.7 — Metadata editing
+## 0.7 — Metadata editing ✅
 
-- [ ] **Editable EXIF table** for common fields: date/time, altitude, make/model, artist, copyright,
+- [x] **Editable EXIF table** for common fields: date/time, altitude, make/model, artist, copyright,
       image description. The field is validated against its EXIF type before writing.
-- [ ] **Date/time shift** for the selection (e.g. +2 h for a camera left on home time), keeping sub-second
-      and offset tags consistent.
-- [ ] **Altitude** entry next to the coordinate field (and taken from GPX elevation in 0.5 when present).
-- [ ] Multi-photo editing: fields that differ show "(multiple values)" and are only written if changed.
+- [x] **Date/time shift** for the selection (e.g. +2 h for a camera left on home time); sub-seconds are kept,
+      time zone offset tags (`OffsetTime*`) are left unchanged.
+- [x] **Altitude** entry next to the coordinate field (and taken from GPX elevation in 0.5 when present).
+- [x] Multi-photo editing: fields that differ show "(multiple values)" and are only written if changed.
+- [x] **Camera direction** (#31): view cone on the map, drag its handle or type degrees; written as
+      `GPSImgDirection` (true north).
 
 **Done when:** the common fields can be changed for one or many photos, with undo.
 

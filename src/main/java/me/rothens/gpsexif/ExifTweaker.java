@@ -5,6 +5,7 @@ import me.rothens.gpsexif.history.PhotoWriter;
 import me.rothens.gpsexif.gpx.Track;
 import me.rothens.gpsexif.gpx.TrackMatcher;
 import me.rothens.gpsexif.map.AttributionPainter;
+import me.rothens.gpsexif.map.DirectionOverlay;
 import me.rothens.gpsexif.map.MapLayer;
 import me.rothens.gpsexif.map.PhotoMarkerLayer;
 import me.rothens.gpsexif.map.PlaceSearch;
@@ -79,6 +80,13 @@ public class ExifTweaker {
     private final JTable jtExif = new JTable(metadataModel);
     private final JComboBox<MapLayer> cbMapType = new JComboBox<>(MapLayer.values());
     private final JTextField tfCoordinate = new JTextField();
+    private final JTextField tfAltitude = new JTextField(6);
+    private final JTextField tfDirection = new JTextField(5);
+    /** Set when the user changed altitude/direction, so Save writes them; reset when a photo is selected. */
+    private boolean altitudeEdited;
+    private boolean directionEdited;
+    private boolean updatingFields;
+    private DirectionOverlay directionOverlay;
     private final JTextField tfSearch = new JTextField();
     private final PlaceSearch placeSearch = new PlaceSearch(USER_AGENT);
     private final JButton btnCoordinate = new JButton("Go!");
@@ -166,7 +174,71 @@ public class ExifTweaker {
 
         tfFolder.setText(settings.getLastDirectory());
         tfCoordinate.setToolTipText("Latitude;Longitude in decimal degrees, or e.g. 47°29'52\"N 19°2'24\"E");
+        tfAltitude.setToolTipText("Metres above sea level (negative below); written with Save. Empty removes it.");
+        tfDirection.setToolTipText("Degrees clockwise from north the camera pointed; written with Save. "
+                + "You can also drag the handle on the map. Empty removes it.");
+        tfAltitude.getDocument().addDocumentListener(onEdit(() -> altitudeEdited = true));
+        tfDirection.getDocument().addDocumentListener(onEdit(() -> {
+            directionEdited = true;
+            updateDirectionOverlay();
+        }));
         updateActions();
+    }
+
+    /** Document listener for user edits; programmatic updates (while {@code updatingFields}) are ignored. */
+    private javax.swing.event.DocumentListener onEdit(Runnable onUserEdit) {
+        return new javax.swing.event.DocumentListener() {
+            private void changed() {
+                if (!updatingFields) {
+                    onUserEdit.run();
+                    updateActions();
+                }
+            }
+
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                changed();
+            }
+
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                changed();
+            }
+
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                changed();
+            }
+        };
+    }
+
+    private void setField(JTextField field, String text) {
+        updatingFields = true;
+        try {
+            field.setText(text);
+        } finally {
+            updatingFields = false;
+        }
+    }
+
+    /** The direction shown on the map: the edited one, else the selected photo's. */
+    private void updateDirectionOverlay() {
+        if (null == directionOverlay) {
+            return;
+        }
+        GeoPosition anchor = pendingPosition();
+        if (null == anchor && null != selected) {
+            anchor = selected.getGp();
+        }
+        Double direction = null != selected ? selected.getDirection() : null;
+        if (directionEdited) {
+            try {
+                direction = MetadataTableModel.parseDirection(tfDirection.getText());
+            } catch (IllegalArgumentException e) {
+                // keep showing the last valid one
+            }
+        }
+        directionOverlay.set(selection.isEmpty() ? null : anchor, direction);
     }
 
     private static Action action(Runnable runnable) {
@@ -180,7 +252,9 @@ public class ExifTweaker {
 
     private void setUpMetadataTable() {
         jtExif.putClientProperty("terminateEditOnFocusLost", true);
-        jtExif.getColumnModel().getColumn(0).setPreferredWidth(110);
+        jtExif.getColumnModel().getColumn(0).setPreferredWidth(100);
+        jtExif.getColumnModel().getColumn(0).setMaxWidth(130);
+        jtExif.getColumnModel().getColumn(1).setPreferredWidth(200);
         jtExif.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
@@ -189,8 +263,9 @@ public class ExifTweaker {
                 boolean editableRow = metadataModel.isEditableRow(row);
                 setFont(getFont().deriveFont(metadataModel.isMultiple(row) && column == 1 ? Font.ITALIC : Font.PLAIN));
                 if (!isSelected) {
-                    setForeground(editableRow && !metadataModel.isMultiple(row) ? table.getForeground()
-                            : UIManager.getColor("Label.disabledForeground"));
+                    // Read-only info and mixed values are greyed out; field names of editable rows are not
+                    boolean dim = !editableRow || (column == 1 && metadataModel.isMultiple(row));
+                    setForeground(dim ? UIManager.getColor("Label.disabledForeground") : table.getForeground());
                 }
                 setToolTipText(editableRow && column == 1 ? "Double-click to edit" : null);
                 return this;
@@ -457,7 +532,14 @@ public class ExifTweaker {
         JPanel coordinatePanel = new JPanel(new BorderLayout(4, 0));
         coordinatePanel.add(cbMapType, BorderLayout.WEST);
         coordinatePanel.add(tfCoordinate, BorderLayout.CENTER);
-        coordinatePanel.add(btnCoordinate, BorderLayout.EAST);
+        JPanel coordinateExtras = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        coordinateExtras.add(btnCoordinate);
+        coordinateExtras.add(new JLabel("  Altitude:"));
+        coordinateExtras.add(tfAltitude);
+        coordinateExtras.add(new JLabel("m   Direction:"));
+        coordinateExtras.add(tfDirection);
+        coordinateExtras.add(new JLabel("°"));
+        coordinatePanel.add(coordinateExtras, BorderLayout.EAST);
 
         JPanel progressPanel = new JPanel(new BorderLayout(4, 0));
         progressPanel.add(progress, BorderLayout.CENTER);
@@ -543,26 +625,65 @@ public class ExifTweaker {
         return null;
     }
 
+    /**
+     * What Save would write: the picked location, and altitude/direction if they were edited. Returns
+     * {@code null} (after telling the user) if an edited value is invalid.
+     */
+    private MetadataChanges pendingChanges() {
+        MetadataChanges changes = new MetadataChanges();
+        GeoPosition position = pendingPosition();
+        if (null != position) {
+            changes.position(position);
+        }
+        try {
+            if (altitudeEdited) {
+                changes.altitude(MetadataTableModel.parseAltitude(tfAltitude.getText()));
+            }
+            if (directionEdited) {
+                changes.direction(MetadataTableModel.parseDirection(tfDirection.getText()));
+            }
+        } catch (IllegalArgumentException e) {
+            showError(e.getMessage());
+            return null;
+        }
+        return changes;
+    }
+
     private void saveSelected() {
         List<ImageFile> targets = selection;
         if (busy || targets.isEmpty()) {
             return;
         }
-        GeoPosition position = pendingPosition();
-        if (null == position) {
-            showError("Right-click on the map, enter a coordinate or paste a location first.");
+        MetadataChanges changes = pendingChanges();
+        if (null == changes) {
+            return;
+        }
+        GeoPosition position = changes.getPosition();
+        if (null == position && !altitudeEdited && !directionEdited) {
+            showError("Nothing to save yet: right-click on the map, enter a coordinate or paste a location, "
+                    + "or change the altitude or direction.");
             return;
         }
         long withLocation = targets.stream().filter(ImageFile::hasExifGPS).count();
-        if (targets.size() > 1 && withLocation > 0 && !confirm(withLocation + " of the " + targets.size()
-                + " selected photos already " + (withLocation == 1 ? "has" : "have") + " a location.\nReplace "
-                + (withLocation == 1 ? "it" : "them") + "?", "Replace locations")) {
+        if (null != position && targets.size() > 1 && withLocation > 0 && !confirm(withLocation + " of the "
+                + targets.size() + " selected photos already " + (withLocation == 1 ? "has" : "have")
+                + " a location.\nReplace " + (withLocation == 1 ? "it" : "them") + "?", "Replace locations")) {
             return;
         }
-        String description = targets.size() == 1
-                ? "Set location of " + targets.get(0).getFile().getName()
-                : "Set location of " + targets.size() + " photos";
-        runBatch(description, targets, image -> image.savePosition(position));
+        List<String> parts = new ArrayList<>();
+        if (null != position) {
+            parts.add("location");
+        }
+        if (altitudeEdited) {
+            parts.add("altitude");
+        }
+        if (directionEdited) {
+            parts.add("direction");
+        }
+        String what = targets.size() == 1 ? targets.get(0).getFile().getName() : targets.size() + " photos";
+        runBatch("Set " + String.join(", ", parts) + " of " + what, targets, image -> image.apply(changes));
+        altitudeEdited = false;
+        directionEdited = false;
     }
 
     private void removeLocation() {
@@ -933,6 +1054,19 @@ public class ExifTweaker {
         updateActions();
         waypoints.clear();
         pnThumbnail.setImage(null);
+        boolean keepEdits = selection.size() > 1;
+        if (!keepEdits) {
+            altitudeEdited = false;
+            directionEdited = false;
+        }
+        if (!altitudeEdited) {
+            setField(tfAltitude, null == selected || null == selected.getAltitude() ? ""
+                    : MetadataTableModel.number(selected.getAltitude()));
+        }
+        if (!directionEdited) {
+            setField(tfDirection, null == selected || null == selected.getDirection() ? ""
+                    : MetadataTableModel.number(selected.getDirection()));
+        }
         if (null == selected) {
             metadataModel.clear();
             tfCoordinate.setText("");
@@ -952,6 +1086,7 @@ public class ExifTweaker {
             }
         }
         waypointPainter.setWaypoints(waypoints);
+        updateDirectionOverlay();
         mapViewer.repaint();
     }
 
@@ -1007,6 +1142,7 @@ public class ExifTweaker {
         waypoints.add(new SelectionWaypoint(position));
         waypointPainter.setWaypoints(waypoints);
         tfCoordinate.setText(PositionUtil.getPositionString(position));
+        updateDirectionOverlay();
         mapViewer.repaint();
     }
 
@@ -1044,12 +1180,14 @@ public class ExifTweaker {
         waypointPainter = new WaypointPainter<>();
         waypointPainter.setRenderer(new SelectionWaypointRenderer());
         waypointPainter.setWaypoints(waypoints);
+        directionOverlay = new DirectionOverlay(mapViewer);
+        directionOverlay.setOnDrag(degrees -> tfDirection.setText(MetadataTableModel.number(degrees)));
         markerLayer = new PhotoMarkerLayer(mapViewer, settings::getMaxPhotoMarkers, this::selectFromMap);
-        mapViewer.setOverlayPainter(new CompoundPainter<>(trackPainter, markerLayer, waypointPainter,
+        mapViewer.setOverlayPainter(new CompoundPainter<>(trackPainter, markerLayer, directionOverlay, waypointPainter,
                 new AttributionPainter()));
         markerLayer.setEnabled(settings.isShowPhotoMarkers());
 
-        MouseInputListener mia = new PanMouseInputListener(mapViewer);
+        MouseInputListener mia = directionOverlay.wrap(new PanMouseInputListener(mapViewer));
         mapViewer.addMouseListener(mia);
         mapViewer.addMouseMotionListener(mia);
         mapViewer.addMouseListener(new CenterMapListener(mapViewer));

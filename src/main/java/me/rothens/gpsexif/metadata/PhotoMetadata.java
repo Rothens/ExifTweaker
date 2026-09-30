@@ -22,7 +22,7 @@ import java.util.Map;
  * @param text        editable text fields that are set
  */
 public record PhotoMetadata(GeoPosition position, int orientation, List<ExifData> fields, LocalDateTime taken,
-                            ZoneOffset takenOffset, Double altitude, Double direction, Map<TextField, String> text) {
+                            ZoneOffset takenOffset, Double altitude, Double direction, Map<TextTag, String> text) {
 
     public static final PhotoMetadata EMPTY = new PhotoMetadata(null, 1, List.of(), null, null, null, null, Map.of());
 

@@ -1,7 +1,7 @@
 package me.rothens.gpsexif.metadata;
 
 /** Free-text metadata fields that can be edited. */
-public enum TextField {
+public enum TextTag {
     MAKE("Camera make"),
     MODEL("Camera model"),
     ARTIST("Artist"),
@@ -10,7 +10,7 @@ public enum TextField {
 
     private final String label;
 
-    TextField(String label) {
+    TextTag(String label) {
         this.label = label;
     }
 

@@ -34,6 +34,13 @@ java -jar target/GPSEditor-*-all.jar
  > grouped into one marker with a count; click a group to zoom in, or a single photo to select it. To keep the map
  > readable, at most 200 markers are drawn (adjustable in Settings) - zoom in to see the rest.
 
+ > **Edit metadata** in the table next to the thumbnail (double-click a value): date taken, camera make and model,
+ > artist, copyright, description, altitude and camera direction - for one photo or all selected ones. Edit → Shift
+ > date/time (Ctrl+T) fixes a camera that was set to the wrong time or time zone.
+
+ > **Camera direction**: drag the handle next to a photo's pin to show which way the camera pointed, or type the
+ > degrees next to the coordinate field. The altitude field there is written along with the location on Save.
+
  > Copy a photo's location with Ctrl+C on the file list and paste it onto others with Ctrl+V, then Save.
  > Edit → Remove location strips the GPS data, e.g. before sharing photos.
 

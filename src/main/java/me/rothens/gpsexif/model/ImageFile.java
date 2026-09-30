@@ -2,7 +2,7 @@ package me.rothens.gpsexif.model;
 
 import me.rothens.gpsexif.metadata.MetadataBackend;
 import me.rothens.gpsexif.metadata.MetadataChanges;
-import me.rothens.gpsexif.metadata.TextField;
+import me.rothens.gpsexif.metadata.TextTag;
 import me.rothens.gpsexif.metadata.PhotoMetadata;
 import me.rothens.gpsexif.util.FileUtil;
 import org.jxmapviewer.viewer.GeoPosition;
@@ -67,7 +67,7 @@ public class ImageFile {
     }
 
     /** A text field's value, or {@code null} if it isn't set. */
-    public String getText(TextField field) {
+    public String getText(TextTag field) {
         return metadata.text().get(field);
     }
 
