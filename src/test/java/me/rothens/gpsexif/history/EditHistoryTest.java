@@ -1,0 +1,115 @@
+package me.rothens.gpsexif.history;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class EditHistoryTest {
+
+    @TempDir
+    Path dir;
+
+    private final EditHistory history = new EditHistory(3);
+
+    @AfterEach
+    void tearDown() {
+        history.close();
+    }
+
+    private Path file(String name, String content) throws IOException {
+        return Files.writeString(dir.resolve(name), content);
+    }
+
+    private void edit(String description, Path file, String newContent) throws IOException {
+        try (EditHistory.Transaction tx = history.begin(description)) {
+            tx.snapshot(file);
+            Files.writeString(file, newContent);
+            tx.commit();
+        }
+    }
+
+    @Test
+    void undoRestoresPreviousContent() throws IOException {
+        Path f = file("a.jpg", "original");
+        edit("first", f, "changed");
+
+        assertTrue(history.canUndo());
+        assertEquals("first", history.getUndoDescription());
+        assertEquals(List.of(f.toAbsolutePath().normalize()), history.undo());
+        assertEquals("original", Files.readString(f));
+        assertFalse(history.canUndo());
+    }
+
+    @Test
+    void undoesInReverseOrder() throws IOException {
+        Path f = file("a.jpg", "v1");
+        edit("to v2", f, "v2");
+        edit("to v3", f, "v3");
+
+        history.undo();
+        assertEquals("v2", Files.readString(f));
+        history.undo();
+        assertEquals("v1", Files.readString(f));
+    }
+
+    @Test
+    void transactionUndoesAllFilesTogether() throws IOException {
+        Path a = file("a.jpg", "a");
+        Path b = file("b.jpg", "b");
+        try (EditHistory.Transaction tx = history.begin("batch")) {
+            tx.snapshot(a);
+            Files.writeString(a, "A");
+            tx.snapshot(b);
+            Files.writeString(b, "B");
+            tx.snapshot(a); // second snapshot of the same file is ignored
+            Files.writeString(a, "AA");
+            tx.commit();
+        }
+
+        assertEquals(2, history.undo().size());
+        assertEquals("a", Files.readString(a));
+        assertEquals("b", Files.readString(b));
+    }
+
+    @Test
+    void uncommittedTransactionIsDiscarded() throws IOException {
+        Path f = file("a.jpg", "original");
+        try (EditHistory.Transaction tx = history.begin("failed")) {
+            tx.snapshot(f);
+        }
+        assertFalse(history.canUndo());
+    }
+
+    @Test
+    void oldestEditsAreDroppedBeyondLimit() throws IOException {
+        Path f = file("a.jpg", "v0");
+        for (int i = 1; i <= 5; i++) {
+            edit("v" + i, f, "v" + i);
+        }
+        int undos = 0;
+        while (history.canUndo()) {
+            history.undo();
+            undos++;
+        }
+        assertEquals(3, undos);
+        assertEquals("v2", Files.readString(f));
+    }
+
+    @Test
+    void notifiesListeners() throws IOException {
+        AtomicInteger calls = new AtomicInteger();
+        history.addChangeListener(calls::incrementAndGet);
+        Path f = file("a.jpg", "x");
+        edit("e", f, "y");
+        history.undo();
+        assertEquals(2, calls.get());
+    }
+}

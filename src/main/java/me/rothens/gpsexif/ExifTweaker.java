@@ -1,5 +1,7 @@
 package me.rothens.gpsexif;
 
+import me.rothens.gpsexif.history.EditHistory;
+import me.rothens.gpsexif.history.PhotoWriter;
 import me.rothens.gpsexif.metadata.CommonsImagingBackend;
 import me.rothens.gpsexif.metadata.MetadataBackend;
 import me.rothens.gpsexif.model.ExifTableModel;
@@ -26,6 +28,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -43,6 +46,7 @@ public class ExifTweaker {
     private final JButton btnOpen = new JButton("Open");
     private final JList<ImageFile> lFiles = new JList<>(new DefaultListModel<>());
     private final JButton btnSave = new JButton("Save");
+    private final JButton btnUndo = new JButton("Undo");
     private final JProgressBar progress = new JProgressBar();
     private final JPanel mainPanel = new JPanel(new BorderLayout(4, 4));
     private final JXMapViewer mapViewer = new JXMapViewer();
@@ -53,8 +57,10 @@ public class ExifTweaker {
     private final JTextField tfCoordinate = new JTextField();
     private final JButton btnCoordinate = new JButton("Go!");
     private final JFrame frame;
-    private final Preferences prefs = Preferences.userNodeForPackage(ExifTweaker.class);
+    private final Settings settings = new Settings(Preferences.userNodeForPackage(ExifTweaker.class));
     private final MetadataBackend backend = new CommonsImagingBackend();
+    private final EditHistory history = new EditHistory();
+    private final PhotoWriter writer = new PhotoWriter(history, settings::isBackupsEnabled);
 
     private WaypointPainter<Waypoint> waypointPainter;
     private final Set<Waypoint> waypoints = new HashSet<>();
@@ -84,10 +90,14 @@ public class ExifTweaker {
         cbMapType.addActionListener(e -> {
             int i = cbMapType.getSelectedIndex();
             mapViewer.setTileFactory(factories.get(i));
-            prefs.putInt(Settings.MAP_TYPE, i);
+            settings.setMapType(i);
         });
 
-        tfFolder.setText(prefs.get(Settings.LAST_DIRECTORY, ""));
+        btnUndo.addActionListener(e -> undo());
+        history.addChangeListener(this::updateUndo);
+        updateUndo();
+
+        tfFolder.setText(settings.getLastDirectory());
         tfCoordinate.setToolTipText("Latitude;Longitude in decimal degrees, or e.g. 47°29'52\"N 19°2'24\"E");
         btnSave.setEnabled(false);
     }
@@ -122,7 +132,10 @@ public class ExifTweaker {
 
         JPanel progressPanel = new JPanel(new BorderLayout(4, 0));
         progressPanel.add(progress, BorderLayout.CENTER);
-        progressPanel.add(btnSave, BorderLayout.EAST);
+        JPanel saveButtons = new JPanel(new GridLayout(1, 2, 4, 0));
+        saveButtons.add(btnUndo);
+        saveButtons.add(btnSave);
+        progressPanel.add(saveButtons, BorderLayout.EAST);
 
         JPanel bottom = new JPanel(new GridLayout(2, 1, 0, 4));
         bottom.add(progressPanel);
@@ -157,7 +170,7 @@ public class ExifTweaker {
             return;
         }
         Arrays.sort(files);
-        prefs.put(Settings.LAST_DIRECTORY, dir);
+        settings.setLastDirectory(dir);
 
         setButtons(false);
         progress.setValue(0);
@@ -207,12 +220,40 @@ public class ExifTweaker {
             return;
         }
         try {
-            selected.savePosition(position);
+            writer.savePosition(selected, position);
             exifTableModel.setData(selected.getExifData());
             lFiles.repaint();
         } catch (IOException | RuntimeException e) {
             showError("Couldn't save " + selected.getFile().getName() + ":\n" + e.getMessage());
         }
+    }
+
+    private void undo() {
+        List<Path> restored = List.of();
+        try {
+            restored = history.undo();
+        } catch (IOException e) {
+            showError(e.getMessage());
+        }
+        reloadFiles(restored);
+    }
+
+    /** Re-reads the metadata of the given files if they're in the current list, and refreshes the views. */
+    private void reloadFiles(Collection<Path> paths) {
+        ListModel<ImageFile> model = lFiles.getModel();
+        for (int i = 0; i < model.getSize(); i++) {
+            ImageFile image = model.getElementAt(i);
+            if (paths.contains(image.getPath().toAbsolutePath().normalize())) {
+                image.reload();
+            }
+        }
+        lFiles.repaint();
+        elementSelected();
+    }
+
+    private void updateUndo() {
+        btnUndo.setEnabled(history.canUndo());
+        btnUndo.setToolTipText(history.canUndo() ? "Undo: " + history.getUndoDescription() : null);
     }
 
     private void goToCoordinate() {
@@ -237,8 +278,10 @@ public class ExifTweaker {
                 // Fall back to the default look and feel
             }
             JFrame frame = new JFrame(APP_NAME);
-            frame.setContentPane(new ExifTweaker(frame).mainPanel);
+            ExifTweaker app = new ExifTweaker(frame);
+            frame.setContentPane(app.mainPanel);
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            Runtime.getRuntime().addShutdownHook(new Thread(app.history::close));
             frame.setSize(1200, 700);
             frame.setLocationRelativeTo(null);
             frame.setVisible(true);
@@ -333,7 +376,7 @@ public class ExifTweaker {
             tf.setUserAgent(APP_NAME + " (https://github.com/rothens/ExifTweaker)");
             LocalResponseCache.installResponseCache(tf.getInfo().getBaseURL(), cacheDir, false);
         }
-        int mapType = Math.max(0, Math.min(factories.size() - 1, prefs.getInt(Settings.MAP_TYPE, 0)));
+        int mapType = Math.max(0, Math.min(factories.size() - 1, settings.getMapType()));
         cbMapType.setSelectedIndex(mapType);
         mapViewer.setTileFactory(factories.get(mapType));
 
