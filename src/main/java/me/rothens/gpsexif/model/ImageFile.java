@@ -1,6 +1,8 @@
 package me.rothens.gpsexif.model;
 
 import me.rothens.gpsexif.metadata.MetadataBackend;
+import me.rothens.gpsexif.metadata.MetadataChanges;
+import me.rothens.gpsexif.metadata.TextField;
 import me.rothens.gpsexif.metadata.PhotoMetadata;
 import me.rothens.gpsexif.util.FileUtil;
 import org.jxmapviewer.viewer.GeoPosition;
@@ -59,6 +61,16 @@ public class ImageFile {
         return metadata.altitude();
     }
 
+    /** Direction the camera pointed, degrees clockwise from north, or {@code null}. */
+    public Double getDirection() {
+        return metadata.direction();
+    }
+
+    /** A text field's value, or {@code null} if it isn't set. */
+    public String getText(TextField field) {
+        return metadata.text().get(field);
+    }
+
     public int getOrientation() {
         return metadata.orientation();
     }
@@ -91,6 +103,11 @@ public class ImageFile {
     /** Removes all GPS data from the file, as safely as {@link #savePosition}. */
     public void removePosition() throws IOException {
         rewrite(backend::removePosition);
+    }
+
+    /** Writes any combination of metadata changes, as safely as {@link #savePosition}. */
+    public void apply(MetadataChanges changes) throws IOException {
+        rewrite((source, target) -> backend.write(source, target, changes));
     }
 
     private interface Rewrite {

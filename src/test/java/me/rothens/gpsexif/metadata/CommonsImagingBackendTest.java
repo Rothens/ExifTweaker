@@ -175,4 +175,67 @@ class CommonsImagingBackendTest {
         assertEquals(-430.0, backend.read(moved).altitude(), 1e-6, "no altitude given: existing one is kept");
         assertNull(backend.read(plain).altitude());
     }
+
+    @Test
+    void writesAndRemovesTextFieldsIncludingNonAscii() throws Exception {
+        Path plain = createJpeg("plain.jpg");
+        Path named = dir.resolve("named.jpg");
+        backend.write(plain, named, new MetadataChanges()
+                .text(TextField.ARTIST, "  Máté Dávid ")
+                .text(TextField.COPYRIGHT, "© 2026 Máté Dávid")
+                .text(TextField.DESCRIPTION, "Sunset over the Danube"));
+        PhotoMetadata metadata = backend.read(named);
+        assertEquals("Máté Dávid", metadata.text().get(TextField.ARTIST));
+        assertEquals("© 2026 Máté Dávid", metadata.text().get(TextField.COPYRIGHT));
+        assertEquals("Sunset over the Danube", metadata.text().get(TextField.DESCRIPTION));
+
+        Path cleared = dir.resolve("cleared.jpg");
+        backend.write(named, cleared, new MetadataChanges().text(TextField.DESCRIPTION, ""));
+        PhotoMetadata after = backend.read(cleared);
+        assertNull(after.text().get(TextField.DESCRIPTION));
+        assertEquals("Máté Dávid", after.text().get(TextField.ARTIST), "other fields are kept");
+    }
+
+    @Test
+    void writesDirectionAndRemovesItWithoutTouchingPosition() throws Exception {
+        Path plain = createJpeg("plain.jpg");
+        Path facing = dir.resolve("facing.jpg");
+        backend.write(plain, facing, new MetadataChanges().position(new GeoPosition(47.5, 19.05))
+                .direction(-45.0).altitude(120.0));
+        PhotoMetadata metadata = backend.read(facing);
+        assertEquals(315.0, metadata.direction(), 1e-6, "normalized to 0..360");
+        assertEquals(120.0, metadata.altitude(), 1e-6);
+
+        Path noDirection = dir.resolve("no-direction.jpg");
+        backend.write(facing, noDirection, new MetadataChanges().direction(null).altitude(null));
+        PhotoMetadata after = backend.read(noDirection);
+        assertNull(after.direction());
+        assertNull(after.altitude());
+        assertEquals(47.5, after.position().getLatitude(), 1e-6);
+    }
+
+    @Test
+    void setsAndShiftsDateTime() throws Exception {
+        Path timed = withExif("timed.jpg", set -> {
+            add(set, org.apache.commons.imaging.formats.tiff.constants.ExifTagConstants.EXIF_TAG_DATE_TIME_ORIGINAL,
+                    "2026:09:30 23:30:00");
+            add(set, org.apache.commons.imaging.formats.tiff.constants.ExifTagConstants.EXIF_TAG_DATE_TIME_DIGITIZED,
+                    "2026:09:30 23:30:00");
+            add(set, org.apache.commons.imaging.formats.tiff.constants.ExifTagConstants.EXIF_TAG_SUB_SEC_TIME_ORIGINAL,
+                    "5");
+        });
+        Path shifted = dir.resolve("shifted.jpg");
+        backend.write(timed, shifted, new MetadataChanges().shiftTime(java.time.Duration.ofHours(2)));
+        assertEquals(java.time.LocalDateTime.of(2026, 10, 1, 1, 30, 0, 500_000_000), backend.read(shifted).taken(),
+                "crosses midnight and keeps sub-seconds");
+
+        Path set = dir.resolve("set.jpg");
+        backend.write(shifted, set, new MetadataChanges().taken(java.time.LocalDateTime.of(2020, 1, 2, 3, 4, 5)));
+        assertEquals(java.time.LocalDateTime.of(2020, 1, 2, 3, 4, 5), backend.read(set).taken());
+
+        Path noDate = createJpeg("nodate.jpg");
+        Path stillNoDate = dir.resolve("still-nodate.jpg");
+        backend.write(noDate, stillNoDate, new MetadataChanges().shiftTime(java.time.Duration.ofHours(1)));
+        assertNull(backend.read(stillNoDate).taken(), "nothing to shift");
+    }
 }
