@@ -18,22 +18,23 @@ Legend: `[x]` done · `[ ]` planned
 
 ---
 
-## 0.3 — Foundations
+## 0.3 — Foundations ✅
 
 Groundwork the later milestones depend on. Nothing here changes how photos are written.
 
-- [ ] **Modern look & feel with FlatLaf**: light and dark themes, following the OS setting by default and
+- [x] **Modern look & feel with FlatLaf**: light and dark themes, following the OS setting by default and
       switchable in the menu. We stay on Swing: no JavaFX rewrite.
-- [ ] **Replace Bing/VirtualEarth with Esri World Imagery** as the satellite layer (Bing Maps is being retired).
+- [x] **Replace Bing/VirtualEarth with Esri World Imagery** as the satellite layer (Bing Maps is being retired).
       Show the attribution each tile provider requires in a corner of the map.
       Keep the tile providers in one list so adding another layer later is a single entry.
-- [ ] **Metadata backend abstraction**: put a `MetadataBackend` interface (read position, write position,
+- [x] **Metadata backend abstraction**: put a `MetadataBackend` interface (read position, write position,
       read/write fields) between the UI and commons-imaging, so ExifTool can be plugged in for 0.8 without UI changes.
-- [ ] **Backups & undo**
+- [x] **Backups & undo**
   - Optional `.bak` copy of the original before the first write (setting, default on).
   - In-session undo of the last write operation, including batch writes.
-- [ ] **Thumbnail orientation**: apply the EXIF Orientation tag so portrait/phone photos aren't sideways.
-- [ ] Menu bar and a small settings dialog (theme, backups, map defaults).
+- [x] **Thumbnail orientation**: apply the EXIF Orientation tag so portrait/phone photos aren't sideways.
+- [x] Menu bar and a small settings dialog (theme, backups, map defaults).
+- [x] Fixed along the way: map tiles of only one layer were ever cached on disk.
 
 **Done when:** the app looks native in light and dark mode, the satellite layer works, and any write can be undone.
 
