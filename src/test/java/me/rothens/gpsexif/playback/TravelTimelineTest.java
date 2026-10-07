@@ -184,4 +184,40 @@ class TravelTimelineTest {
         assertEquals(Duration.ofHours(23), hotel.pause());
         assertEquals(2.5, hotel.end() - hotel.start(), 1e-9);
     }
+
+    @Test
+    void longJourneysAreShortenedAndTheTimeGoesToTheRestOfTheTrip() throws Exception {
+        TravelTimeline.Settings capped = new TravelTimeline.Settings(Duration.ofSeconds(60), Duration.ofSeconds(2),
+                Duration.ofMillis(500), true, Duration.ofHours(1), 2000, Duration.ofSeconds(2), Duration.ofSeconds(8));
+        TravelTimeline t = new TravelTimeline(trip(), TravelTimelineTest::utc, List.of(), capped);
+        // 56 s to share: the 3 h drive to the lake is capped at 8 s, the two 30 min walks share the other 48 s
+        List<Double> v = t.getStops().stream().map(TravelTimeline.Stop::videoTime).toList();
+        assertEquals(List.of(0.0, 24.0, 48.0, 50.0, 58.0), v.stream().map(x -> Math.round(x * 1e6) / 1e6).toList());
+        assertEquals(1, t.getShortenedJourneys());
+        assertTrue(t.summary().contains("1 journey shortened"), t.summary());
+        assertTrue(t.getSlots().get(3).showMap(), "the shortened journey still shows the map");
+        assertEquals(60, t.getLength(), 1e-9);
+    }
+
+    @Test
+    void walksWithinADayAreNotJourneys() throws Exception {
+        // Only short gaps (< 1 h): nothing to cap
+        List<ImageFile> photos = List.of(photo("a.jpg", day(1, 9, 0), HOME), photo("b.jpg", day(1, 9, 50), LAKE));
+        TravelTimeline.Settings capped = new TravelTimeline.Settings(Duration.ofSeconds(30), Duration.ofSeconds(2),
+                Duration.ofMillis(500), true, Duration.ofHours(1), 2000, Duration.ofSeconds(2), Duration.ofSeconds(5));
+        TravelTimeline t = new TravelTimeline(photos, TravelTimelineTest::utc, List.of(), capped);
+        assertEquals(0, t.getShortenedJourneys());
+        assertEquals(28, t.getStops().get(1).videoTime(), 1e-9);
+    }
+
+    @Test
+    void ifOnlyJourneysAreLeftTheFilmStillHasItsLength() throws Exception {
+        // One 3 h journey and nothing else: the 8 s limit gives way, the film keeps its 30 s
+        List<ImageFile> photos = List.of(photo("a.jpg", day(2, 9, 0), BREAKFAST), photo("b.jpg", day(2, 12, 0), LAKE));
+        TravelTimeline.Settings capped = new TravelTimeline.Settings(Duration.ofSeconds(30), Duration.ofSeconds(2),
+                Duration.ofMillis(500), true, Duration.ofHours(1), 2000, Duration.ofSeconds(2), Duration.ofSeconds(8));
+        TravelTimeline t = new TravelTimeline(photos, TravelTimelineTest::utc, List.of(), capped);
+        assertEquals(28, t.getStops().get(1).videoTime(), 1e-9);
+        assertEquals(0, t.getShortenedJourneys());
+    }
 }

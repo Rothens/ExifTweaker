@@ -79,6 +79,8 @@ public class TravelWindow extends JFrame {
     private final JCheckBox chkSqueeze = new JCheckBox("Squeeze stops longer than", true);
     private final JSpinner spStayMinutes = new JSpinner(new SpinnerNumberModel(60, 5, 24 * 60, 5));
     private final JSpinner spStayKm = new JSpinner(new SpinnerNumberModel(2.0, 0.1, 100.0, 0.5));
+    private final JCheckBox chkJourney = new JCheckBox("Travel at most", true);
+    private final JSpinner spJourney = new JSpinner(new SpinnerNumberModel(8, 3, 120, 1));
     private final JLabel lblRoute = new JLabel();
     private final JLabel lblSummary = new JLabel(" ");
     private final JButton btnPlay = new JButton("▶");
@@ -164,10 +166,14 @@ public class TravelWindow extends JFrame {
         spMinPhoto.setToolTipText("Each shown photo stays at least this long; photos in between are skipped");
         spStayKm.setToolTipText("A long gap where you moved less than this is a stop (e.g. a night) and is squeezed;"
                 + " otherwise it's travel and shown on the map");
-        for (JComponent c : new JComponent[]{spLength, spMinPhoto, spFade, spStayMinutes, spStayKm}) {
+        String journeyTip = "Travel between places is shown at most this long; the time saved goes to the photos";
+        chkJourney.setToolTipText(journeyTip);
+        spJourney.setToolTipText(journeyTip);
+        for (JComponent c : new JComponent[]{spLength, spMinPhoto, spFade, spStayMinutes, spStayKm, spJourney}) {
             ((JSpinner) c).addChangeListener(e -> rebuild());
         }
         chkSqueeze.addActionListener(e -> rebuild());
+        chkJourney.addActionListener(e -> rebuild());
 
         JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
         row1.add(new JLabel("Film length (s):"));
@@ -182,6 +188,10 @@ public class TravelWindow extends JFrame {
         row1.add(new JLabel("min within"));
         row1.add(spStayKm);
         row1.add(new JLabel("km"));
+        row1.add(new JLabel("   "));
+        row1.add(chkJourney);
+        row1.add(spJourney);
+        row1.add(new JLabel("s"));
         JPanel row2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
         row2.add(lblRoute);
         row2.add(btnLoad);
@@ -265,11 +275,13 @@ public class TravelWindow extends JFrame {
                 chkSqueeze.isSelected(),
                 Duration.ofMinutes((Integer) spStayMinutes.getValue()),
                 (Double) spStayKm.getValue() * 1000,
-                Duration.ofSeconds(2));
+                Duration.ofSeconds(2),
+                chkJourney.isSelected() ? Duration.ofSeconds((Integer) spJourney.getValue()) : null);
         timeline = new TravelTimeline(photos, p -> PhotoTime.toInstant(p.getTaken(), p.getTakenOffset(), zone,
                 Duration.ZERO), tracks, s);
         spStayMinutes.setEnabled(chkSqueeze.isSelected());
         spStayKm.setEnabled(chkSqueeze.isSelected());
+        spJourney.setEnabled(chkJourney.isSelected());
         lblRoute.setText(timeline.usesTrack() ? "Route: GPX track (" + tracks.size()
                 + (tracks.size() == 1 ? " file)" : " files)") : "Route: straight lines between the photos");
         lblSummary.setText(timeline.summary());

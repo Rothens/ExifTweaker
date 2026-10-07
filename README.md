@@ -54,7 +54,8 @@ java -jar target/GPSEditor-*-all.jar
 
  > **Travel mode** (View menu, Shift+F5) plays the trip as a short film: pick its length and how long each photo
  > stays at least. A marker travels your route (your GPX track if you loaded one) and each photo fades in when the
- > marker gets there. Nights and other long stops are skipped over quickly; longer journeys play on a full-screen map.
+ > marker gets there. Nights and other long stops are skipped over quickly; longer journeys play on a full-screen map,
+ > at most 8 seconds each by default ("Travel at most"), so the photos get the rest of the film.
 
  > Copy a photo's location with Ctrl+C on the file list and paste it onto others with Ctrl+V, then Save.
  > Edit → Remove location strips the GPS data, e.g. before sharing photos.

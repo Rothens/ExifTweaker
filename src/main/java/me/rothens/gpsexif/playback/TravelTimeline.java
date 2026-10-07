@@ -34,12 +34,21 @@ public class TravelTimeline {
      * @param stayGap       a gap at least this long ...
      * @param stayDistanceM ... with less movement than this (metres) is a stay
      * @param stayVideo     video time a squeezed stay takes
+     * @param maxJourney    a journey (a long gap with real distance covered) takes at most this much video time;
+     *                      {@code null} for no limit
      */
     public record Settings(Duration videoLength, Duration minPhoto, Duration fade, boolean squeezeStays,
-                           Duration stayGap, double stayDistanceM, Duration stayVideo) {
+                           Duration stayGap, double stayDistanceM, Duration stayVideo, Duration maxJourney) {
+
+        /** Without a journey limit. */
+        public Settings(Duration videoLength, Duration minPhoto, Duration fade, boolean squeezeStays,
+                        Duration stayGap, double stayDistanceM, Duration stayVideo) {
+            this(videoLength, minPhoto, fade, squeezeStays, stayGap, stayDistanceM, stayVideo, null);
+        }
+
         public static Settings defaults() {
             return new Settings(Duration.ofMinutes(3), Duration.ofMillis(2500), Duration.ofMillis(600), true,
-                    Duration.ofHours(1), 2000, Duration.ofMillis(2000));
+                    Duration.ofHours(1), 2000, Duration.ofMillis(2000), Duration.ofSeconds(8));
         }
     }
 
@@ -79,6 +88,7 @@ public class TravelTimeline {
     private final TrackMatcher track;
     private final double length;
     private int squeezedStays;
+    private int shortenedJourneys;
     private double secondsPerVideoSecond;
 
     /**
@@ -103,15 +113,22 @@ public class TravelTimeline {
         // How much video time each gap between consecutive photos gets
         int n = dated.size();
         boolean[] stay = new boolean[Math.max(0, n - 1)];
+        boolean[] journey = new boolean[Math.max(0, n - 1)];
+        double[] gapSeconds = new double[Math.max(0, n - 1)];
         double travelSeconds = 0;
         for (int i = 0; i < n - 1; i++) {
             Duration gap = Duration.between(times.get(i), times.get(i + 1));
-            stay[i] = settings.squeezeStays() && gap.compareTo(settings.stayGap()) >= 0
-                    && isStay(dated.get(i).getGp(), dated.get(i + 1).getGp());
+            gapSeconds[i] = Math.max(0, seconds(gap));
+            boolean longGap = gap.compareTo(settings.stayGap()) >= 0;
+            GeoPosition a = dated.get(i).getGp();
+            GeoPosition b = dated.get(i + 1).getGp();
+            stay[i] = settings.squeezeStays() && longGap && isStay(a, b);
+            journey[i] = !stay[i] && longGap && null != a && null != b
+                    && TrackMatcher.distanceMetres(a, b) >= settings.stayDistanceM();
             if (stay[i]) {
                 squeezedStays++;
             } else {
-                travelSeconds += Math.max(0, seconds(gap));
+                travelSeconds += gapSeconds[i];
             }
         }
         double minPhoto = seconds(settings.minPhoto());
@@ -121,16 +138,12 @@ public class TravelTimeline {
         double stayTime = Math.min(Math.max(seconds(settings.stayVideo()), minPhoto),
                 squeezedStays == 0 ? 0 : available / 2 / squeezedStays);
         double travelVideo = available - squeezedStays * stayTime;
-        double scale = travelSeconds > 0 ? travelVideo / travelSeconds : 0;
-        int travelGaps = n - 1 - squeezedStays;
-        secondsPerVideoSecond = scale > 0 ? 1 / scale : 0;
+        double[] gapVideo = allocate(gapSeconds, stay, journey, stayTime, travelVideo, minPhoto);
 
         double v = 0;
         for (int i = 0; i < n; i++) {
             if (i > 0) {
-                double gap = Math.max(0, seconds(Duration.between(times.get(i - 1), times.get(i))));
-                // All photos at the same moment: spread them evenly
-                v += stay[i - 1] ? stayTime : travelSeconds > 0 ? gap * scale : travelVideo / travelGaps;
+                v += gapVideo[i - 1];
             }
             stops.add(new Stop(dated.get(i), times.get(i), dated.get(i).getGp(), v));
             if (null != dated.get(i).getGp()) {
@@ -170,6 +183,83 @@ public class TravelTimeline {
             }
             slots.add(new Slot(shown, start, end, showMap, pause));
         }
+    }
+
+    /**
+     * Video time per gap: stays get {@code stayTime}; the rest shares {@code budget} in proportion to real time,
+     * except that a journey gets at most {@code maxJourney} - the time it gives up goes to the other gaps. If only
+     * capped journeys are left to absorb the time, the limit gives way so the film keeps its length.
+     */
+    private double[] allocate(double[] gapSeconds, boolean[] stay, boolean[] journey, double stayTime,
+                              double budget, double minPhoto) {
+        int gaps = gapSeconds.length;
+        double[] video = new double[gaps];
+        // A journey keeps room for the photo's minimum time plus a moment on the map
+        double cap = null == settings.maxJourney() ? Double.MAX_VALUE
+                : Math.max(seconds(settings.maxJourney()), minPhoto + MIN_MAP_TIME);
+        boolean[] capped = new boolean[gaps];
+        double scale = 0;
+        while (true) {
+            double fixed = 0;
+            double proportional = 0;
+            for (int i = 0; i < gaps; i++) {
+                if (stay[i]) {
+                    continue;
+                }
+                if (capped[i]) {
+                    fixed += cap;
+                } else {
+                    proportional += gapSeconds[i];
+                }
+            }
+            scale = proportional > 0 ? Math.max(0, budget - fixed) / proportional : 0;
+            boolean changed = false;
+            for (int i = 0; i < gaps; i++) {
+                if (!stay[i] && journey[i] && !capped[i] && gapSeconds[i] * scale > cap) {
+                    capped[i] = true;
+                    changed = true;
+                }
+            }
+            if (!changed) {
+                break;
+            }
+        }
+        double total = 0;
+        int nonStay = 0;
+        for (int i = 0; i < gaps; i++) {
+            if (stay[i]) {
+                video[i] = stayTime;
+            } else {
+                video[i] = capped[i] ? cap : gapSeconds[i] * scale;
+                total += video[i];
+                nonStay++;
+            }
+        }
+        shortenedJourneys = 0;
+        for (boolean c : capped) {
+            shortenedJourneys += c ? 1 : 0;
+        }
+        if (nonStay > 0 && Math.abs(total - budget) > 1e-9) {
+            // Nothing left to absorb the time (e.g. only capped journeys, or photos all at one moment):
+            // share the whole budget by real time, or evenly
+            double real = 0;
+            for (int i = 0; i < gaps; i++) {
+                real += stay[i] ? 0 : gapSeconds[i];
+            }
+            for (int i = 0; i < gaps; i++) {
+                if (!stay[i]) {
+                    video[i] = real > 0 ? budget * gapSeconds[i] / real : budget / nonStay;
+                }
+            }
+            shortenedJourneys = 0;
+            scale = real > 0 ? budget / real : 0;
+        }
+        secondsPerVideoSecond = scale > 0 ? 1 / scale : 0;
+        return video;
+    }
+
+    public int getShortenedJourneys() {
+        return shortenedJourneys;
     }
 
     private boolean isStay(GeoPosition a, GeoPosition b) {
@@ -237,6 +327,10 @@ public class TravelTimeline {
         if (squeezedStays > 0) {
             sb.append("; ").append(squeezedStays).append(squeezedStays == 1 ? " long stop" : " long stops")
                     .append(" squeezed");
+        }
+        if (shortenedJourneys > 0) {
+            sb.append("; ").append(shortenedJourneys).append(shortenedJourneys == 1 ? " journey" : " journeys")
+                    .append(" shortened");
         }
         return sb.toString();
     }
