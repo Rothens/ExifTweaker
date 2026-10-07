@@ -10,7 +10,7 @@ Requires Java 17+ and Maven.
 
 ```
 mvn package
-java -jar target/GPSEditor-*-all.jar
+java -jar target/exiftweaker-*-all.jar
 ```
 
 # Usage

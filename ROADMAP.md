@@ -147,9 +147,9 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 
 ## 1.0 — Release
 
-- [ ] Native installers via `jpackage` (Windows `.msi`, macOS `.dmg`, Linux `.deb`) built in GitHub Actions
-      and attached to GitHub Releases.
-- [ ] Rename the Maven artifact from `GPSEditor` to `exiftweaker`.
+- [x] Native installers via `jpackage` (Windows `.msi`, macOS `.dmg`, Linux `.deb`) built in GitHub Actions
+      and attached to GitHub Releases (#24). They bundle a trimmed Java runtime, so users don't need Java.
+- [x] Rename the Maven artifact from `GPSEditor` to `exiftweaker` (#25); MIT licence; an application icon.
 - [ ] User documentation in the README with screenshots; keyboard shortcuts list.
 - [ ] Integration tests on sample photos from several camera brands.
 

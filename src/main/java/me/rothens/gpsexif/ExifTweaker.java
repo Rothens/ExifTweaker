@@ -1278,6 +1278,30 @@ public class ExifTweaker {
         JOptionPane.showMessageDialog(frame, message, APP_NAME, JOptionPane.WARNING_MESSAGE);
     }
 
+    /** The application icon in several sizes, for the title bar, task bar and Alt+Tab. */
+    static List<Image> appIcons() {
+        List<Image> icons = new ArrayList<>();
+        for (int size : new int[]{16, 32, 48, 64, 128, 256}) {
+            try (var in = ExifTweaker.class.getResourceAsStream("icons/icon-" + size + ".png")) {
+                if (null != in) {
+                    icons.add(ImageIO.read(in));
+                }
+            } catch (IOException ignored) {
+                // no icon of that size
+            }
+        }
+        // macOS shows the Dock icon from the app bundle; when started from the jar, set it here
+        if (!icons.isEmpty() && Taskbar.isTaskbarSupported()
+                && Taskbar.getTaskbar().isSupported(Taskbar.Feature.ICON_IMAGE)) {
+            try {
+                Taskbar.getTaskbar().setIconImage(icons.get(icons.size() - 1));
+            } catch (UnsupportedOperationException | SecurityException ignored) {
+                // not available on this platform
+            }
+        }
+        return icons;
+    }
+
     public static void main(String[] args) {
         // macOS: native window title bar colour that follows the system appearance
         System.setProperty("apple.awt.application.appearance", "system");
@@ -1287,6 +1311,7 @@ public class ExifTweaker {
         SwingUtilities.invokeLater(() -> {
             theme.install();
             JFrame frame = new JFrame(APP_NAME);
+            frame.setIconImages(appIcons());
             ExifTweaker app = new ExifTweaker(frame);
             frame.setContentPane(app.mainPanel);
             frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);

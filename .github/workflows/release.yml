@@ -1,0 +1,80 @@
+name: Release
+
+# Builds the native installers (Linux .deb, Windows .msi, macOS .dmg) with jpackage. Pushing a tag like v1.0.0
+# also creates a draft GitHub Release with the installers and the runnable jar, to review and publish.
+on:
+  push:
+    tags: ['v*']
+    # On branches, only when the packaging changes (paths don't apply to tags)
+    branches: ['**']
+    paths:
+      - 'src/main/packaging/**'
+      - '.github/workflows/release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  installers:
+    strategy:
+      fail-fast: false
+      matrix:
+        # windows-2022 comes with the WiX Toolset 3 that jpackage (JDK 21) needs for .msi files
+        os: [ubuntu-latest, windows-2022, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="$(mvn -B -q help:evaluate -Dexpression=project.version -DforceStdout)"
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - name: WiX Toolset
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command candle.exe -ErrorAction SilentlyContinue)) {
+            $bin = Get-ChildItem "C:\Program Files (x86)\WiX Toolset*\bin" -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $bin) {
+              choco install wixtoolset --no-progress -y
+              $bin = Get-ChildItem "C:\Program Files (x86)\WiX Toolset*\bin" -Directory | Select-Object -First 1
+            }
+            $bin.FullName | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          }
+      # The tests run in the Build workflow
+      - run: mvn -B -DskipTests "-Drevision=$VERSION" package
+      - run: src/main/packaging/jpackage.sh "$VERSION"
+      - if: runner.os == 'Linux'
+        run: cp "target/exiftweaker-$VERSION-all.jar" target/installer/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ runner.os }}
+          path: target/installer/*
+          if-no-files-found: error
+
+  release:
+    needs: installers
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: dist/*
