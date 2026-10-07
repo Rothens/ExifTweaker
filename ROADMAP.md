@@ -124,6 +124,19 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 
 ---
 
+## Export & playback
+
+- [x] **Export photos as GPX**: every photo with a location and a date becomes a waypoint (time in UTC,
+      elevation, description), sorted by time.
+- [x] **Playback**: a separate window plays the photos in the order they were taken - the photo large, the time
+      and date top left, a map bottom right following the route; play/pause, previous/next, a slider, speed and
+      loop; keyboard: Space, ←/→, Home/End, Esc.
+- [ ] **Export the playback as a video file** (later). The playback window already draws each whole frame
+      (photo, timestamp and map) in one component, so frames can be rendered off screen; encoding would use
+      FFmpeg when it's installed (like ExifTool: not bundled) or a pure-Java encoder.
+
+---
+
 ## 1.0 — Release
 
 - [ ] Native installers via `jpackage` (Windows `.msi`, macOS `.dmg`, Linux `.deb`) built in GitHub Actions

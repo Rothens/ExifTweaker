@@ -46,6 +46,12 @@ java -jar target/GPSEditor-*-all.jar
  > the executable. RAW files are never modified - their metadata is written to an `.xmp` sidecar next to them,
  > which Lightroom, darktable and most photo tools read.
 
+ > **Export photos as GPX** (File menu, Ctrl+E) writes the photos that have a location and a date as waypoints,
+ > e.g. to show them in Google Earth or another map app.
+
+ > **Play photos** (View menu, F5) shows the photos in the order they were taken, with the time and a small map
+ > following your route. Space plays and pauses, the arrow keys step, Esc closes.
+
  > Copy a photo's location with Ctrl+C on the file list and paste it onto others with Ctrl+V, then Save.
  > Edit → Remove location strips the GPS data, e.g. before sharing photos.
 

@@ -21,6 +21,8 @@ import me.rothens.gpsexif.model.ImageListRenderer;
 import me.rothens.gpsexif.model.MetadataTableModel;
 import me.rothens.gpsexif.metadata.MetadataChanges;
 import me.rothens.gpsexif.metadata.TextTag;
+import me.rothens.gpsexif.playback.PlaybackSequence;
+import me.rothens.gpsexif.playback.PlaybackWindow;
 import me.rothens.gpsexif.ui.ExifToolDialog;
 import me.rothens.gpsexif.ui.GeotagDialog;
 import me.rothens.gpsexif.ui.SettingsDialog;
@@ -116,6 +118,7 @@ public class ExifTweaker {
 
     private final JMenuItem miGeotag = new JMenuItem("Geotag from GPX...");
     private final JMenuItem miExportGpx = new JMenuItem("Export photos as GPX...");
+    private final JMenuItem miPlayback = new JMenuItem("Play photos...");
     private final TrackPainter trackPainter = new TrackPainter();
     private final JCheckBoxMenuItem miShowMarkers = new JCheckBoxMenuItem("Show photos on map");
     private PhotoMarkerLayer markerLayer;
@@ -510,6 +513,11 @@ public class ExifTweaker {
             markerLayer.setEnabled(miShowMarkers.isSelected());
         });
         view.add(miShowMarkers);
+        view.addSeparator();
+        miPlayback.setAccelerator(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F5, 0));
+        miPlayback.setToolTipText("Play the selected photos (or all) in the order they were taken, with a map");
+        miPlayback.addActionListener(e -> openPlayback());
+        view.add(miPlayback);
 
         JMenuBar bar = new JMenuBar();
         bar.add(file);
@@ -608,6 +616,7 @@ public class ExifTweaker {
         miPaste.setEnabled(!busy);
         miGeotag.setEnabled(!busy && !listModel.getAll().isEmpty());
         miExportGpx.setEnabled(!busy && listModel.getAll().stream().anyMatch(ImageFile::hasExifGPS));
+        miPlayback.setEnabled(listModel.getAll().stream().anyMatch(p -> null != p.getTaken()));
         btnOpen.setEnabled(!busy);
         btnBrowse.setEnabled(!busy);
         chkOnlyWithoutLocation.setEnabled(!busy);
@@ -1106,6 +1115,24 @@ public class ExifTweaker {
         msg.append("\n\nCamera times were converted to UTC from ").append(zone.getId())
                 .append(" (the camera time zone of the Geotag dialog), unless a photo recorded its own.");
         JOptionPane.showMessageDialog(frame, msg.toString(), "Export photos as GPX", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    /** Plays the selected photos (or all opened ones if at most one is selected) in a separate window. */
+    private void openPlayback() {
+        List<ImageFile> photos = selection.size() > 1 ? selection : listModel.getAll();
+        PlaybackSequence sequence = new PlaybackSequence(photos);
+        if (sequence.isEmpty()) {
+            showError("None of these photos has a date, so they can't be played back in order.");
+            return;
+        }
+        PlaybackWindow window = new PlaybackWindow(frame, sequence, settings.getMapLayer().createInfo(), tileCache,
+                USER_AGENT);
+        if (sequence.getWithoutDate() > 0) {
+            int n = sequence.getWithoutDate();
+            lblStatus.setText(n + (n == 1 ? " photo without a date is" : " photos without a date are")
+                    + " left out of the playback");
+        }
+        window.setVisible(true);
     }
 
     /** Opens the GPX geotagging dialog for the selected photos, or all opened photos if at most one is selected. */
