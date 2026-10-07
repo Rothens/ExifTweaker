@@ -1,3 +1,5 @@
+// Draws the ExifTweaker icon and writes src/main/packaging/ExifTweaker.{png,ico,icns} and the window icons.
+// Run from the repository root: java tools/IconGen.java src/main/packaging src/main/resources/me/rothens/gpsexif/icons icon-preview.png
 import java.awt.*; import java.awt.geom.*; import java.awt.image.*; import javax.imageio.*; import java.io.*; import java.nio.*; import java.util.*;
 public class IconGen {
   static BufferedImage draw(int size) {
