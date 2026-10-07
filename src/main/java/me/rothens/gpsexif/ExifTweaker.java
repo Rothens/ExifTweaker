@@ -2,6 +2,7 @@ package me.rothens.gpsexif;
 
 import me.rothens.gpsexif.history.EditHistory;
 import me.rothens.gpsexif.history.PhotoWriter;
+import me.rothens.gpsexif.gpx.GpxWriter;
 import me.rothens.gpsexif.gpx.Track;
 import me.rothens.gpsexif.gpx.TrackMatcher;
 import me.rothens.gpsexif.map.AttributionPainter;
@@ -19,6 +20,7 @@ import me.rothens.gpsexif.model.ImageListModel;
 import me.rothens.gpsexif.model.ImageListRenderer;
 import me.rothens.gpsexif.model.MetadataTableModel;
 import me.rothens.gpsexif.metadata.MetadataChanges;
+import me.rothens.gpsexif.metadata.TextTag;
 import me.rothens.gpsexif.ui.ExifToolDialog;
 import me.rothens.gpsexif.ui.GeotagDialog;
 import me.rothens.gpsexif.ui.SettingsDialog;
@@ -26,7 +28,7 @@ import me.rothens.gpsexif.ui.ShiftTimeDialog;
 import me.rothens.gpsexif.gpx.PhotoTime;
 import me.rothens.gpsexif.ui.Theme;
 import me.rothens.gpsexif.util.ExitWatchdog;
-import me.rothens.gpsexif.util.ImageOrientation;
+import me.rothens.gpsexif.util.PhotoLoader;
 import me.rothens.gpsexif.util.PositionUtil;
 import me.rothens.gpsexif.util.Settings;
 import org.jxmapviewer.JXMapViewer;
@@ -113,6 +115,7 @@ public class ExifTweaker {
     private boolean updatingMapLayer;
 
     private final JMenuItem miGeotag = new JMenuItem("Geotag from GPX...");
+    private final JMenuItem miExportGpx = new JMenuItem("Export photos as GPX...");
     private final TrackPainter trackPainter = new TrackPainter();
     private final JCheckBoxMenuItem miShowMarkers = new JCheckBoxMenuItem("Show photos on map");
     private PhotoMarkerLayer markerLayer;
@@ -436,6 +439,9 @@ public class ExifTweaker {
         miGeotag.setAccelerator(KeyStroke.getKeyStroke('G', menuKey));
         miGeotag.addActionListener(e -> openGeotag());
         file.add(miGeotag);
+        miExportGpx.setAccelerator(KeyStroke.getKeyStroke('E', menuKey));
+        miExportGpx.addActionListener(e -> exportGpx());
+        file.add(miExportGpx);
         if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.APP_QUIT_HANDLER)) {
             file.addSeparator();
             file.add(menuItem("Exit", KeyStroke.getKeyStroke('Q', menuKey), e -> exit()));
@@ -601,6 +607,7 @@ public class ExifTweaker {
         miShiftTime.setEnabled(canWrite && selection.stream().anyMatch(p -> null != p.getTaken()));
         miPaste.setEnabled(!busy);
         miGeotag.setEnabled(!busy && !listModel.getAll().isEmpty());
+        miExportGpx.setEnabled(!busy && listModel.getAll().stream().anyMatch(ImageFile::hasExifGPS));
         btnOpen.setEnabled(!busy);
         btnBrowse.setEnabled(!busy);
         chkOnlyWithoutLocation.setEnabled(!busy);
@@ -1037,6 +1044,70 @@ public class ExifTweaker {
         }
     }
 
+    /**
+     * Writes every opened photo that has both a location and a date as a GPX waypoint. GPX times are UTC: the
+     * photo's own recorded offset is used, else the camera time zone set in the Geotag dialog.
+     */
+    private void exportGpx() {
+        List<ImageFile> all = listModel.getAll();
+        java.time.ZoneId zone = settings.getCameraZone();
+        List<GpxWriter.Waypoint> waypoints = new ArrayList<>();
+        int noLocation = 0;
+        int noDate = 0;
+        for (ImageFile photo : all) {
+            if (!photo.hasExifGPS()) {
+                noLocation++;
+            } else if (null == photo.getTaken()) {
+                noDate++;
+            } else {
+                waypoints.add(new GpxWriter.Waypoint(photo.getFile().getName(), photo.getGp(),
+                        PhotoTime.toInstant(photo.getTaken(), photo.getTakenOffset(), zone, java.time.Duration.ZERO),
+                        photo.getAltitude(), photo.getText(TextTag.DESCRIPTION)));
+            }
+        }
+        if (waypoints.isEmpty()) {
+            showError("None of the " + all.size() + " photos has both a location and a date.");
+            return;
+        }
+        File folder = new File(tfFolder.getText());
+        JFileChooser chooser = new JFileChooser(folder);
+        chooser.setDialogTitle("Export photos as GPX");
+        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("GPX files (*.gpx)", "gpx"));
+        chooser.setSelectedFile(new File(folder, folder.getName() + ".gpx"));
+        if (chooser.showSaveDialog(frame) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        File target = chooser.getSelectedFile();
+        if (!target.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".gpx")) {
+            target = new File(target.getParentFile(), target.getName() + ".gpx");
+        }
+        if (target.exists() && !confirm(target.getName() + " already exists. Replace it?", "Export photos as GPX")) {
+            return;
+        }
+        try {
+            GpxWriter.write(target.toPath(), waypoints, USER_AGENT);
+        } catch (IOException e) {
+            showError("Couldn't write " + target.getName() + ":\n" + e.getMessage());
+            return;
+        }
+        StringBuilder msg = new StringBuilder("Exported " + waypoints.size()
+                + (waypoints.size() == 1 ? " photo" : " photos") + " to " + target.getName() + ".");
+        if (noLocation + noDate > 0) {
+            msg.append("\nSkipped: ");
+            List<String> skipped = new ArrayList<>();
+            if (noLocation > 0) {
+                skipped.add(noLocation + " without location");
+            }
+            if (noDate > 0) {
+                skipped.add(noDate + " without date");
+            }
+            msg.append(String.join(", ", skipped)).append('.');
+        }
+        msg.append("\n\nCamera times were converted to UTC from ").append(zone.getId())
+                .append(" (the camera time zone of the Geotag dialog), unless a photo recorded its own.");
+        JOptionPane.showMessageDialog(frame, msg.toString(), "Export photos as GPX", JOptionPane.INFORMATION_MESSAGE);
+    }
+
     /** Opens the GPX geotagging dialog for the selected photos, or all opened photos if at most one is selected. */
     private void openGeotag() {
         if (busy || listModel.getAll().isEmpty()) {
@@ -1239,19 +1310,7 @@ public class ExifTweaker {
         thumbnailWorker = new SwingWorker<>() {
             @Override
             protected BufferedImage doInBackground() throws IOException {
-                BufferedImage thumbnail = null;
-                try {
-                    thumbnail = readSubsampled(image.getFile(), THUMBNAIL_MAX_SIZE);
-                } catch (IOException | RuntimeException e) {
-                    // Not decodable by Java (HEIC, RAW) - try the embedded preview below
-                }
-                if (null == thumbnail) {
-                    byte[] preview = backend.preview(image.getPath());
-                    if (null != preview) {
-                        thumbnail = ImageIO.read(new java.io.ByteArrayInputStream(preview));
-                    }
-                }
-                return ImageOrientation.apply(thumbnail, image.getOrientation());
+                return PhotoLoader.load(image, THUMBNAIL_MAX_SIZE);
             }
 
             @Override
@@ -1273,27 +1332,6 @@ public class ExifTweaker {
             }
         };
         thumbnailWorker.execute();
-    }
-
-    /** Decodes only every n-th pixel so large photos don't have to be fully loaded into memory. */
-    private static BufferedImage readSubsampled(File file, int maxSize) throws IOException {
-        try (ImageInputStream in = ImageIO.createImageInputStream(file)) {
-            Iterator<ImageReader> readers = ImageIO.getImageReaders(in);
-            if (!readers.hasNext()) {
-                return null;
-            }
-            ImageReader reader = readers.next();
-            try {
-                reader.setInput(in);
-                int longest = Math.max(reader.getWidth(0), reader.getHeight(0));
-                ImageReadParam param = reader.getDefaultReadParam();
-                int step = Math.max(1, longest / maxSize);
-                param.setSourceSubsampling(step, step, 0, 0);
-                return reader.read(0, param);
-            } finally {
-                reader.dispose();
-            }
-        }
     }
 
     private void selectPosition(GeoPosition position) {
