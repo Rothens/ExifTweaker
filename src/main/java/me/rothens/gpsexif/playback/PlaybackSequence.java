@@ -56,6 +56,11 @@ public class PlaybackSequence {
         return photos.get(index);
     }
 
+    /** The photos in the order they're played. */
+    public List<ImageFile> getPhotos() {
+        return java.util.Collections.unmodifiableList(photos);
+    }
+
     public ImageFile get(int i) {
         return photos.get(i);
     }
@@ -63,6 +68,11 @@ public class PlaybackSequence {
     /** Where the map shows the current photo: its own location, or the last one before it; may be {@code null}. */
     public GeoPosition mapPosition() {
         return mapPositions.get(index);
+    }
+
+    /** Where the map shows photo {@code i}; see {@link #mapPosition()}. */
+    public GeoPosition mapPosition(int i) {
+        return mapPositions.get(i);
     }
 
     /** Whether the current photo has its own location (rather than an earlier one's). */

@@ -1,17 +1,13 @@
 package me.rothens.gpsexif.playback;
 
-import me.rothens.gpsexif.gpx.Track;
-import me.rothens.gpsexif.gpx.TrackPoint;
-import me.rothens.gpsexif.map.AttributionPainter;
-import me.rothens.gpsexif.map.TrackPainter;
 import me.rothens.gpsexif.model.ImageFile;
+import me.rothens.gpsexif.ui.VideoExportDialog;
 import me.rothens.gpsexif.util.PhotoLoader;
 import me.rothens.gpsexif.util.Settings;
 import org.jxmapviewer.JXMapViewer;
 import org.jxmapviewer.cache.LocalCache;
 import org.jxmapviewer.input.PanMouseInputListener;
 import org.jxmapviewer.input.ZoomMouseWheelListenerCursor;
-import org.jxmapviewer.painter.CompoundPainter;
 import org.jxmapviewer.viewer.DefaultTileFactory;
 import org.jxmapviewer.viewer.GeoPosition;
 import org.jxmapviewer.viewer.TileFactoryInfo;
@@ -19,15 +15,9 @@ import org.jxmapviewer.viewer.TileFactoryInfo;
 import javax.swing.*;
 import javax.swing.event.MouseInputListener;
 import java.awt.*;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
-import java.time.format.DateTimeFormatter;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
@@ -35,24 +25,18 @@ import java.util.concurrent.ExecutionException;
  * Plays the photos back in the order they were taken: the photo fills the window, the time it was taken is shown
  * top left, and a small map bottom right follows the route.
  * <p>
- * Everything that makes up a frame is painted by {@link #getFrameView()}, so frames can also be rendered off
- * screen (e.g. for a later video export) with {@code view.paint(graphics)}.
+ * The frame is drawn by a {@link PlaybackView}; the video export draws its frames with another one, off screen.
  */
 public class PlaybackWindow extends JFrame {
 
     private static final int PHOTO_SIZE = 2400;
     private static final int CACHE_SIZE = 6;
     private static final int[] SECONDS = {1, 2, 3, 5, 8, 15};
-    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale.ENGLISH);
-    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.ROOT);
 
     private final PlaybackSequence sequence;
-    private final JXMapViewer map = new JXMapViewer();
-    /** Created in the constructor, after {@link #map}, which it contains. */
-    private final FrameView view;
+    private final Settings settings;
+    private final PlaybackView view;
     private final DefaultTileFactory tileFactory;
-    private final TrackPainter routePainter = new TrackPainter();
-    private final List<Track> routeTrack;
     private final Map<ImageFile, BufferedImage> cache = new LinkedHashMap<>(16, 0.75f, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<ImageFile, BufferedImage> eldest) {
@@ -79,14 +63,9 @@ public class PlaybackWindow extends JFrame {
                           String userAgent, Settings settings) {
         super("Playback");
         this.sequence = sequence;
+        this.settings = settings;
         this.clock = new ClockZone(settings.getCameraZone(), settings.getDisplayZone());
         cbZone = ClockZone.createChooser(clock.getCameraZone(), clock.getDisplayZone());
-        cbZone.addActionListener(e -> {
-            clock = new ClockZone(clock.getCameraZone(), ClockZone.selected(cbZone));
-            settings.setDisplayZone(clock.getDisplayZone());
-            repaint();
-        });
-        this.view = new FrameView();
         setIconImages(owner.getIconImages());
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
@@ -94,15 +73,17 @@ public class PlaybackWindow extends JFrame {
         tileFactory.setUserAgent(userAgent);
         tileFactory.setLocalCache(tileCache);
         tileFactory.setThreadPoolSize(4);
-        map.setTileFactory(tileFactory);
-        map.setOverlayPainter(new CompoundPainter<>(routePainter, new AttributionPainter()));
+        view = new PlaybackView(tileFactory, sequence.getRoute(), clock);
+        JXMapViewer map = view.getMap();
         MouseInputListener pan = new PanMouseInputListener(map);
         map.addMouseListener(pan);
         map.addMouseMotionListener(pan);
         map.addMouseWheelListener(new ZoomMouseWheelListenerCursor(map));
-        map.setBorder(BorderFactory.createLineBorder(new Color(255, 255, 255, 160), 2));
-        List<TrackPoint> points = sequence.getRoute().stream().map(p -> new TrackPoint(null, p, null)).toList();
-        routeTrack = points.isEmpty() ? List.of() : List.of(new Track("route", List.of(points)));
+        cbZone.addActionListener(e -> {
+            clock = new ClockZone(clock.getCameraZone(), ClockZone.selected(cbZone));
+            settings.setDisplayZone(clock.getDisplayZone());
+            view.setClock(clock);
+        });
 
         slider = new JSlider(0, Math.max(0, sequence.size() - 1), 0);
         slider.addChangeListener(e -> {
@@ -145,6 +126,12 @@ public class PlaybackWindow extends JFrame {
         right.add(chkLoop);
         right.add(new JLabel("  Times in:"));
         right.add(cbZone);
+        JButton btnExport = new JButton("Export video...");
+        btnExport.setToolTipText("Save the playback as an MP4 video");
+        btnExport.setFocusable(false);
+        btnExport.addActionListener(e -> exportVideo());
+        right.add(new JLabel("  "));
+        right.add(btnExport);
         controls.add(left, BorderLayout.WEST);
         controls.add(slider, BorderLayout.CENTER);
         controls.add(right, BorderLayout.EAST);
@@ -160,15 +147,36 @@ public class PlaybackWindow extends JFrame {
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowOpened(java.awt.event.WindowEvent e) {
-                fitRoute();
+                view.fitRoute();
                 showCurrent();
             }
         });
     }
 
-    /** The component that paints a whole frame: photo, timestamp and map inset. */
-    public JComponent getFrameView() {
-        return view;
+    private void exportVideo() {
+        if (sequence.isEmpty()) {
+            return;
+        }
+        if (timer.isRunning()) {
+            stop();
+        }
+        JSpinner spSeconds = new JSpinner(new SpinnerNumberModel(
+                (double) SECONDS[Math.max(0, cbSpeed.getSelectedIndex())], 0.5, 60.0, 0.5));
+        JSpinner spFade = new JSpinner(new SpinnerNumberModel(0.5, 0.0, 5.0, 0.1));
+        spFade.setToolTipText("Each photo fades into the next during its last moments (0 for a hard cut)");
+        JPanel extra = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        extra.add(new JLabel("Each photo (s):"));
+        extra.add(spSeconds);
+        extra.add(new JLabel("   Cross-fade (s):"));
+        extra.add(spFade);
+        ClockZone videoClock = clock;
+        VideoExportDialog dialog = new VideoExportDialog(this, settings,
+                TravelWindow.defaultVideoName(sequence.getPhotos(), "playback"), extra,
+                () -> sequence.size() * (Double) spSeconds.getValue(),
+                f -> new PlaybackFrames(sequence, videoClock, tileFactory, f.width(), f.height(), f.fps(),
+                        (Double) spSeconds.getValue(), (Double) spFade.getValue()));
+        spSeconds.addChangeListener(e -> dialog.refreshLength());
+        dialog.showDialog();
     }
 
     private int delay() {
@@ -251,11 +259,7 @@ public class PlaybackWindow extends JFrame {
         shownIndex = index;
         ImageFile photo = sequence.current();
         GeoPosition position = sequence.mapPosition();
-        if (null != position) {
-            map.setAddressLocation(position);
-        }
-        routePainter.set(routeTrack, List.of(), sequence.hasOwnLocation() ? position : null);
-        map.setVisible(!routeTrack.isEmpty());
+        view.showPosition(position, sequence.hasOwnLocation());
         view.setPhoto(photo, cache.get(photo), index, sequence.size());
         if (!cache.containsKey(photo)) {
             load(photo, true);
@@ -291,123 +295,10 @@ public class PlaybackWindow extends JFrame {
         }.execute();
     }
 
-    private void fitRoute() {
-        List<GeoPosition> route = sequence.getRoute();
-        if (route.size() > 1) {
-            map.zoomToBestFit(new HashSet<>(route), 0.8);
-        } else {
-            map.setZoom(4);
-        }
-    }
-
     @Override
     public void dispose() {
         timer.stop();
         tileFactory.dispose();
         super.dispose();
-    }
-
-    /** Photo, timestamp overlay and map inset, layered. */
-    private final class FrameView extends JLayeredPane {
-        private final PhotoPanel photoPanel = new PhotoPanel();
-
-        FrameView() {
-            setOpaque(true);
-            setBackground(new Color(18, 18, 20));
-            add(photoPanel, JLayeredPane.DEFAULT_LAYER);
-            add(map, JLayeredPane.PALETTE_LAYER);
-            addComponentListener(new ComponentAdapter() {
-                @Override
-                public void componentResized(ComponentEvent e) {
-                    layoutLayers();
-                }
-            });
-        }
-
-        void setPhoto(ImageFile photo, BufferedImage image, int index, int total) {
-            photoPanel.set(photo, image, index, total);
-        }
-
-        private void layoutLayers() {
-            photoPanel.setBounds(0, 0, getWidth(), getHeight());
-            int w = Math.max(240, getWidth() / 4);
-            int h = Math.max(180, w * 3 / 4);
-            map.setBounds(getWidth() - w - 16, getHeight() - h - 16, w, h);
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            g.setColor(getBackground());
-            g.fillRect(0, 0, getWidth(), getHeight());
-        }
-    }
-
-    private final class PhotoPanel extends JComponent {
-        private ImageFile photo;
-        private BufferedImage image;
-        private int index;
-        private int total;
-
-        void set(ImageFile photo, BufferedImage image, int index, int total) {
-            this.photo = photo;
-            this.image = image;
-            this.index = index;
-            this.total = total;
-            repaint();
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            if (null == photo) {
-                return;
-            }
-            Graphics2D g2 = (Graphics2D) g.create();
-            try {
-                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                if (null != image) {
-                    double scale = Math.min((double) getWidth() / image.getWidth(),
-                            (double) getHeight() / image.getHeight());
-                    int w = (int) (image.getWidth() * scale);
-                    int h = (int) (image.getHeight() * scale);
-                    g2.drawImage(image, (getWidth() - w) / 2, (getHeight() - h) / 2, w, h, null);
-                } else {
-                    g2.setColor(new Color(150, 150, 150));
-                    String text = "Loading " + photo.getFile().getName() + "...";
-                    g2.drawString(text, (getWidth() - g2.getFontMetrics().stringWidth(text)) / 2, getHeight() / 2);
-                }
-                paintTimestamp(g2);
-            } finally {
-                g2.dispose();
-            }
-        }
-
-        private void paintTimestamp(Graphics2D g2) {
-            Font base = getFont() != null ? getFont() : new Font(Font.SANS_SERIF, Font.PLAIN, 12);
-            Font big = base.deriveFont(Font.BOLD, 30f);
-            Font small = base.deriveFont(Font.PLAIN, 14f);
-            var local = clock.local(photo);
-            String time = TIME.format(local);
-            String offset = clock.offsetLabel(photo);
-            String date = DATE.format(local) + (null == offset ? "" : "  ·  " + offset);
-            String info = (index + 1) + " / " + total + "   " + photo.getFile().getName();
-            FontMetrics fb = g2.getFontMetrics(big);
-            FontMetrics fs = g2.getFontMetrics(small);
-            int w = Math.max(fb.stringWidth(time), Math.max(fs.stringWidth(date), fs.stringWidth(info))) + 28;
-            int h = fb.getHeight() + 2 * fs.getHeight() + 18;
-            g2.setColor(new Color(0, 0, 0, 150));
-            g2.fillRoundRect(16, 16, w, h, 14, 14);
-            g2.setColor(Color.WHITE);
-            g2.setFont(big);
-            int y = 16 + 8 + fb.getAscent();
-            g2.drawString(time, 30, y);
-            g2.setFont(small);
-            y += fs.getHeight() + 2;
-            g2.drawString(date, 30, y);
-            g2.setColor(new Color(200, 200, 200));
-            y += fs.getHeight();
-            g2.drawString(info, 30, y);
-        }
     }
 }

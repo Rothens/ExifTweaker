@@ -138,10 +138,10 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
       a set time (default 8 s) so long drives don't eat the film.
 - [x] **Time zone of the clock** in both windows: the camera's clock (default) or any time zone, with its UTC
       offset shown next to the date.
-- [ ] **Export the playback as a video file** (later; #32). The playback window already draws each whole frame
-      (photo, timestamp and map) in one component, so frames can be rendered off screen; encoding would use
-      FFmpeg when it's installed (like ExifTool: not bundled) or a pure-Java encoder. Travel mode is built on a
-      pure `frameAt(videoTime)` timeline and can already render a frame off screen, so it's the natural source.
+- [x] **Export as a video file** (#32): both windows export an MP4 (H.264) at 720p to 4K, portrait or square,
+      24-60 fps, rendered off screen (map tiles are waited for) in the background with progress and Cancel.
+      Playback: seconds per photo and cross-fade. Uses FFmpeg when it's installed (not bundled, located like
+      ExifTool), else the pure-Java JCodec encoder (slower, larger files).
 
 ---
 

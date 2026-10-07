@@ -23,6 +23,10 @@ public class Settings {
     public static final int DEFAULT_GPX_MAX_GAP_MINUTES = 10;
     private static final String SHOW_PHOTO_MARKERS = "SHOW_PHOTO_MARKERS";
     private static final String EXIFTOOL_PATH = "EXIFTOOL_PATH";
+    private static final String FFMPEG_PATH = "FFMPEG_PATH";
+    private static final String VIDEO_SIZE = "VIDEO_SIZE";
+    private static final String VIDEO_FPS = "VIDEO_FPS";
+    private static final String VIDEO_DIRECTORY = "VIDEO_DIRECTORY";
     private static final String MAX_PHOTO_MARKERS = "MAX_PHOTO_MARKERS";
     public static final int DEFAULT_MAX_PHOTO_MARKERS = 200;
     public static final int MIN_PHOTO_MARKERS = 10;
@@ -98,6 +102,41 @@ public class Settings {
 
     public void setExifToolPath(String path) {
         prefs.put(EXIFTOOL_PATH, null == path ? "" : path.strip());
+    }
+
+    /** Configured FFmpeg executable; empty means "look for it on the PATH". */
+    public String getFfmpegPath() {
+        return prefs.get(FFMPEG_PATH, "");
+    }
+
+    public void setFfmpegPath(String path) {
+        prefs.put(FFMPEG_PATH, null == path ? "" : path.strip());
+    }
+
+    /** Last chosen video size as "WIDTHxHEIGHT"; empty for the default. */
+    public String getVideoSize() {
+        return prefs.get(VIDEO_SIZE, "");
+    }
+
+    public void setVideoSize(String size) {
+        prefs.put(VIDEO_SIZE, size);
+    }
+
+    public int getVideoFps() {
+        return prefs.getInt(VIDEO_FPS, 30);
+    }
+
+    public void setVideoFps(int fps) {
+        prefs.putInt(VIDEO_FPS, fps);
+    }
+
+    /** Folder of the last exported video; empty if none yet. */
+    public String getVideoDirectory() {
+        return prefs.get(VIDEO_DIRECTORY, "");
+    }
+
+    public void setVideoDirectory(String directory) {
+        prefs.put(VIDEO_DIRECTORY, directory);
     }
 
     /** Whether the opened photos are shown on the map. Off by default. */

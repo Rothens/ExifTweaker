@@ -122,6 +122,24 @@ public class SettingsDialog extends JDialog {
         c.gridx = 1;
         form.add(lblExifTool, c);
 
+        String ffmpeg = me.rothens.gpsexif.video.Ffmpeg.locate(settings.getFfmpegPath());
+        JLabel lblFfmpeg = new JLabel(ffmpegStatus(ffmpeg));
+        JButton btnFfmpeg = new JButton("FFmpeg...");
+        btnFfmpeg.addActionListener(e -> {
+            String path = new FfmpegDialog(this, settings.getFfmpegPath(),
+                    me.rothens.gpsexif.video.Ffmpeg.locate(settings.getFfmpegPath())).showDialog();
+            if (null != path) {
+                settings.setFfmpegPath(path);
+                lblFfmpeg.setText(ffmpegStatus(me.rothens.gpsexif.video.Ffmpeg.locate(path)));
+            }
+        });
+        c.gridx = 0;
+        c.gridy = 10;
+        c.insets = new Insets(4, 4, 4, 4);
+        form.add(btnFfmpeg, c);
+        c.gridx = 1;
+        form.add(lblFfmpeg, c);
+
         JButton ok = new JButton("OK");
         JButton cancel = new JButton("Cancel");
         ok.addActionListener(e -> {
@@ -148,6 +166,11 @@ public class SettingsDialog extends JDialog {
         pack();
         setResizable(false);
         setLocationRelativeTo(owner);
+    }
+
+    private static String ffmpegStatus(String executable) {
+        return null == executable ? "Not found - videos are exported with the slower built-in encoder"
+                : "FFmpeg " + me.rothens.gpsexif.video.Ffmpeg.version(executable) + " (" + executable + ")";
     }
 
     private void updateCacheSize() {

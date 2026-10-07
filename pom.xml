@@ -38,6 +38,12 @@
             <artifactId>imageio-webp</artifactId>
             <version>3.15.2</version>
         </dependency>
+        <!-- Built-in H.264 encoder for the video export when FFmpeg isn't installed -->
+        <dependency>
+            <groupId>org.jcodec</groupId>
+            <artifactId>jcodec-javase</artifactId>
+            <version>0.2.5</version>
+        </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-imaging</artifactId>

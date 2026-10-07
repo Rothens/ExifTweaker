@@ -15,7 +15,7 @@ jobs:
           java-version: '17'
           cache: maven
       # The ExifTool tests are skipped without it
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libimage-exiftool-perl
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libimage-exiftool-perl ffmpeg
       - run: mvn -B package
       - uses: actions/upload-artifact@v4
         with:

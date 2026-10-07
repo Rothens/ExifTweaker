@@ -60,6 +60,11 @@ java -jar target/GPSEditor-*-all.jar
  > Both windows show the times as the camera's clock recorded them, or in a time zone you pick ("Times in", e.g.
  > the local time of a trip when the camera stayed on home time).
 
+ > **Export video...** in both windows saves the playback or the travel film as an MP4 (H.264) video: 720p to 4K,
+ > portrait for phones or square, 24-60 frames per second. It works out of the box, but is much faster and makes
+ > smaller files with [FFmpeg](https://ffmpeg.org/download.html) installed (not bundled; found on the PATH, or pick
+ > it in the export dialog or in Settings).
+
  > Copy a photo's location with Ctrl+C on the file list and paste it onto others with Ctrl+V, then Save.
  > Edit → Remove location strips the GPS data, e.g. before sharing photos.
 
