@@ -136,6 +136,8 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
       photos in between are skipped (a burst shows its middle photo). Long stops within a short distance (e.g.
       nights) are squeezed with a "+23 h" caption; travel is shown on a full-screen map, each journey at most
       a set time (default 8 s) so long drives don't eat the film.
+- [x] **Time zone of the clock** in both windows: the camera's clock (default) or any time zone, with its UTC
+      offset shown next to the date.
 - [ ] **Export the playback as a video file** (later; #32). The playback window already draws each whole frame
       (photo, timestamp and map) in one component, so frames can be rendered off screen; encoding would use
       FFmpeg when it's installed (like ExifTool: not bundled) or a pure-Java encoder. Travel mode is built on a

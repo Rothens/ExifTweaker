@@ -6,6 +6,7 @@ import me.rothens.gpsexif.map.AttributionPainter;
 import me.rothens.gpsexif.map.TrackPainter;
 import me.rothens.gpsexif.model.ImageFile;
 import me.rothens.gpsexif.util.PhotoLoader;
+import me.rothens.gpsexif.util.Settings;
 import org.jxmapviewer.JXMapViewer;
 import org.jxmapviewer.cache.LocalCache;
 import org.jxmapviewer.input.PanMouseInputListener;
@@ -63,6 +64,8 @@ public class PlaybackWindow extends JFrame {
     private final JSlider slider;
     private final JComboBox<String> cbSpeed = new JComboBox<>();
     private final JCheckBox chkLoop = new JCheckBox("Loop");
+    private final JComboBox<String> cbZone;
+    private ClockZone clock;
     private final Timer timer;
     private boolean updatingSlider;
     private int shownIndex = -1;
@@ -70,11 +73,19 @@ public class PlaybackWindow extends JFrame {
     /**
      * @param tileInfo  map layer to use for the inset
      * @param tileCache disk cache shared with the main window
+     * @param settings  camera time zone, and where the chosen display time zone is remembered
      */
     public PlaybackWindow(Window owner, PlaybackSequence sequence, TileFactoryInfo tileInfo, LocalCache tileCache,
-                          String userAgent) {
+                          String userAgent, Settings settings) {
         super("Playback");
         this.sequence = sequence;
+        this.clock = new ClockZone(settings.getCameraZone(), settings.getDisplayZone());
+        cbZone = ClockZone.createChooser(clock.getCameraZone(), clock.getDisplayZone());
+        cbZone.addActionListener(e -> {
+            clock = new ClockZone(clock.getCameraZone(), ClockZone.selected(cbZone));
+            settings.setDisplayZone(clock.getDisplayZone());
+            repaint();
+        });
         this.view = new FrameView();
         setIconImages(owner.getIconImages());
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -118,7 +129,7 @@ public class PlaybackWindow extends JFrame {
         btnPrev.addActionListener(e -> step(-1));
         btnNext.addActionListener(e -> step(1));
         btnPlay.addActionListener(e -> togglePlay());
-        for (JComponent c : new JComponent[]{btnPrev, btnPlay, btnNext, slider, cbSpeed, chkLoop}) {
+        for (JComponent c : new JComponent[]{btnPrev, btnPlay, btnNext, slider, cbSpeed, chkLoop, cbZone}) {
             c.setFocusable(false); // keep the keyboard shortcuts working
         }
 
@@ -132,6 +143,8 @@ public class PlaybackWindow extends JFrame {
         right.add(new JLabel("Each photo:"));
         right.add(cbSpeed);
         right.add(chkLoop);
+        right.add(new JLabel("  Times in:"));
+        right.add(cbZone);
         controls.add(left, BorderLayout.WEST);
         controls.add(slider, BorderLayout.CENTER);
         controls.add(right, BorderLayout.EAST);
@@ -329,7 +342,7 @@ public class PlaybackWindow extends JFrame {
         }
     }
 
-    private static final class PhotoPanel extends JComponent {
+    private final class PhotoPanel extends JComponent {
         private ImageFile photo;
         private BufferedImage image;
         private int index;
@@ -374,8 +387,10 @@ public class PlaybackWindow extends JFrame {
             Font base = getFont() != null ? getFont() : new Font(Font.SANS_SERIF, Font.PLAIN, 12);
             Font big = base.deriveFont(Font.BOLD, 30f);
             Font small = base.deriveFont(Font.PLAIN, 14f);
-            String time = TIME.format(photo.getTaken());
-            String date = DATE.format(photo.getTaken());
+            var local = clock.local(photo);
+            String time = TIME.format(local);
+            String offset = clock.offsetLabel(photo);
+            String date = DATE.format(local) + (null == offset ? "" : "  ·  " + offset);
             String info = (index + 1) + " / " + total + "   " + photo.getFile().getName();
             FontMetrics fb = g2.getFontMetrics(big);
             FontMetrics fs = g2.getFontMetrics(small);

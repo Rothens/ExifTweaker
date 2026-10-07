@@ -1,12 +1,12 @@
 package me.rothens.gpsexif.playback;
 
 import me.rothens.gpsexif.gpx.GpxParser;
-import me.rothens.gpsexif.gpx.PhotoTime;
 import me.rothens.gpsexif.gpx.Track;
 import me.rothens.gpsexif.gpx.TrackPoint;
 import me.rothens.gpsexif.map.AttributionPainter;
 import me.rothens.gpsexif.model.ImageFile;
 import me.rothens.gpsexif.util.PhotoLoader;
+import me.rothens.gpsexif.util.Settings;
 import org.jxmapviewer.JXMapViewer;
 import org.jxmapviewer.cache.LocalCache;
 import org.jxmapviewer.input.PanMouseInputListener;
@@ -32,7 +32,6 @@ import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -55,7 +54,8 @@ public class TravelWindow extends JFrame {
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT);
 
     private final List<ImageFile> photos;
-    private final ZoneId zone;
+    private final JComboBox<String> cbZone;
+    private ClockZone clock;
     private final List<Track> tracks = new ArrayList<>();
     private TravelTimeline timeline;
 
@@ -96,11 +96,17 @@ public class TravelWindow extends JFrame {
     /**
      * @param tracks GPX tracks the marker should follow; empty for straight lines between the photos
      */
-    public TravelWindow(Window owner, List<ImageFile> photos, ZoneId zone, List<Track> tracks,
+    public TravelWindow(Window owner, List<ImageFile> photos, Settings settings, List<Track> tracks,
                         TileFactoryInfo tileInfo, LocalCache tileCache, String userAgent) {
         super("Travel mode");
         this.photos = List.copyOf(photos);
-        this.zone = zone;
+        this.clock = new ClockZone(settings.getCameraZone(), settings.getDisplayZone());
+        cbZone = ClockZone.createChooser(clock.getCameraZone(), clock.getDisplayZone());
+        cbZone.addActionListener(e -> {
+            clock = new ClockZone(clock.getCameraZone(), ClockZone.selected(cbZone));
+            settings.setDisplayZone(clock.getDisplayZone());
+            view.repaint();
+        });
         this.tracks.addAll(tracks);
         setIconImages(owner.getIconImages());
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -133,10 +139,10 @@ public class TravelWindow extends JFrame {
 
         timer = new Timer(1000 / FPS, e -> tick());
 
-        JPanel settings = createSettingsPanel();
+        JPanel settingsPanel = createSettingsPanel();
         JPanel controls = createControls();
         JPanel content = new JPanel(new BorderLayout());
-        content.add(settings, BorderLayout.NORTH);
+        content.add(settingsPanel, BorderLayout.NORTH);
         content.add(view, BorderLayout.CENTER);
         content.add(controls, BorderLayout.SOUTH);
         setContentPane(content);
@@ -214,14 +220,18 @@ public class TravelWindow extends JFrame {
                 render();
             }
         });
-        for (JComponent c : new JComponent[]{btnPlay, slider}) {
+        for (JComponent c : new JComponent[]{btnPlay, slider, cbZone}) {
             c.setFocusable(false);
         }
         JPanel controls = new JPanel(new BorderLayout(8, 0));
         controls.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
         controls.add(btnPlay, BorderLayout.WEST);
         controls.add(slider, BorderLayout.CENTER);
-        controls.add(lblTime, BorderLayout.EAST);
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        right.add(lblTime);
+        right.add(new JLabel("   Times in:"));
+        right.add(cbZone);
+        controls.add(right, BorderLayout.EAST);
         return controls;
     }
 
@@ -277,8 +287,7 @@ public class TravelWindow extends JFrame {
                 (Double) spStayKm.getValue() * 1000,
                 Duration.ofSeconds(2),
                 chkJourney.isSelected() ? Duration.ofSeconds((Integer) spJourney.getValue()) : null);
-        timeline = new TravelTimeline(photos, p -> PhotoTime.toInstant(p.getTaken(), p.getTakenOffset(), zone,
-                Duration.ZERO), tracks, s);
+        timeline = new TravelTimeline(photos, clock::instant, tracks, s);
         spStayMinutes.setEnabled(chkSqueeze.isSelected());
         spStayKm.setEnabled(chkSqueeze.isSelected());
         spJourney.setEnabled(chkJourney.isSelected());
@@ -574,9 +583,10 @@ public class TravelWindow extends JFrame {
             Font base = getFont() != null ? getFont() : new Font(Font.SANS_SERIF, Font.PLAIN, 12);
             Font big = base.deriveFont(Font.BOLD, 30f);
             Font small = base.deriveFont(Font.PLAIN, 14f);
-            var local = frame.time().atZone(zone);
+            var local = clock.local(frame.time());
             String time = TIME.format(local);
-            String date = DATE.format(local);
+            String offset = clock.offsetLabel(frame.time());
+            String date = DATE.format(local) + (null == offset ? "" : "  ·  " + offset);
             FontMetrics fb = g2.getFontMetrics(big);
             FontMetrics fs = g2.getFontMetrics(small);
             String caption = frame.caption();

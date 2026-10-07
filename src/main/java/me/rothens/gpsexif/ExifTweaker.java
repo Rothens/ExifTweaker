@@ -1136,7 +1136,7 @@ public class ExifTweaker {
             return;
         }
         PlaybackWindow window = new PlaybackWindow(frame, sequence, settings.getMapLayer().createInfo(), tileCache,
-                USER_AGENT);
+                USER_AGENT, settings);
         if (sequence.getWithoutDate() > 0) {
             int n = sequence.getWithoutDate();
             lblStatus.setText(n + (n == 1 ? " photo without a date is" : " photos without a date are")
@@ -1152,7 +1152,7 @@ public class ExifTweaker {
             showError("None of these photos has a date, so the trip can't be played back.");
             return;
         }
-        new TravelWindow(frame, photos, settings.getCameraZone(), lastTracks, settings.getMapLayer().createInfo(),
+        new TravelWindow(frame, photos, settings, lastTracks, settings.getMapLayer().createInfo(),
                 tileCache, USER_AGENT).setVisible(true);
     }
 

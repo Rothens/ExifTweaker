@@ -57,6 +57,9 @@ java -jar target/GPSEditor-*-all.jar
  > marker gets there. Nights and other long stops are skipped over quickly; longer journeys play on a full-screen map,
  > at most 8 seconds each by default ("Travel at most"), so the photos get the rest of the film.
 
+ > Both windows show the times as the camera's clock recorded them, or in a time zone you pick ("Times in", e.g.
+ > the local time of a trip when the camera stayed on home time).
+
  > Copy a photo's location with Ctrl+C on the file list and paste it onto others with Ctrl+V, then Save.
  > Edit → Remove location strips the GPS data, e.g. before sharing photos.
 

@@ -17,6 +17,7 @@ public class Settings {
     private static final String THEME = "THEME";
     private static final String TILE_CACHE_MAX_MB = "TILE_CACHE_MAX_MB";
     private static final String CAMERA_ZONE = "CAMERA_ZONE";
+    private static final String DISPLAY_ZONE = "DISPLAY_ZONE";
     private static final String GPX_MAX_GAP_MINUTES = "GPX_MAX_GAP_MINUTES";
 
     public static final int DEFAULT_GPX_MAX_GAP_MINUTES = 10;
@@ -66,6 +67,20 @@ public class Settings {
 
     public void setCameraZone(java.time.ZoneId zone) {
         prefs.put(CAMERA_ZONE, zone.getId());
+    }
+
+    /** Time zone the playback windows show times in; {@code null} for the camera's clock (the default). */
+    public java.time.ZoneId getDisplayZone() {
+        String id = prefs.get(DISPLAY_ZONE, "");
+        try {
+            return id.isEmpty() ? null : java.time.ZoneId.of(id);
+        } catch (java.time.DateTimeException e) {
+            return null;
+        }
+    }
+
+    public void setDisplayZone(java.time.ZoneId zone) {
+        prefs.put(DISPLAY_ZONE, null == zone ? "" : zone.getId());
     }
 
     public int getGpxMaxGapMinutes() {
