@@ -56,7 +56,7 @@ case "$(uname -s)" in
   MINGW* | MSYS* | CYGWIN*)
     # Per-user install (no administrator rights needed); the fixed upgrade UUID lets a new version replace the old
     platform=(--type "${type:-msi}" --icon "$here/ExifTweaker.ico"
-      --win-per-user-install --win-dir-chooser --win-menu --win-menu-group ExifTweaker --win-shortcut-prompt
+      --win-dir-chooser --win-menu --win-menu-group ExifTweaker --win-shortcut-prompt
       --win-upgrade-uuid 71bb0ac6-5b81-45a3-9fb9-7fef13b1aa6e)
     ;;
   *)
