@@ -1,10 +1,161 @@
-# ExifTweaker
+# <img src="src/main/packaging/ExifTweaker.png" width="40" alt=""> ExifTweaker
 
-ExifTweaker is a small java desktop application, which can set the GPS position in the EXIF data of pictures.
+ExifTweaker puts your photos on the map: set where a photo was taken by clicking on a map, tag a whole folder at
+once or from the GPX track your phone recorded, fix dates and other metadata, and play the trip back as a film.
 
-![Image of the app](http://i.imgur.com/BbX5vTZ.png)
+![The main window: the photos of a folder on the left, the map in the middle, the selected photo and its metadata on the right](docs/images/main.png)
 
-# Building & running
+## Download
+
+Get the installer for your system from the [latest release](https://github.com/rothens/ExifTweaker/releases/latest).
+It includes everything it needs; you don't have to install Java.
+
+| System | File | Notes |
+|--------|------|-------|
+| Windows 10/11 | `ExifTweaker-<version>-windows-x64.msi` | Installs for your user only, no administrator rights needed. |
+| macOS (Apple silicon) | `ExifTweaker-<version>-macos-arm64.dmg` | The app isn't signed: the first time, right-click it in Applications and choose **Open**. |
+| Linux (Debian, Ubuntu, Mint) | `exiftweaker_<version>_amd64.deb` | `sudo apt install ./exiftweaker_<version>_amd64.deb` |
+| Anything with Java 17+ | `exiftweaker-<version>-all.jar` | `java -jar exiftweaker-<version>-all.jar` (also for Intel Macs) |
+
+JPEG photos work out of the box. For **HEIC, PNG, TIFF, WebP and RAW** files also install the free
+[ExifTool](https://exiftool.org/), and for faster video exports [FFmpeg](https://ffmpeg.org/download.html) (see
+[Formats](#formats)).
+
+## How to
+
+### Tag a photo
+
+1. Open a folder: type its path at the top and press **Open**, or use **...** (File → Open folder, Ctrl+O).
+   Photos with a location are green in the list, the others are red.
+2. Select a photo. Its thumbnail and metadata show on the right, and the map jumps to where it was taken.
+3. Find the place: type a name in the search box above the map (e.g. `Tihany Abbey`) and press Enter, or drag and
+   zoom the map.
+4. **Right-click the exact spot.** Or type a coordinate into the field below the map (`46.9137;17.8893` or
+   `46°54'49"N 17°53'21"E`) and press **Go!**
+5. **Save** (Ctrl+S). Changed your mind? **Edit → Undo** (Ctrl+Z) puts the photos back the way they were.
+
+Altitude and the direction the camera pointed can be entered next to the coordinate field and are saved along with
+it. Drag the small handle next to the pin to set the direction on the map.
+
+### Tag many photos at once
+
+Select several photos (Shift- or Ctrl-click, or Edit → Select all photos, Ctrl+Shift+A), right-click the spot on
+the map and press **Save**: the location goes to all of them, with a progress bar and a list of anything that
+failed. Undo takes back the whole batch.
+
+- Tick **Only without location** to see just the photos that still need a location.
+- **Copy and paste a location** from one photo to others: Ctrl+C and Ctrl+V on the photo list (or Edit → Copy
+  location, Ctrl+Shift+C), then Save.
+- **Edit → Remove location** strips the GPS data, e.g. before sharing photos online.
+
+![Photos on the satellite map in the dark theme; the selected photos are highlighted](docs/images/dark-satellite.jpg)
+
+**View → Show photos on map** shows where the opened photos were taken (off by default). Photos close to each
+other are grouped into one marker with a count; click a group to zoom in, or a photo to select it.
+
+### Geotag from a GPX track
+
+If your phone, watch or GPS logger recorded where you went, ExifTweaker can work out where each photo was taken
+from the time it was taken.
+
+1. Select the photos (or none, for all of them) and choose **File → Geotag from GPX** (Ctrl+G).
+2. **Add GPX files...**: the track appears on the map.
+3. Pick the **camera time zone** - the time zone the camera's clock was set to.
+4. If the camera's clock was off, enter by how much, or let ExifTweaker work it out: **From clock photo...** (a photo
+   of a clock showing the right time) or **From map...** (a photo whose location you know: right-click it on the
+   map).
+5. Check the list: each photo shows where it lands and its altitude from the track. Photos taken too far (by
+   default 10 minutes) from any track point stay unmatched. Untick the ones you don't want and press **Apply**.
+
+![The Geotag from GPX dialog with the matched photos, and the track on the map](docs/images/geotag.png)
+
+### Edit dates and other metadata
+
+Double-click a value in the table on the right to change the **date taken, camera make and model, artist,
+copyright, description, altitude or camera direction** - for one photo, or for all selected ones (values that
+differ show as *(multiple values)* and are only written if you change them). Save writes them.
+
+**Edit → Shift date/time** (Ctrl+T) moves the date taken of the selected photos, e.g. +1 h for a camera that was
+left on home time during a trip.
+
+### Play the trip back
+
+- **View → Play photos** (F5) shows the photos one by one in the order they were taken, with the time and a small
+  map following the route.
+- **View → Travel mode** (Shift+F5) plays the trip as a short film of the length you choose: a marker travels the
+  route (along your GPX track, if you loaded one) and each photo fades in as the marker arrives. Nights and other
+  long stops are skipped over quickly, and longer journeys play on a full-screen map.
+- Both can show the time as the camera recorded it or in any time zone (**Times in**), and **Export video...**
+  saves them as an MP4 video, from 720p to 4K, also in portrait for phones.
+
+| Travel mode: on the road | Travel mode: arriving at a photo |
+|---|---|
+| ![Travel mode showing the drive from Budapest to Lake Balaton on a full-screen map](docs/images/travel-map.jpg) | ![Travel mode showing a photo, with the clock and a small map of the route](docs/images/travel-photo.jpg) |
+
+![Play photos: a photo with the time it was taken and a small map of the route](docs/images/playback.jpg)
+
+### Export
+
+- **File → Export photos as GPX** (Ctrl+E) writes every photo with a location and a date as a waypoint, e.g. to show
+  them in Google Earth.
+- **Export video...** in the Play photos and Travel mode windows: pick the size and frame rate, and the video is made
+  in the background.
+
+  ![The video export dialog](docs/images/video-export.png)
+
+## Formats
+
+| Format | Location and metadata | Needs |
+|--------|----------------------|-------|
+| JPEG | Written into the photo | Nothing |
+| HEIC/HEIF (iPhone), AVIF, PNG, TIFF, WebP | Written into the photo | [ExifTool](https://exiftool.org/) |
+| RAW: CR2, CR3, NEF, NRW, ARW, DNG, ORF, RW2, RAF, PEF, ... | Written to an `.xmp` sidecar next to it; the RAW file is never changed. Lightroom, darktable, digiKam and most photo tools read it. | [ExifTool](https://exiftool.org/) |
+
+When ExifTool isn't found, a banner at the top says which files need it; click it for the download link and to
+pick the program if it isn't on your PATH. The same works for FFmpeg in the video export dialog and in Settings:
+without it videos are made with a built-in encoder, which is slower and makes larger files.
+
+Writing keeps everything else in the file as it was, including the camera maker's own data (maker notes); this is
+tested on files from 16 cameras and phones and 6 RAW formats.
+
+## Keyboard shortcuts
+
+On macOS use Cmd instead of Ctrl.
+
+| Main window | |
+|---|---|
+| Ctrl+O | Open folder |
+| Ctrl+S | Save the location and metadata to the selected photos |
+| Ctrl+Z | Undo the last save (a whole batch at once) |
+| Ctrl+C / Ctrl+V on the photo list | Copy / paste a location |
+| Ctrl+Shift+C / Ctrl+Shift+V | Copy / paste a location (from anywhere) |
+| Ctrl+Shift+A | Select all photos |
+| Ctrl+T | Shift date/time |
+| Ctrl+G | Geotag from GPX |
+| Ctrl+E | Export photos as GPX |
+| F5 | Play photos |
+| Shift+F5 | Travel mode |
+| Ctrl+, | Settings (on macOS: ExifTweaker → Settings) |
+| Right-click on the map | Set the location |
+| Mouse wheel, drag / arrow keys on the map | Zoom, move the map |
+
+| Play photos and Travel mode | |
+|---|---|
+| Space | Play / pause |
+| ← / → | Previous / next photo (Travel mode: 5 seconds back / forward) |
+| Home / End | First / last photo (Travel mode: Home goes to the start) |
+| Esc | Close the window |
+
+## Settings and safety
+
+- Before a photo is changed for the first time, a copy of the original is kept next to it as `<name>.bak` (can be
+  turned off in Settings). Edit → Undo restores the last save without them.
+- Light or dark theme (or following the system), OpenStreetMap or satellite imagery, the size of the map cache, and
+  where ExifTool and FFmpeg are, in **Settings**.
+- ExifTweaker goes online only for map tiles (OpenStreetMap, Esri) and place search (OpenStreetMap Nominatim).
+  Your photos never leave your computer.
+
+## Building from source
 
 Requires Java 17+ and Maven.
 
@@ -13,73 +164,24 @@ mvn package
 java -jar target/exiftweaker-*-all.jar
 ```
 
-# Usage
+`src/main/packaging/jpackage.sh <version>` builds the installer for the system it runs on (needs JDK 17+; on
+Windows also the WiX Toolset 3). Pushing a tag like `v1.0.0` builds all three in GitHub Actions and creates a draft
+release with them.
 
- - Open a folder using the top part of the window
- - Select one or more photos (Shift/Ctrl-click; tick *Only without location* to hide the ones already tagged)
- - Find the place: search for it above the map (e.g. `Eiffel Tower`, then Enter), or pan and zoom
- - Right-click the exact spot on the map, or type a coordinate (`47.4979;19.0402` or `47°29'52"N 19°2'24"E`)
-   into the field below the map and press Go!
- - Press Save (Ctrl+S / Cmd+S): the location is written to all selected photos
- - Changed your mind? Edit → Undo (Ctrl+Z / Cmd+Z) restores the photos - a whole batch at once
+See the [roadmap](ROADMAP.md) for what was built when.
 
- > Photos with a location are green in the file list, the others are red
+## Credits
 
- > **Geotag from a GPX track** (File → Geotag from GPX, Ctrl+G): load the track your phone, watch or GPS logger
- > recorded, pick the time zone your camera's clock was set to, and review where each photo lands before applying.
- > If the camera's clock was off, enter by how much - or let ExifTweaker work it out from a photo of a clock, or
- > from a photo whose location you right-click on the map. Altitude is taken from the track too.
+- [Apache Commons Imaging](https://commons.apache.org/proper/commons-imaging/) - reading and writing JPEG metadata
+- [JXMapViewer2](https://github.com/msteiger/jxmapviewer2) - the map
+- [FlatLaf](https://www.formdev.com/flatlaf/) - the look and feel
+- [TwelveMonkeys ImageIO](https://github.com/haraldk/TwelveMonkeys) - WebP thumbnails
+- [JCodec](http://jcodec.org/) - the built-in video encoder
+- Optional, not bundled: [ExifTool](https://exiftool.org/) by Phil Harvey, [FFmpeg](https://ffmpeg.org/)
+- Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors; satellite imagery © Esri, Maxar,
+  Earthstar Geographics and the GIS User Community
+- The photos in the screenshots are drawn by a program; the places are real.
 
- > **See your photos on the map** with View → Show photos on map (off by default). Photos close to each other are
- > grouped into one marker with a count; click a group to zoom in, or a single photo to select it. To keep the map
- > readable, at most 200 markers are drawn (adjustable in Settings) - zoom in to see the rest.
+## License
 
- > **Edit metadata** in the table next to the thumbnail (double-click a value): date taken, camera make and model,
- > artist, copyright, description, altitude and camera direction - for one photo or all selected ones. Edit → Shift
- > date/time (Ctrl+T) fixes a camera that was set to the wrong time or time zone.
-
- > **Camera direction**: drag the handle next to a photo's pin to show which way the camera pointed, or type the
- > degrees next to the coordinate field. The altitude field there is written along with the location on Save.
-
- > **HEIC, PNG, TIFF, WebP and RAW files** (CR2, CR3, NEF, ARW, DNG, ...) need the free
- > [ExifTool](https://exiftool.org/). If it isn't found, a banner at the top links to the download and lets you pick
- > the executable. RAW files are never modified - their metadata is written to an `.xmp` sidecar next to them,
- > which Lightroom, darktable and most photo tools read.
-
- > **Export photos as GPX** (File menu, Ctrl+E) writes the photos that have a location and a date as waypoints,
- > e.g. to show them in Google Earth or another map app.
-
- > **Play photos** (View menu, F5) shows the photos in the order they were taken, with the time and a small map
- > following your route. Space plays and pauses, the arrow keys step, Esc closes.
-
- > **Travel mode** (View menu, Shift+F5) plays the trip as a short film: pick its length and how long each photo
- > stays at least. A marker travels your route (your GPX track if you loaded one) and each photo fades in when the
- > marker gets there. Nights and other long stops are skipped over quickly; longer journeys play on a full-screen map,
- > at most 8 seconds each by default ("Travel at most"), so the photos get the rest of the film.
-
- > Both windows show the times as the camera's clock recorded them, or in a time zone you pick ("Times in", e.g.
- > the local time of a trip when the camera stayed on home time).
-
- > **Export video...** in both windows saves the playback or the travel film as an MP4 (H.264) video: 720p to 4K,
- > portrait for phones or square, 24-60 frames per second. It works out of the box, but is much faster and makes
- > smaller files with [FFmpeg](https://ffmpeg.org/download.html) installed (not bundled; found on the PATH, or pick
- > it in the export dialog or in Settings).
-
- > Copy a photo's location with Ctrl+C on the file list and paste it onto others with Ctrl+V, then Save.
- > Edit → Remove location strips the GPS data, e.g. before sharing photos.
-
- > You can choose between two map layers: OpenStreetMap and satellite imagery (Esri)
-
- > Before a photo is changed for the first time, a copy of the original is kept next to it as `<name>.bak`.
- > This can be turned off in Settings, where you can also pick a light or dark theme and limit the map cache.
-
-# Planned features
-See the [roadmap](ROADMAP.md): batch tagging, GPX track geotagging, place search, an opt-in photo overview
-on the map, EXIF editing, and HEIC/RAW support through ExifTool.
-
-# Used libraries
- - [Apache Commons-Imaging](https://commons.apache.org/proper/commons-imaging/) (from Maven Central)
- - [JXMapViewer2](https://github.com/msteiger/jxmapviewer2) from @msteiger
- - [FlatLaf](https://www.formdev.com/flatlaf/)
- - [TwelveMonkeys ImageIO](https://github.com/haraldk/TwelveMonkeys) (WebP thumbnails)
- - Optional, not bundled: [ExifTool](https://exiftool.org/) by Phil Harvey
+[MIT](LICENSE) © Máté Dávid

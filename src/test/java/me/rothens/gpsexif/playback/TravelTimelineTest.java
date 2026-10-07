@@ -153,6 +153,20 @@ class TravelTimelineTest {
     }
 
     @Test
+    void outsideTheTrackTheMarkerGoesStraightBetweenPhotos() throws Exception {
+        // The track only covers the morning of day 1; on day 2 the marker must still travel to the lake
+        Track track = new Track("t", List.of(List.of(
+                new TrackPoint(day(1, 9, 0).toInstant(ZoneOffset.UTC), HOME, null),
+                new TrackPoint(day(1, 9, 30).toInstant(ZoneOffset.UTC), PARK, null))));
+        TravelTimeline gpx = new TravelTimeline(trip(), TravelTimelineTest::utc, List.of(track), SETTINGS);
+        GeoPosition halfway = gpx.markerAt(day(2, 10, 30).toInstant(ZoneOffset.UTC));
+        assertEquals((BREAKFAST.getLatitude() + LAKE.getLatitude()) / 2, halfway.getLatitude(), 1e-9);
+        assertEquals(LAKE.getLongitude(), gpx.markerAt(day(2, 12, 0).toInstant(ZoneOffset.UTC)).getLongitude(), 1e-9);
+        // Within the track it's still followed
+        assertEquals(PARK.getLatitude(), gpx.markerAt(day(1, 9, 30).toInstant(ZoneOffset.UTC)).getLatitude(), 1e-9);
+    }
+
+    @Test
     void withoutSqueezingNightsTakeTheirRealShare() throws Exception {
         TravelTimeline.Settings noSqueeze = new TravelTimeline.Settings(Duration.ofSeconds(60), Duration.ofSeconds(2),
                 Duration.ofMillis(500), false, Duration.ofHours(1), 2000, Duration.ofSeconds(2));

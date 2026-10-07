@@ -150,8 +150,10 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 - [x] Native installers via `jpackage` (Windows `.msi`, macOS `.dmg`, Linux `.deb`) built in GitHub Actions
       and attached to GitHub Releases (#24). They bundle a trimmed Java runtime, so users don't need Java.
 - [x] Rename the Maven artifact from `GPSEditor` to `exiftweaker` (#25); MIT licence; an application icon.
-- [ ] User documentation in the README with screenshots; keyboard shortcuts list.
-- [ ] Integration tests on sample photos from several camera brands.
+- [x] User documentation in the README with screenshots: downloads, a walkthrough (single, batch and GPX tagging,
+      metadata, playback, export), formats and keyboard shortcuts (#26).
+- [x] Integration tests on sample photos from 16 cameras and phones, 6 RAW formats, HEIC, PNG and TIFF (#27):
+      the location reads back, RAW files stay untouched, and every other tag (maker notes included) is unchanged.
 
 ---
 
@@ -161,4 +163,5 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
   before the 1.0 release, and keep OSM as the default layer.
 - ~~**ExifTool distribution**~~: decided in 0.8 - not bundled; the app points users to exiftool.org and lets
   them pick the executable.
-- **Java version**: stay on 17, or move to 21 once `jpackage` installers bundle their own runtime anyway?
+- ~~**Java version**~~: decided for 1.0 - the code stays on Java 17 (so the jar runs on 17+), and the installers
+  bundle a trimmed Java 21 runtime.

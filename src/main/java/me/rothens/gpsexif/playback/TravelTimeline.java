@@ -357,9 +357,13 @@ public class TravelTimeline {
     }
 
     /** Where the marker is at real time {@code t}: on the GPX track, or between the photos' locations. */
+    /** How far from the track's points (in time) it's still followed, e.g. across a short recording pause. */
+    private static final Duration TRACK_GAP = Duration.ofMinutes(30);
+
     public GeoPosition markerAt(Instant t) {
         if (null != track) {
-            TrackMatcher.Match match = track.match(t, Duration.ofDays(36500));
+            // Outside the recorded time (e.g. a track of only the first day), straight lines between the photos
+            TrackMatcher.Match match = track.match(t, TRACK_GAP);
             if (match.isMatched()) {
                 return match.position();
             }
