@@ -23,6 +23,7 @@ import me.rothens.gpsexif.metadata.MetadataChanges;
 import me.rothens.gpsexif.metadata.TextTag;
 import me.rothens.gpsexif.playback.PlaybackSequence;
 import me.rothens.gpsexif.playback.PlaybackWindow;
+import me.rothens.gpsexif.playback.TravelWindow;
 import me.rothens.gpsexif.ui.ExifToolDialog;
 import me.rothens.gpsexif.ui.GeotagDialog;
 import me.rothens.gpsexif.ui.SettingsDialog;
@@ -119,6 +120,9 @@ public class ExifTweaker {
     private final JMenuItem miGeotag = new JMenuItem("Geotag from GPX...");
     private final JMenuItem miExportGpx = new JMenuItem("Export photos as GPX...");
     private final JMenuItem miPlayback = new JMenuItem("Play photos...");
+    private final JMenuItem miTravel = new JMenuItem("Travel mode...");
+    /** GPX tracks last loaded in the Geotag dialog; travel mode follows them. */
+    private List<Track> lastTracks = List.of();
     private final TrackPainter trackPainter = new TrackPainter();
     private final JCheckBoxMenuItem miShowMarkers = new JCheckBoxMenuItem("Show photos on map");
     private PhotoMarkerLayer markerLayer;
@@ -518,6 +522,11 @@ public class ExifTweaker {
         miPlayback.setToolTipText("Play the selected photos (or all) in the order they were taken, with a map");
         miPlayback.addActionListener(e -> openPlayback());
         view.add(miPlayback);
+        miTravel.setAccelerator(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F5,
+                java.awt.event.InputEvent.SHIFT_DOWN_MASK));
+        miTravel.setToolTipText("Play the trip as a short film: a marker travels the route, photos fade in on arrival");
+        miTravel.addActionListener(e -> openTravel());
+        view.add(miTravel);
 
         JMenuBar bar = new JMenuBar();
         bar.add(file);
@@ -617,6 +626,7 @@ public class ExifTweaker {
         miGeotag.setEnabled(!busy && !listModel.getAll().isEmpty());
         miExportGpx.setEnabled(!busy && listModel.getAll().stream().anyMatch(ImageFile::hasExifGPS));
         miPlayback.setEnabled(listModel.getAll().stream().anyMatch(p -> null != p.getTaken()));
+        miTravel.setEnabled(miPlayback.isEnabled());
         btnOpen.setEnabled(!busy);
         btnBrowse.setEnabled(!busy);
         chkOnlyWithoutLocation.setEnabled(!busy);
@@ -1135,6 +1145,17 @@ public class ExifTweaker {
         window.setVisible(true);
     }
 
+    /** Travel mode for the selected photos (or all opened ones), following the last loaded GPX track if any. */
+    private void openTravel() {
+        List<ImageFile> photos = selection.size() > 1 ? selection : listModel.getAll();
+        if (photos.stream().noneMatch(p -> null != p.getTaken())) {
+            showError("None of these photos has a date, so the trip can't be played back.");
+            return;
+        }
+        new TravelWindow(frame, photos, settings.getCameraZone(), lastTracks, settings.getMapLayer().createInfo(),
+                tileCache, USER_AGENT).setVisible(true);
+    }
+
     /** Opens the GPX geotagging dialog for the selected photos, or all opened photos if at most one is selected. */
     private void openGeotag() {
         if (busy || listModel.getAll().isEmpty()) {
@@ -1148,6 +1169,9 @@ public class ExifTweaker {
         geotagDialog = new GeotagDialog(frame, photos, settings, new GeotagDialog.Host() {
             @Override
             public void showPreview(List<Track> tracks, List<GeoPosition> proposed, GeoPosition highlight) {
+                if (!tracks.isEmpty()) {
+                    lastTracks = List.copyOf(tracks);
+                }
                 trackPainter.set(tracks, proposed, highlight);
                 mapViewer.repaint();
             }

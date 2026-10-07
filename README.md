@@ -52,6 +52,10 @@ java -jar target/GPSEditor-*-all.jar
  > **Play photos** (View menu, F5) shows the photos in the order they were taken, with the time and a small map
  > following your route. Space plays and pauses, the arrow keys step, Esc closes.
 
+ > **Travel mode** (View menu, Shift+F5) plays the trip as a short film: pick its length and how long each photo
+ > stays at least. A marker travels your route (your GPX track if you loaded one) and each photo fades in when the
+ > marker gets there. Nights and other long stops are skipped over quickly; longer journeys play on a full-screen map.
+
  > Copy a photo's location with Ctrl+C on the file list and paste it onto others with Ctrl+V, then Save.
  > Edit → Remove location strips the GPS data, e.g. before sharing photos.
 

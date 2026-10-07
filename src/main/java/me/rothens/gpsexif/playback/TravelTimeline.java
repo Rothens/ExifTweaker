@@ -116,7 +116,10 @@ public class TravelTimeline {
         }
         double minPhoto = seconds(settings.minPhoto());
         double available = Math.max(0, length - minPhoto); // the last photo still gets its minimum time
-        double stayTime = Math.min(seconds(settings.stayVideo()), squeezedStays == 0 ? 0 : available / 2 / squeezedStays);
+        // A squeezed stop lasts at least the minimum photo time, so the first photo after a night isn't merged
+        // into the last one before it (and skipped)
+        double stayTime = Math.min(Math.max(seconds(settings.stayVideo()), minPhoto),
+                squeezedStays == 0 ? 0 : available / 2 / squeezedStays);
         double travelVideo = available - squeezedStays * stayTime;
         double scale = travelSeconds > 0 ? travelVideo / travelSeconds : 0;
         int travelGaps = n - 1 - squeezedStays;
@@ -323,7 +326,8 @@ public class TravelTimeline {
             double alpha = Math.min(1, (t - (hold - fade)) / fade);
             return new Frame(v, time, photo, null, alpha, marker, photoAt, null, index);
         }
-        String caption = null != slot.pause() && t >= hold - fade
+        // The clock races through the stop during the whole slot, so the caption shows once the photo is in
+        String caption = null != slot.pause() && t >= Math.min(fade, hold)
                 ? "+" + me.rothens.gpsexif.gpx.PhotoTime.describe(slot.pause()) : null;
         return new Frame(v, time, photo, photo, 1, marker, photoAt, caption, index);
     }

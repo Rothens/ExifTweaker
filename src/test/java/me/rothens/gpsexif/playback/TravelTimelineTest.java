@@ -171,4 +171,17 @@ class TravelTimelineTest {
         assertEquals(1, one.getSlots().size());
         assertEquals("x.jpg", one.frameAt(30).visible().getFile().getName());
     }
+
+    @Test
+    void photoAfterANightIsNeverMergedIntoTheOneBefore() throws Exception {
+        // Minimum photo time (2.5 s) longer than the squeezed stop (2 s): the stop is stretched to 2.5 s
+        TravelTimeline.Settings s = new TravelTimeline.Settings(Duration.ofSeconds(20), Duration.ofMillis(2500),
+                Duration.ofMillis(500), true, Duration.ofHours(1), 2000, Duration.ofSeconds(2));
+        TravelTimeline t = new TravelTimeline(trip(), TravelTimelineTest::utc, List.of(), s);
+        List<String> shown = t.getSlots().stream().map(x -> x.stop().photo().getFile().getName()).toList();
+        assertTrue(shown.contains("c.jpg") && shown.contains("d.jpg"), shown.toString());
+        TravelTimeline.Slot hotel = t.getSlots().get(shown.indexOf("c.jpg"));
+        assertEquals(Duration.ofHours(23), hotel.pause());
+        assertEquals(2.5, hotel.end() - hotel.start(), 1e-9);
+    }
 }

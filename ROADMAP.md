@@ -131,9 +131,14 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 - [x] **Playback**: a separate window plays the photos in the order they were taken - the photo large, the time
       and date top left, a map bottom right following the route; play/pause, previous/next, a slider, speed and
       loop; keyboard: Space, ←/→, Home/End, Esc.
-- [ ] **Export the playback as a video file** (later). The playback window already draws each whole frame
+- [x] **Travel mode**: the trip as a short film of a chosen length. A marker travels the route (GPX track if
+      loaded, else straight lines); arriving at a photo, it fades in and stays at least the minimum photo time;
+      photos in between are skipped (a burst shows its middle photo). Long stops within a short distance (e.g.
+      nights) are squeezed with a "+23 h" caption; travel is shown on a full-screen map.
+- [ ] **Export the playback as a video file** (later; #32). The playback window already draws each whole frame
       (photo, timestamp and map) in one component, so frames can be rendered off screen; encoding would use
-      FFmpeg when it's installed (like ExifTool: not bundled) or a pure-Java encoder.
+      FFmpeg when it's installed (like ExifTool: not bundled) or a pure-Java encoder. Travel mode is built on a
+      pure `frameAt(videoTime)` timeline and can already render a frame off screen, so it's the natural source.
 
 ---
 
