@@ -16,6 +16,21 @@ public class Settings {
     private static final String MAP_LAYER = "MAP_LAYER";
     private static final String THEME = "THEME";
     private static final String TILE_CACHE_MAX_MB = "TILE_CACHE_MAX_MB";
+    private static final String CAMERA_ZONE = "CAMERA_ZONE";
+    private static final String DISPLAY_ZONE = "DISPLAY_ZONE";
+    private static final String GPX_MAX_GAP_MINUTES = "GPX_MAX_GAP_MINUTES";
+
+    public static final int DEFAULT_GPX_MAX_GAP_MINUTES = 10;
+    private static final String SHOW_PHOTO_MARKERS = "SHOW_PHOTO_MARKERS";
+    private static final String EXIFTOOL_PATH = "EXIFTOOL_PATH";
+    private static final String FFMPEG_PATH = "FFMPEG_PATH";
+    private static final String VIDEO_SIZE = "VIDEO_SIZE";
+    private static final String VIDEO_FPS = "VIDEO_FPS";
+    private static final String VIDEO_DIRECTORY = "VIDEO_DIRECTORY";
+    private static final String MAX_PHOTO_MARKERS = "MAX_PHOTO_MARKERS";
+    public static final int DEFAULT_MAX_PHOTO_MARKERS = 200;
+    public static final int MIN_PHOTO_MARKERS = 10;
+    public static final int MAX_PHOTO_MARKERS_LIMIT = 2000;
 
     public static final int DEFAULT_TILE_CACHE_MAX_MB = 500;
     public static final int MIN_TILE_CACHE_MAX_MB = 50;
@@ -43,6 +58,107 @@ public class Settings {
 
     public void setTileCacheMaxMb(int megabytes) {
         prefs.putInt(TILE_CACHE_MAX_MB, Math.max(MIN_TILE_CACHE_MAX_MB, megabytes));
+    }
+
+    /** Time zone the camera's clock is set to (for GPX matching); the system zone by default. */
+    public java.time.ZoneId getCameraZone() {
+        try {
+            return java.time.ZoneId.of(prefs.get(CAMERA_ZONE, java.time.ZoneId.systemDefault().getId()));
+        } catch (java.time.DateTimeException e) {
+            return java.time.ZoneId.systemDefault();
+        }
+    }
+
+    public void setCameraZone(java.time.ZoneId zone) {
+        prefs.put(CAMERA_ZONE, zone.getId());
+    }
+
+    /** Time zone the playback windows show times in; {@code null} for the camera's clock (the default). */
+    public java.time.ZoneId getDisplayZone() {
+        String id = prefs.get(DISPLAY_ZONE, "");
+        try {
+            return id.isEmpty() ? null : java.time.ZoneId.of(id);
+        } catch (java.time.DateTimeException e) {
+            return null;
+        }
+    }
+
+    public void setDisplayZone(java.time.ZoneId zone) {
+        prefs.put(DISPLAY_ZONE, null == zone ? "" : zone.getId());
+    }
+
+    public int getGpxMaxGapMinutes() {
+        return Math.max(1, prefs.getInt(GPX_MAX_GAP_MINUTES, DEFAULT_GPX_MAX_GAP_MINUTES));
+    }
+
+    public void setGpxMaxGapMinutes(int minutes) {
+        prefs.putInt(GPX_MAX_GAP_MINUTES, Math.max(1, minutes));
+    }
+
+    /** Configured ExifTool executable; empty means "look for it on the PATH". */
+    public String getExifToolPath() {
+        return prefs.get(EXIFTOOL_PATH, "");
+    }
+
+    public void setExifToolPath(String path) {
+        prefs.put(EXIFTOOL_PATH, null == path ? "" : path.strip());
+    }
+
+    /** Configured FFmpeg executable; empty means "look for it on the PATH". */
+    public String getFfmpegPath() {
+        return prefs.get(FFMPEG_PATH, "");
+    }
+
+    public void setFfmpegPath(String path) {
+        prefs.put(FFMPEG_PATH, null == path ? "" : path.strip());
+    }
+
+    /** Last chosen video size as "WIDTHxHEIGHT"; empty for the default. */
+    public String getVideoSize() {
+        return prefs.get(VIDEO_SIZE, "");
+    }
+
+    public void setVideoSize(String size) {
+        prefs.put(VIDEO_SIZE, size);
+    }
+
+    public int getVideoFps() {
+        return prefs.getInt(VIDEO_FPS, 30);
+    }
+
+    public void setVideoFps(int fps) {
+        prefs.putInt(VIDEO_FPS, fps);
+    }
+
+    /** Folder of the last exported video; empty if none yet. */
+    public String getVideoDirectory() {
+        return prefs.get(VIDEO_DIRECTORY, "");
+    }
+
+    public void setVideoDirectory(String directory) {
+        prefs.put(VIDEO_DIRECTORY, directory);
+    }
+
+    /** Whether the opened photos are shown on the map. Off by default. */
+    public boolean isShowPhotoMarkers() {
+        return prefs.getBoolean(SHOW_PHOTO_MARKERS, false);
+    }
+
+    public void setShowPhotoMarkers(boolean show) {
+        prefs.putBoolean(SHOW_PHOTO_MARKERS, show);
+    }
+
+    /** At most this many photo markers (single photos or clusters) are drawn at once. */
+    public int getMaxPhotoMarkers() {
+        return clampMarkers(prefs.getInt(MAX_PHOTO_MARKERS, DEFAULT_MAX_PHOTO_MARKERS));
+    }
+
+    public void setMaxPhotoMarkers(int max) {
+        prefs.putInt(MAX_PHOTO_MARKERS, clampMarkers(max));
+    }
+
+    private static int clampMarkers(int max) {
+        return Math.max(MIN_PHOTO_MARKERS, Math.min(MAX_PHOTO_MARKERS_LIMIT, max));
     }
 
     public Theme getTheme() {

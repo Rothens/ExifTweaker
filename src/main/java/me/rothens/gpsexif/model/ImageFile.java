@@ -1,6 +1,8 @@
 package me.rothens.gpsexif.model;
 
 import me.rothens.gpsexif.metadata.MetadataBackend;
+import me.rothens.gpsexif.metadata.MetadataChanges;
+import me.rothens.gpsexif.metadata.TextTag;
 import me.rothens.gpsexif.metadata.PhotoMetadata;
 import me.rothens.gpsexif.util.FileUtil;
 import org.jxmapviewer.viewer.GeoPosition;
@@ -45,6 +47,30 @@ public class ImageFile {
         return metadata.position();
     }
 
+    /** When the photo was taken according to the camera's clock, or {@code null}. */
+    public java.time.LocalDateTime getTaken() {
+        return metadata.taken();
+    }
+
+    /** The camera's UTC offset when the photo was taken, if the camera recorded it, or {@code null}. */
+    public java.time.ZoneOffset getTakenOffset() {
+        return metadata.takenOffset();
+    }
+
+    public Double getAltitude() {
+        return metadata.altitude();
+    }
+
+    /** Direction the camera pointed, degrees clockwise from north, or {@code null}. */
+    public Double getDirection() {
+        return metadata.direction();
+    }
+
+    /** A text field's value, or {@code null} if it isn't set. */
+    public String getText(TextTag field) {
+        return metadata.text().get(field);
+    }
+
     public int getOrientation() {
         return metadata.orientation();
     }
@@ -61,12 +87,31 @@ public class ImageFile {
         return file.toPath();
     }
 
+    /** The file that edits actually change: the photo itself, or its XMP sidecar for RAW files. */
+    public Path getWritePath() {
+        return backend.writeTarget(getPath());
+    }
+
+    /** Whether edits can be written (e.g. not when a format needs ExifTool and it isn't installed). */
+    public boolean isWritable() {
+        return backend.canWrite(getPath());
+    }
+
+    public MetadataBackend getBackend() {
+        return backend;
+    }
+
     /**
      * Writes {@code position} into the file. The new image is written to a temporary file next to the original
      * first and only moved over it once writing fully succeeded, so a failure never leaves a truncated original.
      */
     public void savePosition(GeoPosition position) throws IOException {
-        rewrite((source, target) -> backend.writePosition(source, target, position));
+        savePosition(position, null);
+    }
+
+    /** Writes a position and, unless {@code null}, an altitude in metres. */
+    public void savePosition(GeoPosition position, Double altitude) throws IOException {
+        rewrite((source, target) -> backend.writePosition(source, target, position, altitude));
     }
 
     /** Removes all GPS data from the file, as safely as {@link #savePosition}. */
@@ -74,16 +119,25 @@ public class ImageFile {
         rewrite(backend::removePosition);
     }
 
+    /** Writes any combination of metadata changes, as safely as {@link #savePosition}. */
+    public void apply(MetadataChanges changes) throws IOException {
+        rewrite((source, target) -> backend.write(source, target, changes));
+    }
+
     private interface Rewrite {
         void write(Path source, Path target) throws IOException;
     }
 
     private void rewrite(Rewrite rewrite) throws IOException {
-        Path original = getPath();
-        Path tmp = FileUtil.createSiblingTempFile(original);
+        if (!isWritable()) {
+            throw new IOException(file.getName() + " can't be written (" + file.getName().replaceAll(".*\\.", "")
+                    .toUpperCase(java.util.Locale.ROOT) + " files need ExifTool)");
+        }
+        Path written = getWritePath();
+        Path tmp = FileUtil.createSiblingTempFile(written);
         try {
-            rewrite.write(original, tmp);
-            FileUtil.replace(tmp, original);
+            rewrite.write(getPath(), tmp);
+            FileUtil.replace(tmp, written);
         } finally {
             Files.deleteIfExists(tmp);
         }

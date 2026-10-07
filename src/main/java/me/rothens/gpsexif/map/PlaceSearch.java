@@ -1,13 +1,12 @@
 package me.rothens.gpsexif.map;
 
+import me.rothens.gpsexif.util.SafeXml;
 import org.jxmapviewer.viewer.GeoPosition;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
-import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -103,14 +102,8 @@ public class PlaceSearch {
     /** Parses Nominatim's {@code format=xml} search response. */
     static List<Place> parse(InputStream xml) throws IOException {
         try {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            // The response comes from the network: no DTDs, no external entities (XXE)
-            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
-            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
-            factory.setExpandEntityReferences(false);
-            DocumentBuilder builder = factory.newDocumentBuilder();
+            // The response comes from the network
+            DocumentBuilder builder = SafeXml.newDocumentBuilder(false);
             NodeList nodes = builder.parse(xml).getElementsByTagName("place");
             List<Place> places = new ArrayList<>();
             for (int i = 0; i < nodes.getLength(); i++) {

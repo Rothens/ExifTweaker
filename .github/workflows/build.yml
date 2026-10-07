@@ -8,12 +8,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
           cache: maven
+      # The ExifTool tests are skipped without it
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libimage-exiftool-perl ffmpeg
       - run: mvn -B package
       - uses: actions/upload-artifact@v4
         with:

@@ -11,9 +11,15 @@ public final class FileUtil {
     private FileUtil() {
     }
 
-    /** Creates an empty temporary file in the same directory as {@code file}, so it can be moved over it atomically. */
+    /**
+     * Creates an empty temporary file in the same directory as {@code file}, so it can be moved over it atomically.
+     * It keeps {@code file}'s extension, as tools like ExifTool choose the output format by it.
+     */
     public static Path createSiblingTempFile(Path file) throws IOException {
-        return Files.createTempFile(file.toAbsolutePath().getParent(), ".exiftweaker-", ".tmp");
+        String name = file.getFileName().toString();
+        int dot = name.lastIndexOf('.');
+        String suffix = dot > 0 ? name.substring(dot) : ".tmp";
+        return Files.createTempFile(file.toAbsolutePath().getParent(), ".exiftweaker-", suffix);
     }
 
     /** Moves {@code source} over {@code target}, atomically where the file system supports it. */

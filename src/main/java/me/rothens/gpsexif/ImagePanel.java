@@ -9,9 +9,18 @@ import java.awt.image.BufferedImage;
  */
 public class ImagePanel extends JPanel {
     private BufferedImage image;
+    private String message;
 
     public void setImage(BufferedImage image) {
         this.image = image;
+        this.message = null;
+        repaint();
+    }
+
+    /** Shows a short text instead of an image, e.g. why there's no preview. */
+    public void setMessage(String message) {
+        this.image = null;
+        this.message = message;
         repaint();
     }
 
@@ -26,6 +35,12 @@ public class ImagePanel extends JPanel {
             Graphics2D g2 = (Graphics2D) g;
             g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
             g2.drawImage(image, (getWidth() - w) / 2, (getHeight() - h) / 2, w, h, this);
+        } else if (message != null) {
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2.setColor(UIManager.getColor("Label.disabledForeground"));
+            FontMetrics fm = g2.getFontMetrics();
+            g2.drawString(message, (getWidth() - fm.stringWidth(message)) / 2, getHeight() / 2);
         }
     }
 }

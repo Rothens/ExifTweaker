@@ -34,7 +34,14 @@ public class ImageListRenderer extends JLabel implements ListCellRenderer<ImageF
             setForeground(dark ? NO_GPS_DARK : NO_GPS);
         }
         setText(value.getFile().getName());
-        setToolTipText(value.hasExifGPS() ? "Has GPS position" : "No GPS position");
+        if (value.isWritable()) {
+            setFont(list.getFont());
+            setToolTipText(value.hasExifGPS() ? "Has GPS position" : "No GPS position");
+        } else {
+            setFont(list.getFont().deriveFont(Font.ITALIC));
+            setForeground(UIManager.getColor("Label.disabledForeground"));
+            setToolTipText("Read-only: this file type needs ExifTool (see the banner at the top)");
+        }
         return this;
     }
 }

@@ -16,14 +16,25 @@ public class SettingsDialog extends JDialog {
     private final JSpinner spCacheLimit = new JSpinner(new SpinnerNumberModel(Settings.DEFAULT_TILE_CACHE_MAX_MB,
             Settings.MIN_TILE_CACHE_MAX_MB, 100_000, 50));
     private final JLabel lblCacheSize = new JLabel();
+    private final JSpinner spMaxMarkers = new JSpinner(new SpinnerNumberModel(Settings.DEFAULT_MAX_PHOTO_MARKERS,
+            Settings.MIN_PHOTO_MARKERS, Settings.MAX_PHOTO_MARKERS_LIMIT, 10));
     private final JButton btnClearCache = new JButton("Clear map cache");
     private final TileDiskCache tileCache;
     private boolean accepted;
 
-    public SettingsDialog(Frame owner, Settings settings, TileDiskCache tileCache) {
+    /**
+     * @param exifToolStatus describes the ExifTool in use (shown in the dialog)
+     * @param onExifTool     opens the ExifTool dialog; returns the new status
+     */
+    public SettingsDialog(Frame owner, Settings settings, TileDiskCache tileCache, String exifToolStatus,
+                          java.util.function.Function<Window, String> onExifTool) {
         super(owner, "Settings", true);
         this.tileCache = tileCache;
+        JLabel lblExifTool = new JLabel(exifToolStatus);
+        JButton btnExifTool = new JButton("ExifTool...");
+        btnExifTool.addActionListener(e -> lblExifTool.setText(onExifTool.apply(this)));
         spCacheLimit.setValue(settings.getTileCacheMaxMb());
+        spMaxMarkers.setValue(settings.getMaxPhotoMarkers());
         updateCacheSize();
         btnClearCache.addActionListener(e -> clearCache());
         cbTheme.setSelectedItem(settings.getTheme());
@@ -86,6 +97,49 @@ public class SettingsDialog extends JDialog {
         cacheHint.setEnabled(false);
         form.add(cacheHint, c);
 
+        c.gridy = 7;
+        c.gridwidth = 1;
+        c.insets = new Insets(12, 4, 4, 4);
+        form.add(new JLabel("Max. photo markers:"), c);
+        c.gridx = 1;
+        c.fill = GridBagConstraints.NONE;
+        form.add(spMaxMarkers, c);
+        c.gridx = 0;
+        c.gridy = 8;
+        c.gridwidth = 2;
+        c.insets = new Insets(0, 4, 4, 4);
+        JLabel markerHint = new JLabel("View > Show photos on map: nearby photos are grouped; more markers than this "
+                + "ask you to zoom in.");
+        markerHint.putClientProperty("FlatLaf.styleClass", "small");
+        markerHint.setEnabled(false);
+        form.add(markerHint, c);
+
+        c.gridx = 0;
+        c.gridy = 9;
+        c.gridwidth = 1;
+        c.insets = new Insets(12, 4, 4, 4);
+        form.add(btnExifTool, c);
+        c.gridx = 1;
+        form.add(lblExifTool, c);
+
+        String ffmpeg = me.rothens.gpsexif.video.Ffmpeg.locate(settings.getFfmpegPath());
+        JLabel lblFfmpeg = new JLabel(ffmpegStatus(ffmpeg));
+        JButton btnFfmpeg = new JButton("FFmpeg...");
+        btnFfmpeg.addActionListener(e -> {
+            String path = new FfmpegDialog(this, settings.getFfmpegPath(),
+                    me.rothens.gpsexif.video.Ffmpeg.locate(settings.getFfmpegPath())).showDialog();
+            if (null != path) {
+                settings.setFfmpegPath(path);
+                lblFfmpeg.setText(ffmpegStatus(me.rothens.gpsexif.video.Ffmpeg.locate(path)));
+            }
+        });
+        c.gridx = 0;
+        c.gridy = 10;
+        c.insets = new Insets(4, 4, 4, 4);
+        form.add(btnFfmpeg, c);
+        c.gridx = 1;
+        form.add(lblFfmpeg, c);
+
         JButton ok = new JButton("OK");
         JButton cancel = new JButton("Cancel");
         ok.addActionListener(e -> {
@@ -93,6 +147,7 @@ public class SettingsDialog extends JDialog {
             settings.setMapLayer((MapLayer) cbMapLayer.getSelectedItem());
             settings.setBackupsEnabled(chkBackups.isSelected());
             settings.setTileCacheMaxMb((Integer) spCacheLimit.getValue());
+            settings.setMaxPhotoMarkers((Integer) spMaxMarkers.getValue());
             tileCache.scheduleMaintenance();
             accepted = true;
             dispose();
@@ -111,6 +166,11 @@ public class SettingsDialog extends JDialog {
         pack();
         setResizable(false);
         setLocationRelativeTo(owner);
+    }
+
+    private static String ffmpegStatus(String executable) {
+        return null == executable ? "Not found - videos are exported with the slower built-in encoder"
+                : "FFmpeg " + me.rothens.gpsexif.video.Ffmpeg.version(executable) + " (" + executable + ")";
     }
 
     private void updateCacheSize() {

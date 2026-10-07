@@ -21,14 +21,40 @@ public interface MetadataBackend {
     PhotoMetadata read(Path file) throws IOException;
 
     /**
-     * Writes a copy of {@code source} to {@code target} with its GPS position set to {@code position}.
-     * {@code source} itself is never modified; replacing it is up to the caller.
+     * The file that writes to {@code photo} actually change: the photo itself, or e.g. an XMP sidecar next to a
+     * RAW file. It may not exist yet.
      */
-    void writePosition(Path source, Path target, GeoPosition position) throws IOException;
+    default Path writeTarget(Path photo) {
+        return photo;
+    }
 
     /**
-     * Writes a copy of {@code source} to {@code target} without any GPS data. Other metadata is kept.
-     * {@code source} itself is never modified; replacing it is up to the caller.
+     * Writes the new content of {@link #writeTarget(Path) photo's write target} to {@code target}, with
+     * {@code changes} applied and everything else kept. Nothing existing is modified; replacing the write target
+     * with {@code target} is up to the caller. {@code target} may already exist (as an empty temporary file).
      */
-    void removePosition(Path source, Path target) throws IOException;
+    void write(Path photo, Path target, MetadataChanges changes) throws IOException;
+
+    /** An embedded preview image (e.g. of a RAW file) as JPEG bytes, or {@code null}. */
+    default byte[] preview(Path photo) throws IOException {
+        return null;
+    }
+
+    default void writePosition(Path source, Path target, GeoPosition position) throws IOException {
+        write(source, target, new MetadataChanges().position(position));
+    }
+
+    /** Writes a position and, unless {@code null}, an altitude in metres (a {@code null} altitude is left as is). */
+    default void writePosition(Path source, Path target, GeoPosition position, Double altitude) throws IOException {
+        MetadataChanges changes = new MetadataChanges().position(position);
+        if (null != altitude) {
+            changes.altitude(altitude);
+        }
+        write(source, target, changes);
+    }
+
+    /** Writes a copy without any GPS data. */
+    default void removePosition(Path source, Path target) throws IOException {
+        write(source, target, new MetadataChanges().removePosition());
+    }
 }
