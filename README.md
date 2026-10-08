@@ -23,6 +23,9 @@ JPEG photos work out of the box. For **HEIC, PNG, TIFF, WebP and RAW** files als
 
 ## How to
 
+New to ExifTweaker? On the first start a short **guided tour** walks you through tagging a photo, on a few sample
+photos or on your own. It's always there again under **Help → Show tutorial**.
+
 ### Tag a photo
 
 1. Open a folder: type its path at the top and press **Open**, or use **...** (File → Open folder, Ctrl+O).

@@ -157,6 +157,17 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 
 ---
 
+## After 1.0
+
+- [x] **Guided tour**: on the first start (and Help → Show tutorial), an overlay dims the window except the part
+      being explained, with a bubble saying what to do; a step moves on by itself once it's done (folder opened,
+      photo selected, spot marked, saved). It can run on bundled sample photos (a weekend at Lake Balaton, copied
+      to a temporary folder) or on the user's own; Skip tour or Esc ends it.
+- [ ] Windows installer: install for all users into Program Files (asks for administrator rights).
+- [ ] First-run download of ExifTool and FFmpeg (checkboxes, into the app's own folder).
+
+---
+
 ## Open questions
 
 - **Esri terms**: Esri World Imagery is free with attribution for non-commercial use; check the terms again

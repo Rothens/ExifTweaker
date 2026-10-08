@@ -17,6 +17,7 @@ public class Settings {
     private static final String THEME = "THEME";
     private static final String TILE_CACHE_MAX_MB = "TILE_CACHE_MAX_MB";
     private static final String CAMERA_ZONE = "CAMERA_ZONE";
+    private static final String TUTORIAL_SHOWN = "TUTORIAL_SHOWN";
     private static final String DISPLAY_ZONE = "DISPLAY_ZONE";
     private static final String GPX_MAX_GAP_MINUTES = "GPX_MAX_GAP_MINUTES";
 
@@ -58,6 +59,15 @@ public class Settings {
 
     public void setTileCacheMaxMb(int megabytes) {
         prefs.putInt(TILE_CACHE_MAX_MB, Math.max(MIN_TILE_CACHE_MAX_MB, megabytes));
+    }
+
+    /** Whether the tutorial was offered already (it's offered once, on the first start). */
+    public boolean isTutorialShown() {
+        return prefs.getBoolean(TUTORIAL_SHOWN, false);
+    }
+
+    public void setTutorialShown(boolean shown) {
+        prefs.putBoolean(TUTORIAL_SHOWN, shown);
     }
 
     /** Time zone the camera's clock is set to (for GPX matching); the system zone by default. */
