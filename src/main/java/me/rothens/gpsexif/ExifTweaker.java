@@ -451,6 +451,23 @@ public class ExifTweaker {
         file = new JMenu("File");
         file.setMnemonic('F');
         file.add(menuItem("Open folder...", KeyStroke.getKeyStroke('O', menuKey), e -> browse()));
+        JMenu recent = new JMenu("Recent folders");
+        recent.addMenuListener(new javax.swing.event.MenuListener() {
+            @Override
+            public void menuSelected(javax.swing.event.MenuEvent e) {
+                fillRecentFolders(recent);
+            }
+
+            @Override
+            public void menuDeselected(javax.swing.event.MenuEvent e) {
+            }
+
+            @Override
+            public void menuCanceled(javax.swing.event.MenuEvent e) {
+            }
+        });
+        fillRecentFolders(recent);
+        file.add(recent);
         miGeotag.setAccelerator(KeyStroke.getKeyStroke('G', menuKey));
         miGeotag.addActionListener(e -> openGeotag());
         file.add(miGeotag);
@@ -605,6 +622,45 @@ public class ExifTweaker {
         }
     }
 
+    /** Rebuilds the File → Recent folders menu; folders that no longer exist are shown disabled. */
+    private void fillRecentFolders(JMenu menu) {
+        menu.removeAll();
+        List<String> folders = settings.getRecentFolders();
+        if (folders.isEmpty()) {
+            JMenuItem none = new JMenuItem("No recent folders");
+            none.setEnabled(false);
+            menu.add(none);
+            return;
+        }
+        int n = 0;
+        for (String folder : folders) {
+            n++;
+            JMenuItem item = new JMenuItem((n < 10 ? n + "  " : "    ") + shortenPath(folder, 70));
+            if (n < 10) {
+                item.setMnemonic(Character.forDigit(n, 10));
+            }
+            item.setToolTipText(folder);
+            item.setEnabled(new File(folder).isDirectory());
+            item.addActionListener(e -> {
+                tfFolder.setText(folder);
+                openFolder();
+            });
+            menu.add(item);
+        }
+        menu.addSeparator();
+        menu.add(menuItem("Clear recent folders", null, e -> settings.clearRecentFolders()));
+    }
+
+    /** "/home/me/…/Photos/Balaton 2026": keeps the start and the end of a long path. */
+    static String shortenPath(String path, int max) {
+        if (path.length() <= max) {
+            return path;
+        }
+        int keepEnd = max * 2 / 3;
+        int keepStart = max - keepEnd - 1;
+        return path.substring(0, keepStart) + "…" + path.substring(path.length() - keepEnd);
+    }
+
     /** The guided tour over the main window (first start, and Help → Show tutorial). */
     private void startTutorial() {
         if (null != tutorial && tutorial.isRunning()) {
@@ -694,10 +750,8 @@ public class ExifTweaker {
     private boolean openSamplePhotos() {
         try {
             Path dir = SampleTrip.copy();
-            String remembered = settings.getLastDirectory();
             tfFolder.setText(dir.toString());
-            openFolder();
-            settings.setLastDirectory(remembered);
+            openFolder(false);
             return true;
         } catch (IOException e) {
             showError("Couldn't copy the sample photos:\n" + e.getMessage());
@@ -842,6 +896,11 @@ public class ExifTweaker {
     }
 
     private void openFolder() {
+        openFolder(true);
+    }
+
+    /** @param remember whether this becomes the last and a recent folder (not for the tutorial's sample photos) */
+    private void openFolder(boolean remember) {
         if (null != geotagDialog) {
             geotagDialog.dispose();
         }
@@ -852,7 +911,10 @@ public class ExifTweaker {
             return;
         }
         Arrays.sort(files);
-        settings.setLastDirectory(dir);
+        if (remember) {
+            settings.setLastDirectory(dir);
+            settings.addRecentFolder(new File(dir).getAbsolutePath());
+        }
 
         setBusy(true);
         btnCancel.setVisible(false);

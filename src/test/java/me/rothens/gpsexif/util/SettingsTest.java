@@ -68,4 +68,30 @@ class SettingsTest {
         settings.setMapLayer(MapLayer.OPENSTREETMAP);
         assertEquals(MapLayer.OPENSTREETMAP, settings.getMapLayer());
     }
+
+    @Test
+    void recentFoldersAreMostRecentFirstWithoutDuplicates() {
+        assertEquals(java.util.List.of(), settings.getRecentFolders());
+        settings.addRecentFolder("/a");
+        settings.addRecentFolder("/b");
+        settings.addRecentFolder("/a");
+        assertEquals(java.util.List.of("/a", "/b"), settings.getRecentFolders());
+        for (int i = 0; i < 15; i++) {
+            settings.addRecentFolder("/f" + i);
+        }
+        assertEquals(Settings.MAX_RECENT_FOLDERS, settings.getRecentFolders().size());
+        assertEquals("/f14", settings.getRecentFolders().get(0));
+        settings.clearRecentFolders();
+        assertEquals(java.util.List.of(), settings.getRecentFolders());
+    }
+
+    @Test
+    void veryLongRecentFoldersStillFit() {
+        String longPath = "/" + "x".repeat(3000);
+        for (int i = 0; i < 5; i++) {
+            settings.addRecentFolder(longPath + i);
+        }
+        assertFalse(settings.getRecentFolders().isEmpty());
+        assertEquals(longPath + 4, settings.getRecentFolders().get(0));
+    }
 }

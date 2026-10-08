@@ -19,6 +19,8 @@ public class Settings {
     private static final String CAMERA_ZONE = "CAMERA_ZONE";
     private static final String TUTORIAL_SHOWN = "TUTORIAL_SHOWN";
     private static final String GPX_DIRECTORY = "GPX_DIRECTORY";
+    private static final String RECENT_FOLDERS = "RECENT_FOLDERS";
+    public static final int MAX_RECENT_FOLDERS = 10;
     private static final String DISPLAY_ZONE = "DISPLAY_ZONE";
     private static final String GPX_MAX_GAP_MINUTES = "GPX_MAX_GAP_MINUTES";
 
@@ -60,6 +62,32 @@ public class Settings {
 
     public void setTileCacheMaxMb(int megabytes) {
         prefs.putInt(TILE_CACHE_MAX_MB, Math.max(MIN_TILE_CACHE_MAX_MB, megabytes));
+    }
+
+    /** Recently opened folders, the most recent first. */
+    public java.util.List<String> getRecentFolders() {
+        String value = prefs.get(RECENT_FOLDERS, "");
+        return value.isEmpty() ? java.util.List.of() : java.util.List.of(value.split("\n"));
+    }
+
+    /** Puts {@code folder} first in the recent folders (moving it up if it's already there). */
+    public void addRecentFolder(String folder) {
+        java.util.List<String> folders = new java.util.ArrayList<>(getRecentFolders());
+        folders.remove(folder);
+        folders.add(0, folder);
+        // Preferences values are limited in length: drop the oldest until it fits
+        while (folders.size() > MAX_RECENT_FOLDERS
+                || (folders.size() > 1 && String.join("\n", folders).length() > Preferences.MAX_VALUE_LENGTH)) {
+            folders.remove(folders.size() - 1);
+        }
+        String value = String.join("\n", folders);
+        if (value.length() <= Preferences.MAX_VALUE_LENGTH) {
+            prefs.put(RECENT_FOLDERS, value);
+        }
+    }
+
+    public void clearRecentFolders() {
+        prefs.remove(RECENT_FOLDERS);
     }
 
     /** Folder of the last GPX file picked; empty if none yet. */
