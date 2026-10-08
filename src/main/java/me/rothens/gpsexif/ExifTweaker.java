@@ -12,6 +12,7 @@ import me.rothens.gpsexif.map.PhotoMarkerLayer;
 import me.rothens.gpsexif.map.PlaceNames;
 import me.rothens.gpsexif.map.PlaceSearch;
 import me.rothens.gpsexif.metadata.Place;
+import me.rothens.gpsexif.rename.RenamePlan;
 import me.rothens.gpsexif.map.TileDiskCache;
 import me.rothens.gpsexif.map.TrackPainter;
 import me.rothens.gpsexif.metadata.ExifTool;
@@ -29,6 +30,7 @@ import me.rothens.gpsexif.playback.TravelWindow;
 import me.rothens.gpsexif.ui.ExifToolDialog;
 import me.rothens.gpsexif.ui.GeotagDialog;
 import me.rothens.gpsexif.ui.PhotoDrag;
+import me.rothens.gpsexif.ui.RenameDialog;
 import me.rothens.gpsexif.ui.SettingsDialog;
 import me.rothens.gpsexif.ui.ShiftTimeDialog;
 import me.rothens.gpsexif.gpx.PhotoTime;
@@ -133,6 +135,7 @@ public class ExifTweaker {
     private final JMenuItem miRemove = new JMenuItem("Remove location...");
     private final JMenuItem miShiftTime = new JMenuItem("Shift date/time...");
     private final JMenuItem miPlaces = new JMenuItem("Look up place names");
+    private final JMenuItem miRename = new JMenuItem("Rename photos...");
     private final JMenuItem miCopy = new JMenuItem("Copy location");
     private final JMenuItem miPaste = new JMenuItem("Paste location");
     private final Map<Theme, JRadioButtonMenuItem> themeItems = new EnumMap<>(Theme.class);
@@ -469,6 +472,7 @@ public class ExifTweaker {
         popup.addSeparator();
         popup.add(menuItem("Remove location...", null, e -> removeLocation()));
         popup.add(menuItem("Look up place names", null, e -> lookUpPlaces()));
+        popup.add(menuItem("Rename...", null, e -> renamePhotos()));
         popup.addSeparator();
         JCheckBoxMenuItem prefer = new JCheckBoxMenuItem("Prefer in trips");
         prefer.setIcon(new TripMarkIcon(TripMark.PREFER, 14));
@@ -581,6 +585,10 @@ public class ExifTweaker {
         edit.add(miSave);
         miRemove.addActionListener(e -> removeLocation());
         edit.add(miRemove);
+        miRename.setAccelerator(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F2, 0));
+        miRename.setToolTipText("Renames the selected photos (or all) by date, place, ...");
+        miRename.addActionListener(e -> renamePhotos());
+        edit.add(miRename);
         miPlaces.setToolTipText("Writes the city, state and country of the selected photos' locations");
         miPlaces.addActionListener(e -> lookUpPlaces());
         edit.add(miPlaces);
@@ -920,6 +928,7 @@ public class ExifTweaker {
         miRemove.setEnabled(canWrite && selection.stream().anyMatch(ImageFile::hasExifGPS));
         miShiftTime.setEnabled(canWrite && selection.stream().anyMatch(p -> null != p.getTaken()));
         miPlaces.setEnabled(miRemove.isEnabled());
+        miRename.setEnabled(!busy && !listModel.getAll().isEmpty());
         miPaste.setEnabled(!busy);
         miGeotag.setEnabled(!busy && !listModel.getAll().isEmpty());
         miExportGpx.setEnabled(!busy && listModel.getAll().stream().anyMatch(ImageFile::hasExifGPS));
@@ -1193,6 +1202,62 @@ public class ExifTweaker {
             placesMissed.incrementAndGet();
             return null;
         }
+    }
+
+    /** Renames the selected photos (all if none is selected) with a pattern; undoable. */
+    private void renamePhotos() {
+        List<ImageFile> targets = selection.isEmpty() ? listModel.getAll() : selection;
+        if (busy || targets.isEmpty()) {
+            return;
+        }
+        RenamePlan plan = new RenameDialog(frame, targets, settings)
+                .showDialog();
+        if (null == plan) {
+            return;
+        }
+        List<RenamePlan.Move> moves = plan.moves();
+        try {
+            RenamePlan.execute(moves);
+        } catch (IOException e) {
+            showError(e.getMessage());
+            return;
+        }
+        movePhotos(moves);
+        long count = plan.changedCount();
+        String what = count == 1 ? "1 photo" : count + " photos";
+        history.record("Rename " + what, () -> {
+            List<RenamePlan.Move> back = RenamePlan.reverse(moves);
+            RenamePlan.execute(back);
+            movePhotos(back);
+            return List.of();
+        });
+        lblStatus.setText("Renamed " + what);
+    }
+
+    /** Points the opened photos (and their trip marks) to their new files, and sorts the list by name again. */
+    private void movePhotos(List<RenamePlan.Move> moves) {
+        Map<Path, ImageFile> byPath = new HashMap<>();
+        for (ImageFile image : listModel.getAll()) {
+            byPath.put(image.getPath().toAbsolutePath().normalize(), image);
+        }
+        for (RenamePlan.Move move : moves) {
+            ImageFile image = byPath.get(move.from().toAbsolutePath().normalize());
+            if (null != image) {
+                image.moveTo(move.to().toFile());
+                try {
+                    tripMarks.move(move.from(), move.to());
+                } catch (IOException e) {
+                    System.err.println("Couldn't move the trip mark: " + e.getMessage());
+                }
+            }
+        }
+        List<ImageFile> keep = selection;
+        listModel.setAll(listModel.getAll().stream().sorted(Comparator.comparing(ImageFile::getFile)).toList());
+        reselect(keep);
+        markerLayer.setPhotos(listModel.getAll());
+        lFiles.repaint();
+        lThumbs.repaint();
+        elementSelected();
     }
 
     /** Looks up and writes the place names of the selected photos' locations (also when it's off in Settings). */

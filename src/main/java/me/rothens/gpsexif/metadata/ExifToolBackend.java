@@ -95,8 +95,14 @@ public class ExifToolBackend implements MetadataBackend {
     /** RAW files are written to an XMP sidecar: an existing {@code name.xmp} or {@code name.ext.xmp}, else {@code name.xmp}. */
     @Override
     public Path writeTarget(Path photo) {
+        Path sidecar = sidecarOf(photo);
+        return null == sidecar ? photo : sidecar;
+    }
+
+    /** The XMP sidecar a RAW file has or would get, or {@code null} for other files. */
+    public static Path sidecarOf(Path photo) {
         if (!isRaw(photo)) {
-            return photo;
+            return null;
         }
         String name = photo.getFileName().toString();
         Path adobe = photo.resolveSibling(name.substring(0, name.lastIndexOf('.')) + ".xmp");

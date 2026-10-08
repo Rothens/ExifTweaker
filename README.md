@@ -71,6 +71,17 @@ and in Play photos, Travel mode and their videos.
   name and you can add it later.
 - Removing a location removes the place name too. Turn it off in **Settings**.
 
+### Rename photos
+
+**Edit → Rename photos...** (F2) names the selected photos (or all of them) after when and where they were taken,
+e.g. `{date} {place} {n:000}` gives `2026-07-11 Tihany 001.jpg`. The new names are listed before anything is renamed.
+
+- Fields: `{date}` (or any format, e.g. `{date:yyyy-MM-dd HH.mm.ss}`), `{place}` (the city), `{country}`,
+  `{state}`, `{sublocation}`, `{name}` (the current name), `{camera}` and `{n}`, a number in date order (`{n:000}`
+  for three digits). A photo without a place simply leaves that part out.
+- Nothing is ever overwritten: a name that is taken gets " (2)". Backups (`.bak`) and XMP sidecars are renamed
+  along, and a RAW and a JPEG of the same shot keep sharing a name. **Edit → Undo** puts the old names back.
+
 ### Geotag from a GPX track
 
 If your phone, watch or GPS logger recorded where you went, ExifTweaker can work out where each photo was taken
@@ -156,6 +167,7 @@ On macOS use Cmd instead of Ctrl.
 | Ctrl+Shift+C / Ctrl+Shift+V | Copy / paste a location (from anywhere) |
 | Ctrl+Shift+A | Select all photos |
 | Ctrl+T | Shift date/time |
+| F2 | Rename photos |
 | Ctrl+G | Geotag from GPX |
 | Ctrl+E | Export photos as GPX |
 | F5 | Play photos |

@@ -22,6 +22,7 @@ public class Settings {
     private static final String RECENT_FOLDERS = "RECENT_FOLDERS";
     private static final String THUMBNAIL_VIEW = "THUMBNAIL_VIEW";
     private static final String PLACE_NAMES = "PLACE_NAMES";
+    private static final String RENAME_PATTERN = "RENAME_PATTERN";
     public static final int MAX_RECENT_FOLDERS = 10;
     private static final String DISPLAY_ZONE = "DISPLAY_ZONE";
     private static final String GPX_MAX_GAP_MINUTES = "GPX_MAX_GAP_MINUTES";
@@ -257,5 +258,14 @@ public class Settings {
 
     public void setPlaceNames(boolean enabled) {
         prefs.putBoolean(PLACE_NAMES, enabled);
+    }
+
+    /** The last pattern used to rename photos. */
+    public String getRenamePattern() {
+        return prefs.get(RENAME_PATTERN, "{date} {place} {n:000}");
+    }
+
+    public void setRenamePattern(String pattern) {
+        prefs.put(RENAME_PATTERN, pattern.length() > 500 ? pattern.substring(0, 500) : pattern);
     }
 }

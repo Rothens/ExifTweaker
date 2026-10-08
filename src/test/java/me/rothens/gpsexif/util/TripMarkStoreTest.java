@@ -35,4 +35,15 @@ class TripMarkStoreTest {
         Files.writeString(file, "x=\\u12");
         assertEquals(TripMark.NORMAL, new TripMarkStore(file).get(dir.resolve("x")));
     }
+    @Test
+    void marksMoveWithRenamedPhotos() throws Exception {
+        Path file = dir.resolve("trip-marks.properties");
+        TripMarkStore store = new TripMarkStore(file);
+        store.set(dir.resolve("a.jpg"), TripMark.PREFER);
+        store.move(dir.resolve("a.jpg"), dir.resolve("b.jpg"));
+        store.move(dir.resolve("c.jpg"), dir.resolve("d.jpg")); // no mark: nothing happens
+        TripMarkStore loaded = new TripMarkStore(file);
+        assertEquals(TripMark.NORMAL, loaded.get(dir.resolve("a.jpg")));
+        assertEquals(TripMark.PREFER, loaded.get(dir.resolve("b.jpg")));
+    }
 }
