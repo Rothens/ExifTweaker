@@ -65,7 +65,8 @@ landmark or neighbourhood when there is one), e.g. *Tihany, Veszprém, Magyarors
 sites and the photo's own details show these (IPTC/XMP location fields). The place shows in the details on the right
 and in Play photos, Travel mode and their videos.
 
-- **Edit → Look up place names** adds them to photos that already have a location.
+- **Edit → Look up place names** adds them to photos that already have a location: to the selected ones, or with
+  none selected, to every photo that doesn't have a place name yet. Big batches tell you first how long they take.
 - The names come from OpenStreetMap Nominatim, in your system's language. Each lookup is remembered, so photos
   close to one another (within 150 m) and later saves don't ask again; offline, the location is saved without the
   name and you can add it later.

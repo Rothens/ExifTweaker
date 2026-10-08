@@ -596,7 +596,8 @@ public class ExifTweaker {
         miRename.setToolTipText("Renames the selected photos (or all) by date, place, ...");
         miRename.addActionListener(e -> renamePhotos());
         edit.add(miRename);
-        miPlaces.setToolTipText("Writes the city, state and country of the selected photos' locations");
+        miPlaces.setToolTipText("<html>Writes the city, state and country of the selected photos' locations;<br>"
+                + "with none selected, of every photo that has a location but no place name yet</html>");
         miPlaces.addActionListener(e -> lookUpPlaces());
         edit.add(miPlaces);
         miShiftTime.setAccelerator(KeyStroke.getKeyStroke('T', menuKey));
@@ -934,7 +935,8 @@ public class ExifTweaker {
         miSave.setEnabled(canWrite);
         miRemove.setEnabled(canWrite && selection.stream().anyMatch(ImageFile::hasExifGPS));
         miShiftTime.setEnabled(canWrite && selection.stream().anyMatch(p -> null != p.getTaken()));
-        miPlaces.setEnabled(miRemove.isEnabled());
+        miPlaces.setEnabled(!busy && (selection.isEmpty() ? listModel.getAll().stream().anyMatch(ImageFile::hasExifGPS)
+                : selection.stream().anyMatch(p -> p.hasExifGPS() && p.isWritable())));
         miRename.setEnabled(!busy && !listModel.getAll().isEmpty());
         miShare.setEnabled(miRename.isEnabled());
         miPaste.setEnabled(!busy);
@@ -1356,8 +1358,23 @@ public class ExifTweaker {
 
     /** Looks up and writes the place names of the selected photos' locations (also when it's off in Settings). */
     private void lookUpPlaces() {
-        List<ImageFile> targets = selection.stream().filter(ImageFile::hasExifGPS).toList();
-        if (busy || targets.isEmpty()) {
+        if (busy) {
+            return;
+        }
+        // The selected photos; with none selected, every photo that has a location but no place name yet
+        List<ImageFile> targets = selection.isEmpty()
+                ? listModel.getAll().stream().filter(p -> p.hasExifGPS() && null == p.getPlace()).toList()
+                : selection.stream().filter(ImageFile::hasExifGPS).toList();
+        if (targets.isEmpty()) {
+            lblStatus.setText(selection.isEmpty() ? "Every photo with a location already has a place name"
+                    : "None of the selected photos has a location");
+            return;
+        }
+        int online = placesToLookUp(targets);
+        if (online > 30 && !confirm("About " + online + " places have to be looked up online. OpenStreetMap allows one"
+                + " a second, so this takes about " + PhotoTime.describe(java.time.Duration.ofSeconds(online))
+                + ".\nPlaces looked up once are remembered, and Cancel stops it at any time.\n\nContinue?",
+                "Look up place names")) {
             return;
         }
         String what = targets.size() == 1 ? targets.get(0).getFile().getName() : targets.size() + " photos";
@@ -1373,6 +1390,19 @@ public class ExifTweaker {
                 image.apply(new MetadataChanges().place(place));
             }
         });
+    }
+
+    /** Roughly how many lookups {@code photos} need online: positions that aren't cached nor near one another. */
+    private int placesToLookUp(List<ImageFile> photos) {
+        List<GeoPosition> pending = new ArrayList<>();
+        for (ImageFile photo : photos) {
+            GeoPosition p = photo.getGp();
+            if (null == placeNames.cached(p) && pending.stream()
+                    .noneMatch(q -> TrackMatcher.distanceMetres(p, q) <= PlaceNames.REUSE_METRES)) {
+                pending.add(p);
+            }
+        }
+        return pending.size();
     }
 
     private void shiftTime() {
