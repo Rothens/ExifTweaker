@@ -31,6 +31,8 @@ import me.rothens.gpsexif.ui.ExifToolDialog;
 import me.rothens.gpsexif.ui.GeotagDialog;
 import me.rothens.gpsexif.ui.PhotoDrag;
 import me.rothens.gpsexif.ui.RenameDialog;
+import me.rothens.gpsexif.ui.ShareDialog;
+import me.rothens.gpsexif.share.ShareExport;
 import me.rothens.gpsexif.ui.SettingsDialog;
 import me.rothens.gpsexif.ui.ShiftTimeDialog;
 import me.rothens.gpsexif.gpx.PhotoTime;
@@ -144,6 +146,7 @@ public class ExifTweaker {
 
     private final JMenuItem miGeotag = new JMenuItem("Geotag from GPX...");
     private final JMenuItem miExportGpx = new JMenuItem("Export photos as GPX...");
+    private final JMenuItem miShare = new JMenuItem("Export copies for sharing...");
     private final JMenuItem miPlayback = new JMenuItem("Play photos...");
     private final JMenuItem miTravel = new JMenuItem("Travel mode...");
     /** GPX tracks last loaded in the Geotag dialog; travel mode follows them. */
@@ -561,6 +564,10 @@ public class ExifTweaker {
         miExportGpx.setAccelerator(KeyStroke.getKeyStroke('E', menuKey));
         miExportGpx.addActionListener(e -> exportGpx());
         file.add(miExportGpx);
+        miShare.setAccelerator(KeyStroke.getKeyStroke('E', menuKey | java.awt.event.InputEvent.SHIFT_DOWN_MASK));
+        miShare.setToolTipText("Copies of the selected photos (or all), without location or metadata, smaller");
+        miShare.addActionListener(e -> exportCopies());
+        file.add(miShare);
         if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.APP_QUIT_HANDLER)) {
             file.addSeparator();
             file.add(menuItem("Exit", KeyStroke.getKeyStroke('Q', menuKey), e -> exit()));
@@ -929,6 +936,7 @@ public class ExifTweaker {
         miShiftTime.setEnabled(canWrite && selection.stream().anyMatch(p -> null != p.getTaken()));
         miPlaces.setEnabled(miRemove.isEnabled());
         miRename.setEnabled(!busy && !listModel.getAll().isEmpty());
+        miShare.setEnabled(miRename.isEnabled());
         miPaste.setEnabled(!busy);
         miGeotag.setEnabled(!busy && !listModel.getAll().isEmpty());
         miExportGpx.setEnabled(!busy && listModel.getAll().stream().anyMatch(ImageFile::hasExifGPS));
@@ -1202,6 +1210,92 @@ public class ExifTweaker {
             placesMissed.incrementAndGet();
             return null;
         }
+    }
+
+    /** Saves copies of the selected photos (all if none is selected) for sharing, in the background. */
+    private void exportCopies() {
+        List<ImageFile> targets = selection.isEmpty() ? listModel.getAll() : selection;
+        if (busy || targets.isEmpty()) {
+            return;
+        }
+        ShareDialog dialog = new ShareDialog(frame, targets, settings);
+        if (!dialog.showDialog()) {
+            return;
+        }
+        Path folder = dialog.getFolder();
+        ShareExport.Options options = dialog.getOptions();
+        ShareExport export = new ShareExport(backend.getExifTool());
+        setBusy(true);
+        cancelBatch.set(false);
+        progress.setValue(0);
+        progress.setMaximum(targets.size());
+        Map<ImageFile, String> failures = new LinkedHashMap<>();
+        new SwingWorker<Integer, Integer>() {
+            @Override
+            protected Integer doInBackground() {
+                int done = 0;
+                int exported = 0;
+                for (ImageFile photo : targets) {
+                    if (cancelBatch.get()) {
+                        break;
+                    }
+                    try {
+                        export.export(photo, folder, options);
+                        exported++;
+                    } catch (IOException | RuntimeException e) {
+                        failures.put(photo, null == e.getMessage() ? e.getClass().getSimpleName() : e.getMessage());
+                    }
+                    publish(++done);
+                }
+                return exported;
+            }
+
+            @Override
+            protected void process(List<Integer> chunks) {
+                progress.setValue(chunks.get(chunks.size() - 1));
+            }
+
+            @Override
+            protected void done() {
+                setBusy(false);
+                int exported;
+                try {
+                    exported = get();
+                } catch (InterruptedException | ExecutionException e) {
+                    showError("Export failed:\n" + e.getMessage());
+                    return;
+                }
+                String what = exported == 1 ? "1 copy" : exported + " copies";
+                lblStatus.setText((cancelBatch.get() ? "Cancelled: " : "") + what + " saved to " + folder.getFileName());
+                StringBuilder message = new StringBuilder(what + " saved to\n" + folder);
+                if (cancelBatch.get()) {
+                    message.append("\n\nCancelled after ").append(exported + failures.size()).append(" of ")
+                            .append(targets.size()).append(" photos.");
+                }
+                if (!failures.isEmpty()) {
+                    message.append("\n\n").append(failures.size()).append(failures.size() == 1 ? " photo" : " photos")
+                            .append(" couldn't be exported:\n");
+                    failures.entrySet().stream().limit(10).forEach(f -> message.append(f.getKey().getFile().getName())
+                            .append(": ").append(f.getValue()).append('\n'));
+                    if (failures.size() > 10) {
+                        message.append("... and ").append(failures.size() - 10).append(" more");
+                    }
+                }
+                boolean canOpen = exported > 0 && Desktop.isDesktopSupported()
+                        && Desktop.getDesktop().isSupported(Desktop.Action.OPEN);
+                Object[] buttons = canOpen ? new Object[]{"Open folder", "Close"} : new Object[]{"Close"};
+                int choice = JOptionPane.showOptionDialog(frame, message.toString(), "Export copies for sharing",
+                        JOptionPane.DEFAULT_OPTION, failures.isEmpty() ? JOptionPane.INFORMATION_MESSAGE
+                                : JOptionPane.WARNING_MESSAGE, null, buttons, buttons[0]);
+                if (canOpen && choice == 0) {
+                    try {
+                        Desktop.getDesktop().open(folder.toFile());
+                    } catch (IOException | RuntimeException e) {
+                        showError("Couldn't open the folder:\n" + e.getMessage());
+                    }
+                }
+            }
+        }.execute();
     }
 
     /** Renames the selected photos (all if none is selected) with a pattern; undoable. */

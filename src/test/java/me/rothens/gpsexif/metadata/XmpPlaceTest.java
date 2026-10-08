@@ -62,4 +62,20 @@ class XmpPlaceTest {
         assertEquals("", Place.NONE.label());
         assertEquals("Budapest", new Place(null, "Budapest", null, "Budapest", null).label());
     }
+
+    @Test
+    void removesXmpGpsWhenAsked() throws Exception {
+        String phone = """
+                <x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+                 <rdf:Description rdf:about="" xmlns:exif="http://ns.adobe.com/exif/1.0/"
+                   exif:GPSLatitude="46,54.82N" exif:ExposureTime="1/100">
+                  <exif:GPSLongitude>17,53.36E</exif:GPSLongitude>
+                 </rdf:Description>
+                </rdf:RDF></x:xmpmeta>""";
+        String kept = XmpPlace.apply(phone, Place.NONE);
+        assertTrue(kept.contains("GPSLatitude"));
+        String removed = XmpPlace.apply(phone, Place.NONE, true);
+        assertFalse(removed.contains("GPS"), removed);
+        assertTrue(removed.contains("ExposureTime"), removed);
+    }
 }

@@ -337,17 +337,21 @@ public class CommonsImagingBackend implements MetadataBackend {
         } else {
             bytes = Files.readAllBytes(source);
         }
-        bytes = withPlace(bytes, changes.getPlace());
+        bytes = withPlace(bytes, changes.getPlace(), changes.isRemovePosition());
         Files.write(target, bytes);
     }
 
     /** The JPEG with its XMP place replaced, and its IPTC place too if it has IPTC data. */
-    static byte[] withPlace(byte[] jpeg, Place place) throws IOException {
+    static byte[] withPlace(byte[] jpeg, Place place, boolean removeGps) throws IOException {
         String xmp = Imaging.getXmpXml(jpeg);
-        String updated = XmpPlace.apply(xmp, place);
-        ByteArrayOutputStream out = new ByteArrayOutputStream(jpeg.length + 4096);
-        new JpegXmpRewriter().updateXmpXml(jpeg, out, updated);
-        byte[] result = out.toByteArray();
+        byte[] result = jpeg;
+        ByteArrayOutputStream out;
+        if (null != xmp || !place.isEmpty()) { // no XMP and nothing to add: leave it without
+            String updated = XmpPlace.apply(xmp, place, removeGps);
+            out = new ByteArrayOutputStream(jpeg.length + 4096);
+            new JpegXmpRewriter().updateXmpXml(jpeg, out, updated);
+            result = out.toByteArray();
+        }
         JpegImageParser parser = new JpegImageParser();
         if (!parser.hasIptcSegment(ByteSource.array(result))) {
             // XMP is what today's tools read; no need to add a legacy IPTC block that wasn't there

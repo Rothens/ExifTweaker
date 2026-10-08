@@ -182,12 +182,12 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 
 ---
 
-## 1.2 — Places
+## 1.2 — Places ✅
 
 - [x] **Place names** (#39): look up the place for each location (OpenStreetMap Nominatim, within its usage policy)
       and write it as City / State / Country into IPTC/XMP; show it in the app, playback and videos.
 - [x] **Rename by date and place** (#40), e.g. `2026-07-11 Tihany 001.jpg`, with a preview and undo.
-- [ ] **Export copies for sharing** (#41): without location or without any metadata, optionally resized; the
+- [x] **Export copies for sharing** (#41): without location or without any metadata, optionally resized; the
       originals stay untouched.
 
 ---

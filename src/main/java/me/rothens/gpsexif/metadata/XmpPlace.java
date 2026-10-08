@@ -34,6 +34,7 @@ public final class XmpPlace {
     static final String PHOTOSHOP = "http://ns.adobe.com/photoshop/1.0/";
     static final String IPTC_CORE = "http://iptc.org/std/Iptc4xmpCore/1.0/xmlns/";
     private static final String X = "adobe:ns:meta/";
+    static final String EXIF = "http://ns.adobe.com/exif/1.0/";
 
     private enum Field {
         CITY(PHOTOSHOP, "City"),
@@ -95,6 +96,11 @@ public final class XmpPlace {
      * @throws IOException if the existing packet isn't valid XMP
      */
     public static String apply(String xmp, Place place) throws IOException {
+        return apply(xmp, place, false);
+    }
+
+    /** Also removes the GPS properties ({@code exif:GPS...}) if {@code removeGps}. */
+    public static String apply(String xmp, Place place, boolean removeGps) throws IOException {
         Document doc = null == xmp || xmp.isBlank() ? newPacket() : parse(xmp);
         List<Element> descriptions = descriptions(doc);
         Element rdf = (Element) doc.getElementsByTagNameNS(RDF, "RDF").item(0);
@@ -107,6 +113,23 @@ public final class XmpPlace {
                 for (Element child : children(description, f)) {
                     description.removeChild(child);
                 }
+            }
+            if (removeGps) {
+                NamedNodeMap attributes = description.getAttributes();
+                for (int i = attributes.getLength() - 1; i >= 0; i--) {
+                    Attr a = (Attr) attributes.item(i);
+                    if (EXIF.equals(a.getNamespaceURI()) && a.getLocalName().startsWith("GPS")) {
+                        description.removeAttributeNode(a);
+                    }
+                }
+                List<Element> gps = new ArrayList<>();
+                for (Node n = description.getFirstChild(); null != n; n = n.getNextSibling()) {
+                    if (n instanceof Element e && EXIF.equals(e.getNamespaceURI())
+                            && e.getLocalName().startsWith("GPS")) {
+                        gps.add(e);
+                    }
+                }
+                gps.forEach(description::removeChild);
             }
         }
         if (!place.isEmpty()) {

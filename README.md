@@ -12,7 +12,7 @@ It includes everything it needs; you don't have to install Java.
 
 | System | File | Notes |
 |--------|------|-------|
-| Windows 10/11 | `ExifTweaker-<version>-windows-x64.msi` | Installs for your user only, no administrator rights needed. |
+| Windows 10/11 | `ExifTweaker-<version>-windows-x64.msi` | Installs for all users (asks for administrator rights); you can pick the folder. |
 | macOS (Apple silicon) | `ExifTweaker-<version>-macos-arm64.dmg` | The app isn't signed: the first time, right-click it in Applications and choose **Open**. |
 | Linux (Debian, Ubuntu, Mint) | `exiftweaker_<version>_amd64.deb` | `sudo apt install ./exiftweaker_<version>_amd64.deb` |
 | Anything with Java 17+ | `exiftweaker-<version>-all.jar` | `java -jar exiftweaker-<version>-all.jar` (also for Intel Macs) |
@@ -139,6 +139,17 @@ left on home time during a trip.
 
   ![The video export dialog](docs/images/video-export.png)
 
+### Share photos
+
+**File → Export copies for sharing...** (Ctrl+Shift+E) saves copies of the selected photos (or all of them) into
+another folder; the originals aren't touched.
+
+- **Without location**: no GPS position and no place name; the date, camera and everything else stay.
+- **Without any metadata**: only the picture, still shown the right way up (and in the same colors).
+- **All metadata**: exact copies.
+- Optionally **smaller** (from 4K down to 1024 px on the longest side) at the JPEG quality you choose; smaller copies
+  and RAW files are saved as JPEG, turned upright. Copies at the original size keep the picture byte for byte.
+
 ## Formats
 
 | Format | Location and metadata | Needs |
@@ -170,6 +181,7 @@ On macOS use Cmd instead of Ctrl.
 | F2 | Rename photos |
 | Ctrl+G | Geotag from GPX |
 | Ctrl+E | Export photos as GPX |
+| Ctrl+Shift+E | Export copies for sharing |
 | F5 | Play photos |
 | Shift+F5 | Travel mode |
 | Ctrl+, | Settings (on macOS: ExifTweaker → Settings) |
