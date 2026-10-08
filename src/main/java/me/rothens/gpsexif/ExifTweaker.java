@@ -26,6 +26,7 @@ import me.rothens.gpsexif.playback.PlaybackWindow;
 import me.rothens.gpsexif.playback.TravelWindow;
 import me.rothens.gpsexif.ui.ExifToolDialog;
 import me.rothens.gpsexif.ui.GeotagDialog;
+import me.rothens.gpsexif.ui.PhotoDrag;
 import me.rothens.gpsexif.ui.SettingsDialog;
 import me.rothens.gpsexif.ui.ShiftTimeDialog;
 import me.rothens.gpsexif.gpx.PhotoTime;
@@ -34,6 +35,13 @@ import me.rothens.gpsexif.util.ExitWatchdog;
 import me.rothens.gpsexif.util.PhotoLoader;
 import me.rothens.gpsexif.util.PositionUtil;
 import me.rothens.gpsexif.util.Settings;
+import me.rothens.gpsexif.util.ThumbnailCache;
+import me.rothens.gpsexif.util.TripMarkStore;
+import me.rothens.gpsexif.model.TripMark;
+import me.rothens.gpsexif.model.TripMarkIcon;
+import me.rothens.gpsexif.model.ThumbnailRenderer;
+import me.rothens.gpsexif.tutorial.SampleTrip;
+import me.rothens.gpsexif.tutorial.Tutorial;
 import org.jxmapviewer.JXMapViewer;
 import org.jxmapviewer.input.CenterMapListener;
 import org.jxmapviewer.input.PanKeyListener;
@@ -74,6 +82,14 @@ public class ExifTweaker {
     private final JButton btnOpen = new JButton("Open");
     private final ImageListModel listModel = new ImageListModel();
     private final JList<ImageFile> lFiles = new JList<>(listModel);
+    /** The same photos as a grid of thumbnails; shares the list's model and selection. */
+    private final JList<ImageFile> lThumbs = new JList<>(listModel);
+    private final ThumbnailCache thumbnails = new ThumbnailCache(ThumbnailRenderer.THUMBNAIL_SIZE, 1000,
+            lThumbs::repaint);
+    private final JTabbedPane photoTabs = new JTabbedPane();
+    private final TripMarkStore tripMarks = TripMarkStore.openDefault();
+    /** Photos on the left, the rest on the right. */
+    private JSplitPane centerSplit;
     private final JCheckBox chkOnlyWithoutLocation = new JCheckBox("Only without location");
     private final JLabel lblStatus = new JLabel(" ");
     private final JButton btnSave = new JButton("Save");
@@ -123,6 +139,11 @@ public class ExifTweaker {
     private final JMenuItem miTravel = new JMenuItem("Travel mode...");
     /** GPX tracks last loaded in the Geotag dialog; travel mode follows them. */
     private List<Track> lastTracks = List.of();
+    private JMenu file;
+    private JMenu view;
+    private Tutorial tutorial;
+    /** Counts saves and undos, so a tutorial step can tell that the user saved. */
+    private final java.util.concurrent.atomic.AtomicInteger historyChanges = new java.util.concurrent.atomic.AtomicInteger();
     private final TrackPainter trackPainter = new TrackPainter();
     private final JCheckBoxMenuItem miShowMarkers = new JCheckBoxMenuItem("Show photos on map");
     private PhotoMarkerLayer markerLayer;
@@ -153,6 +174,9 @@ public class ExifTweaker {
         lFiles.getActionMap().put(TransferHandler.getCopyAction().getValue(Action.NAME), action(this::copyLocation));
         lFiles.getActionMap().put(TransferHandler.getPasteAction().getValue(Action.NAME), action(this::pasteLocation));
         lFiles.setComponentPopupMenu(createListPopup());
+        setUpThumbnailGrid();
+        PhotoDrag.enableDrag(lFiles);
+        PhotoDrag.enableDrag(lThumbs);
         setUpMetadataTable();
         chkOnlyWithoutLocation.addActionListener(e -> {
             List<ImageFile> keep = selection;
@@ -184,6 +208,7 @@ public class ExifTweaker {
         btnCancel.setVisible(false);
         // History changes may come from background threads; Swing must only be touched on the event thread
         history.addChangeListener(() -> SwingUtilities.invokeLater(this::updateUndo));
+        history.addChangeListener(historyChanges::incrementAndGet);
         updateUndo();
 
         detectExifTool();
@@ -434,15 +459,88 @@ public class ExifTweaker {
         popup.add(menuItem("Paste location", null, e -> pasteLocation()));
         popup.addSeparator();
         popup.add(menuItem("Remove location...", null, e -> removeLocation()));
+        popup.addSeparator();
+        JCheckBoxMenuItem prefer = new JCheckBoxMenuItem("Prefer in trips");
+        prefer.setIcon(new TripMarkIcon(TripMark.PREFER, 14));
+        prefer.setToolTipText("Travel mode shows these first when it can't show every photo of a stretch");
+        prefer.addActionListener(e -> setTripMark(prefer.isSelected() ? TripMark.PREFER : TripMark.NORMAL));
+        JCheckBoxMenuItem skip = new JCheckBoxMenuItem("Skip in trips");
+        skip.setIcon(new TripMarkIcon(TripMark.SKIP, 14));
+        skip.setToolTipText("Leave these out of Play photos, Travel mode and the videos");
+        skip.addActionListener(e -> setTripMark(skip.isSelected() ? TripMark.SKIP : TripMark.NORMAL));
+        popup.add(prefer);
+        popup.add(skip);
+        popup.addPopupMenuListener(new javax.swing.event.PopupMenuListener() {
+            @Override
+            public void popupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent e) {
+                boolean any = !selection.isEmpty();
+                prefer.setEnabled(any);
+                skip.setEnabled(any);
+                prefer.setSelected(any && selection.stream().allMatch(p -> TripMark.PREFER == p.getTripMark()));
+                skip.setSelected(any && selection.stream().allMatch(p -> TripMark.SKIP == p.getTripMark()));
+            }
+
+            @Override
+            public void popupMenuWillBecomeInvisible(javax.swing.event.PopupMenuEvent e) {
+            }
+
+            @Override
+            public void popupMenuCanceled(javax.swing.event.PopupMenuEvent e) {
+            }
+        });
         return popup;
+    }
+
+    /** Marks the selected photos as preferred, skipped or normal in Play photos and Travel mode. */
+    private void setTripMark(TripMark mark) {
+        if (selection.isEmpty()) {
+            return;
+        }
+        String error = null;
+        for (ImageFile photo : selection) {
+            photo.setTripMark(mark);
+            try {
+                tripMarks.set(photo.getPath(), mark);
+            } catch (IOException e) {
+                error = e.getMessage();
+            }
+        }
+        lFiles.repaint();
+        lThumbs.repaint();
+        String photos = selection.size() == 1 ? "1 photo" : selection.size() + " photos";
+        lblStatus.setText(switch (mark) {
+            case PREFER -> photos + " preferred in trips";
+            case SKIP -> photos + " skipped in trips";
+            case NORMAL -> photos + " shown as usual in trips";
+        });
+        if (null != error) {
+            showError("Couldn't remember this for the next time:\n" + error);
+        }
     }
 
     private JMenuBar createMenuBar() {
         int menuKey = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
 
-        JMenu file = new JMenu("File");
+        file = new JMenu("File");
         file.setMnemonic('F');
         file.add(menuItem("Open folder...", KeyStroke.getKeyStroke('O', menuKey), e -> browse()));
+        JMenu recent = new JMenu("Recent folders");
+        recent.addMenuListener(new javax.swing.event.MenuListener() {
+            @Override
+            public void menuSelected(javax.swing.event.MenuEvent e) {
+                fillRecentFolders(recent);
+            }
+
+            @Override
+            public void menuDeselected(javax.swing.event.MenuEvent e) {
+            }
+
+            @Override
+            public void menuCanceled(javax.swing.event.MenuEvent e) {
+            }
+        });
+        fillRecentFolders(recent);
+        file.add(recent);
         miGeotag.setAccelerator(KeyStroke.getKeyStroke('G', menuKey));
         miGeotag.addActionListener(e -> openGeotag());
         file.add(miGeotag);
@@ -486,7 +584,7 @@ public class ExifTweaker {
             edit.add(menuItem("Settings...", KeyStroke.getKeyStroke(',', menuKey), e -> showSettings()));
         }
 
-        JMenu view = new JMenu("View");
+        view = new JMenu("View");
         view.setMnemonic('V');
         JMenu themeMenu = new JMenu("Theme");
         ButtonGroup themeGroup = new ButtonGroup();
@@ -532,12 +630,13 @@ public class ExifTweaker {
         bar.add(file);
         bar.add(edit);
         bar.add(view);
+        JMenu help = new JMenu("Help");
+        help.setMnemonic('H');
+        help.add(menuItem("Show tutorial", null, e -> startTutorial()));
         if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.APP_ABOUT)) {
-            JMenu help = new JMenu("Help");
-            help.setMnemonic('H');
             help.add(menuItem("About " + APP_NAME, null, e -> showAbout()));
-            bar.add(help);
         }
+        bar.add(help);
         return bar;
     }
 
@@ -580,6 +679,7 @@ public class ExifTweaker {
             backend.getExifTool().getExifTool().close();
         }
         history.close();
+        SampleTrip.deleteAll();
         frame.dispose();
     }
 
@@ -593,6 +693,189 @@ public class ExifTweaker {
             setMapLayer(settings.getMapLayer());
             markerLayer.recompute();
         }
+    }
+
+    /** The photo grid: same model, selection, shortcuts and context menu as the list. */
+    private void setUpThumbnailGrid() {
+        lThumbs.setSelectionModel(lFiles.getSelectionModel());
+        lThumbs.setLayoutOrientation(JList.HORIZONTAL_WRAP);
+        lThumbs.setVisibleRowCount(-1);
+        lThumbs.setCellRenderer(new ThumbnailRenderer(thumbnails));
+        lThumbs.setFixedCellWidth(ThumbnailRenderer.CELL_WIDTH);
+        lThumbs.setFixedCellHeight(ThumbnailRenderer.cellHeight(lThumbs.getFont(), lThumbs));
+        lThumbs.getActionMap().put(TransferHandler.getCopyAction().getValue(Action.NAME), action(this::copyLocation));
+        lThumbs.getActionMap().put(TransferHandler.getPasteAction().getValue(Action.NAME), action(this::pasteLocation));
+        lThumbs.setComponentPopupMenu(createListPopup());
+        photoTabs.setSelectedIndex(settings.isThumbnailView() ? 1 : 0);
+        photoTabs.setToolTipTextAt(1, "The photos as small pictures");
+        photoTabs.addChangeListener(e -> {
+            settings.setThumbnailView(photoTabs.getSelectedIndex() == 1);
+            if (photoTabs.getSelectedIndex() == 1) {
+                SwingUtilities.invokeLater(this::fitTwoThumbnailColumns);
+            }
+            int lead = lFiles.getLeadSelectionIndex();
+            if (lead >= 0 && lead < listModel.getSize()) {
+                photoView().ensureIndexIsVisible(lead);
+            }
+        });
+    }
+
+    /** Widens the photo panel if the grid would only fit one column. */
+    private void fitTwoThumbnailColumns() {
+        JViewport viewport = (JViewport) lThumbs.getParent();
+        JScrollPane scroll = (JScrollPane) viewport.getParent();
+        int scrollbar = scroll.getVerticalScrollBar().getPreferredSize().width;
+        int needed = 2 * ThumbnailRenderer.CELL_WIDTH + scrollbar + 4;
+        int missing = needed - viewport.getWidth();
+        if (viewport.getWidth() > 0 && missing > 0) {
+            centerSplit.setDividerLocation(centerSplit.getDividerLocation() + missing);
+        }
+    }
+
+    /** The photo list or the thumbnail grid, whichever tab is showing. */
+    private JList<ImageFile> photoView() {
+        return photoTabs.getSelectedIndex() == 1 ? lThumbs : lFiles;
+    }
+
+    /** Rebuilds the File → Recent folders menu; folders that no longer exist are shown disabled. */
+    private void fillRecentFolders(JMenu menu) {
+        menu.removeAll();
+        List<String> folders = settings.getRecentFolders();
+        if (folders.isEmpty()) {
+            JMenuItem none = new JMenuItem("No recent folders");
+            none.setEnabled(false);
+            menu.add(none);
+            return;
+        }
+        int n = 0;
+        for (String folder : folders) {
+            n++;
+            JMenuItem item = new JMenuItem((n < 10 ? n + "  " : "    ") + shortenPath(folder, 70));
+            if (n < 10) {
+                item.setMnemonic(Character.forDigit(n, 10));
+            }
+            item.setToolTipText(folder);
+            item.setEnabled(new File(folder).isDirectory());
+            item.addActionListener(e -> {
+                tfFolder.setText(folder);
+                openFolder();
+            });
+            menu.add(item);
+        }
+        menu.addSeparator();
+        menu.add(menuItem("Clear recent folders", null, e -> settings.clearRecentFolders()));
+    }
+
+    /** "/home/me/…/Photos/Balaton 2026": keeps the start and the end of a long path. */
+    static String shortenPath(String path, int max) {
+        if (path.length() <= max) {
+            return path;
+        }
+        int keepEnd = max * 2 / 3;
+        int keepStart = max - keepEnd - 1;
+        return path.substring(0, keepStart) + "…" + path.substring(path.length() - keepEnd);
+    }
+
+    /** The guided tour over the main window (first start, and Help → Show tutorial). */
+    private void startTutorial() {
+        if (null != tutorial && tutorial.isRunning()) {
+            return;
+        }
+        settings.setTutorialShown(true);
+        boolean[] samples = {false};
+        GeoPosition[] mapAt = new GeoPosition[1];
+        int[] zoomAt = new int[1];
+        String[] coordinateAt = new String[1];
+        int[] changesAt = new int[1];
+        String ctrl = isMac() ? "Cmd" : "Ctrl";
+        List<Tutorial.Step> steps = new ArrayList<>();
+        steps.add(new Tutorial.Step(null, "Welcome to " + APP_NAME + "!",
+                "This short tour shows how to put your photos on the map. It takes about two minutes, and you can "
+                        + "leave it any time with <b>Skip tour</b> or Esc.<br><br>"
+                        + "Try it on a few <b>sample photos</b> (a weekend at Lake Balaton) - your own photos stay "
+                        + "untouched - or follow along with your own.",
+                null, null, List.of(
+                new Tutorial.Choice("Use sample photos", () -> {
+                    if (openSamplePhotos()) {
+                        samples[0] = true;
+                        tutorial.next();
+                    }
+                }),
+                new Tutorial.Choice("Use my own photos", () -> tutorial.next()),
+                new Tutorial.Choice("Skip tour", () -> tutorial.close()))));
+        steps.add(Tutorial.Step.action(() -> tfFolder.getParent(), "Open a folder",
+                "Type the path of a folder of photos here and press <b>Open</b>, or click <b>...</b> to pick it "
+                        + "(File → Open folder, " + ctrl + "+O).<br><br>With the sample photos, it's already open.",
+                null, () -> !samples[0] && listModel.getSize() > 0 && !busy));
+        steps.add(Tutorial.Step.explain(this::photoView, "Your photos",
+                "These are the photos in the folder. <font color='#2a9d3a'><b>Green</b></font> ones already have a "
+                        + "location, <font color='#d33'><b>red</b></font> ones don't yet.<br><br>"
+                        + "Tick <b>Only without location</b> above to see just the red ones."));
+        steps.add(Tutorial.Step.action(this::photoView, "Select a photo",
+                "Click a red photo to select it. With the sample photos, try <b>IMG_4515.jpg</b>: the abbey in "
+                        + "Tihany.",
+                null, () -> !selection.isEmpty()));
+        steps.add(Tutorial.Step.explain(() -> pnThumbnail.getParent(), "The photo and its details",
+                "Here's the photo and its metadata. Double-click a value to change it: the date taken, camera, "
+                        + "artist, description, altitude and more - for one photo or for all selected ones."));
+        steps.add(Tutorial.Step.action(() -> tfSearch, "Find the place",
+                "Type a place here and press Enter, e.g. <b>Tihany Abbey</b>. You can also drag the map and zoom "
+                        + "with the mouse wheel.",
+                () -> {
+                    mapAt[0] = mapViewer.getCenterPosition();
+                    zoomAt[0] = mapViewer.getZoom();
+                },
+                () -> mapViewer.getZoom() != zoomAt[0] || TrackMatcher.distanceMetres(mapAt[0],
+                        mapViewer.getCenterPosition()) > 50));
+        steps.add(Tutorial.Step.action(() -> mapViewer, "Mark the spot",
+                "<b>Right-click</b> the exact spot where the photo was taken. A pin shows the new location.<br><br>"
+                        + "You can also type a coordinate in the field below the map and press <b>Go!</b>",
+                () -> coordinateAt[0] = tfCoordinate.getText(),
+                () -> !tfCoordinate.getText().isBlank() && !tfCoordinate.getText().equals(coordinateAt[0])));
+        steps.add(Tutorial.Step.action(() -> btnSave, "Save it",
+                "Press <b>Save</b> (" + ctrl + "+S) to write the location into the photo.",
+                () -> changesAt[0] = historyChanges.get(),
+                () -> historyChanges.get() != changesAt[0] && !busy));
+        steps.add(Tutorial.Step.explain(() -> btnUndo, "Changed your mind?",
+                "The photo is green now. <b>Undo</b> (" + ctrl + "+Z) puts photos back exactly as they were - a "
+                        + "whole batch at once.<br><br>Before a photo is changed for the first time, a copy of the "
+                        + "original is also kept next to it as <i>name.bak</i>."));
+        steps.add(Tutorial.Step.explain(this::photoView, "Many photos at once",
+                "Select several photos with Shift- or " + ctrl + "-click: the location you set goes to all of "
+                        + "them when you save.<br><br>"
+                        + ctrl + "+C and " + ctrl + "+V on this list copy one photo's location to others."));
+        steps.add(Tutorial.Step.explain(() -> file, "Tag a whole trip from a GPS track",
+                "Recorded where you went with a phone, watch or GPS logger? <b>File → Geotag from GPX</b> ("
+                        + ctrl + "+G) places all photos at once from the track's times."
+                        + "<br><br>The sample folder has one to try: <b>balaton.gpx</b> - <i>Add GPX files</i> opens "
+                        + "right in the photos' folder."));
+        steps.add(Tutorial.Step.explain(() -> view, "Relive the trip",
+                "<b>View → Play photos</b> (F5) shows the photos in order with a map, and <b>Travel mode</b> "
+                        + "(Shift+F5) plays the trip as a short film. Both can be saved as a video.<br><br>"
+                        + "<b>Show photos on map</b> puts all photos of the folder on the map."));
+        steps.add(Tutorial.Step.explain(null, "That's it!",
+                "You can see this tour again any time under <b>Help → Show tutorial</b>."
+                        + (isMac() ? "" : " Settings (" + ctrl + "+,) has the theme, map layer and backups.")
+                        + "<br><br>Have fun putting your photos on the map!"));
+        tutorial = new Tutorial(frame, steps, () -> tutorial = null);
+        tutorial.start();
+    }
+
+    /** Opens a fresh copy of the sample photos; the folder last opened by the user stays the remembered one. */
+    private boolean openSamplePhotos() {
+        try {
+            Path dir = SampleTrip.copy();
+            tfFolder.setText(dir.toString());
+            openFolder(false);
+            return true;
+        } catch (IOException e) {
+            showError("Couldn't copy the sample photos:\n" + e.getMessage());
+            return false;
+        }
+    }
+
+    private static boolean isMac() {
+        return System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("mac");
     }
 
     private void showAbout() {
@@ -613,6 +896,7 @@ public class ExifTweaker {
         theme.install();
         FlatLaf.updateUI();
         styleBanner();
+        lThumbs.setFixedCellHeight(ThumbnailRenderer.cellHeight(lThumbs.getFont(), lThumbs));
     }
 
     /** Enables the actions that make sense for the current selection, and updates the status line. */
@@ -668,7 +952,9 @@ public class ExifTweaker {
 
         JPanel filePanel = new JPanel(new BorderLayout(0, 2));
         filePanel.add(chkOnlyWithoutLocation, BorderLayout.NORTH);
-        filePanel.add(new JScrollPane(lFiles), BorderLayout.CENTER);
+        photoTabs.addTab("List", new JScrollPane(lFiles));
+        photoTabs.addTab("Thumbnails", new JScrollPane(lThumbs));
+        filePanel.add(photoTabs, BorderLayout.CENTER);
         filePanel.add(lblStatus, BorderLayout.SOUTH);
         filePanel.setPreferredSize(new Dimension(220, 0));
 
@@ -684,7 +970,7 @@ public class ExifTweaker {
         mapSplit.setResizeWeight(1.0);
         mapSplit.setDividerSize(5);
 
-        JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, filePanel, mapSplit);
+        centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, filePanel, mapSplit);
         centerSplit.setDividerSize(5);
 
         JPanel coordinatePanel = new JPanel(new BorderLayout(4, 0));
@@ -728,6 +1014,11 @@ public class ExifTweaker {
     }
 
     private void openFolder() {
+        openFolder(true);
+    }
+
+    /** @param remember whether this becomes the last and a recent folder (not for the tutorial's sample photos) */
+    private void openFolder(boolean remember) {
         if (null != geotagDialog) {
             geotagDialog.dispose();
         }
@@ -738,7 +1029,10 @@ public class ExifTweaker {
             return;
         }
         Arrays.sort(files);
-        settings.setLastDirectory(dir);
+        if (remember) {
+            settings.setLastDirectory(dir);
+            settings.addRecentFolder(new File(dir).getAbsolutePath());
+        }
 
         setBusy(true);
         btnCancel.setVisible(false);
@@ -749,7 +1043,9 @@ public class ExifTweaker {
             protected List<ImageFile> doInBackground() {
                 List<ImageFile> loaded = new ArrayList<>();
                 for (File f : files) {
-                    loaded.add(new ImageFile(f, backend));
+                    ImageFile image = new ImageFile(f, backend);
+                    image.setTripMark(tripMarks.get(f.toPath()));
+                    loaded.add(image);
                     publish(loaded.size());
                 }
                 return loaded;
@@ -763,7 +1059,11 @@ public class ExifTweaker {
             @Override
             protected void done() {
                 try {
+                    thumbnails.clear();
                     listModel.setAll(get());
+                    if (photoTabs.getSelectedIndex() == 1) {
+                        fitTwoThumbnailColumns();
+                    }
                     markerLayer.setPhotos(listModel.getAll());
                 } catch (InterruptedException | ExecutionException e) {
                     showError("Error while opening folder:\n" + e.getMessage());
@@ -1059,7 +1359,7 @@ public class ExifTweaker {
         int index = listModel.indexOf(photo);
         if (index >= 0) {
             lFiles.setSelectedIndex(index);
-            lFiles.ensureIndexIsVisible(index);
+            photoView().ensureIndexIsVisible(index);
         }
     }
 
@@ -1132,15 +1432,23 @@ public class ExifTweaker {
         List<ImageFile> photos = selection.size() > 1 ? selection : listModel.getAll();
         PlaybackSequence sequence = new PlaybackSequence(photos);
         if (sequence.isEmpty()) {
-            showError("None of these photos has a date, so they can't be played back in order.");
+            showError(sequence.getSkipped() > 0
+                    ? "Nothing to play: these photos are skipped in trips or have no date.\n"
+                    + "Right-click a photo and untick Skip in trips to show it again."
+                    : "None of these photos has a date, so they can't be played back in order.");
             return;
         }
         PlaybackWindow window = new PlaybackWindow(frame, sequence, settings.getMapLayer().createInfo(), tileCache,
                 USER_AGENT, settings);
+        List<String> leftOut = new ArrayList<>();
         if (sequence.getWithoutDate() > 0) {
-            int n = sequence.getWithoutDate();
-            lblStatus.setText(n + (n == 1 ? " photo without a date is" : " photos without a date are")
-                    + " left out of the playback");
+            leftOut.add(sequence.getWithoutDate() + " without a date");
+        }
+        if (sequence.getSkipped() > 0) {
+            leftOut.add(sequence.getSkipped() + " skipped");
+        }
+        if (!leftOut.isEmpty()) {
+            lblStatus.setText("Left out: " + String.join(", ", leftOut));
         }
         window.setVisible(true);
     }
@@ -1150,6 +1458,11 @@ public class ExifTweaker {
         List<ImageFile> photos = selection.size() > 1 ? selection : listModel.getAll();
         if (photos.stream().noneMatch(p -> null != p.getTaken())) {
             showError("None of these photos has a date, so the trip can't be played back.");
+            return;
+        }
+        if (photos.stream().noneMatch(p -> null != p.getTaken() && TripMark.SKIP != p.getTripMark())) {
+            showError("All of these photos are skipped in trips.\n"
+                    + "Right-click a photo and untick Skip in trips to show it again.");
             return;
         }
         new TravelWindow(frame, photos, settings, lastTracks, settings.getMapLayer().createInfo(),
@@ -1202,6 +1515,24 @@ public class ExifTweaker {
                             TrackMatcher.Match match = matches.get(image);
                             image.savePosition(match.position(), writeAltitude ? match.elevation() : null);
                         });
+            }
+
+            @Override
+            public List<ImageFile> openedPhotos() {
+                return listModel.getAll();
+            }
+
+            @Override
+            public List<ImageFile> readFolder(File folder) throws IOException {
+                File[] files = folder.listFiles(f -> f.isFile() && backend.canRead(f.toPath()));
+                if (null == files) {
+                    throw new IOException("Can't read the folder");
+                }
+                List<ImageFile> photos = new ArrayList<>();
+                for (File f : files) {
+                    photos.add(new ImageFile(f, backend));
+                }
+                return photos;
             }
         });
         geotagDialog.setVisible(true);
@@ -1327,10 +1658,17 @@ public class ExifTweaker {
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 ExitWatchdog.arm();
                 app.history.close();
+                SampleTrip.deleteAll();
             }, "exiftweaker-cleanup"));
             frame.setSize(1200, 700);
             frame.setLocationRelativeTo(null);
             frame.setVisible(true);
+            if (app.settings.isThumbnailView()) {
+                SwingUtilities.invokeLater(app::fitTwoThumbnailColumns);
+            }
+            if (!app.settings.isTutorialShown()) {
+                SwingUtilities.invokeLater(app::startTutorial);
+            }
         });
     }
 
@@ -1410,6 +1748,16 @@ public class ExifTweaker {
         thumbnailWorker.execute();
     }
 
+    /** Photos dragged onto the map: like right-clicking there with those photos selected. */
+    private void photosDropped(List<ImageFile> photos, GeoPosition position) {
+        if (!new HashSet<>(photos).equals(new HashSet<>(selection))) {
+            reselect(photos);
+        }
+        selectPosition(position);
+        lblStatus.setText((photos.size() == 1 ? "1 photo" : photos.size() + " photos") + " placed - Save to keep");
+        lblStatus.setToolTipText("The location is written to the photos when you press Save");
+    }
+
     private void selectPosition(GeoPosition position) {
         waypoints.removeIf(w -> w instanceof SelectionWaypoint);
         waypoints.add(new SelectionWaypoint(position));
@@ -1456,7 +1804,8 @@ public class ExifTweaker {
         directionOverlay = new DirectionOverlay(mapViewer);
         directionOverlay.setOnDrag(degrees -> tfDirection.setText(MetadataTableModel.number(degrees)));
         markerLayer = new PhotoMarkerLayer(mapViewer, settings::getMaxPhotoMarkers, this::selectFromMap);
-        mapViewer.setOverlayPainter(new CompoundPainter<>(trackPainter, markerLayer, directionOverlay, waypointPainter,
+        org.jxmapviewer.painter.Painter<JXMapViewer> dropPin = PhotoDrag.enableDrop(mapViewer, this::photosDropped);
+        mapViewer.setOverlayPainter(new CompoundPainter<>(trackPainter, markerLayer, directionOverlay, waypointPainter, dropPin,
                 new AttributionPainter()));
         markerLayer.setEnabled(settings.isShowPhotoMarkers());
 

@@ -3,6 +3,7 @@ package me.rothens.gpsexif.playback;
 import me.rothens.gpsexif.gpx.Track;
 import me.rothens.gpsexif.gpx.TrackMatcher;
 import me.rothens.gpsexif.model.ImageFile;
+import me.rothens.gpsexif.model.TripMark;
 import org.jxmapviewer.viewer.GeoPosition;
 
 import java.time.Duration;
@@ -89,6 +90,7 @@ public class TravelTimeline {
     private final double length;
     private int squeezedStays;
     private int shortenedJourneys;
+    private int skipped;
     private double secondsPerVideoSecond;
 
     /**
@@ -151,31 +153,47 @@ public class TravelTimeline {
             }
         }
 
-        // Group photos reached within the minimum photo time; show the middle one of each group
-        int i = 0;
+        // Photos marked "skip" still shape the route and the timing, but are never shown
+        List<Integer> visible = new ArrayList<>();
+        for (int k = 0; k < n; k++) {
+            if (TripMark.SKIP != stops.get(k).photo().getTripMark()) {
+                visible.add(k);
+            } else {
+                skipped++;
+            }
+        }
+        // Group photos reached within the minimum photo time; show one per group: the middle preferred one if
+        // there is one, else the middle one
         List<int[]> groups = new ArrayList<>();
-        while (i < n) {
+        int i = 0;
+        while (i < visible.size()) {
             int j = i + 1;
-            while (j < n && stops.get(j).videoTime() < stops.get(i).videoTime() + minPhoto) {
+            while (j < visible.size()
+                    && stops.get(visible.get(j)).videoTime() < stops.get(visible.get(i)).videoTime() + minPhoto) {
                 j++;
             }
             groups.add(new int[]{i, j - 1});
             i = j;
         }
         for (int g = 0; g < groups.size(); g++) {
-            int first = groups.get(g)[0];
-            int last = groups.get(g)[1];
-            Stop shown = stops.get((first + last) / 2);
-            double start = stops.get(first).videoTime();
-            double end = g + 1 < groups.size() ? stops.get(groups.get(g + 1)[0]).videoTime() : length;
+            int first = visible.get(groups.get(g)[0]);
+            int last = visible.get(groups.get(g)[1]);
+            Stop shown = pick(visible.subList(groups.get(g)[0], groups.get(g)[1] + 1));
+            // The first shown photo starts the film, even if skipped photos come before it
+            double start = 0 == g ? 0 : stops.get(first).videoTime();
+            int next = g + 1 < groups.size() ? visible.get(groups.get(g + 1)[0]) : -1;
+            double end = next >= 0 ? stops.get(next).videoTime() : length;
             boolean showMap = false;
             Duration pause = null;
-            if (g + 1 < groups.size()) {
-                int next = groups.get(g + 1)[0];
-                if (stay[next - 1]) {
-                    // A squeezed stay: the photo stays up with a "+9 h" caption
-                    pause = Duration.between(stops.get(next - 1).time(), stops.get(next).time());
-                } else if (end - start >= minPhoto + MIN_MAP_TIME) {
+            if (next >= 0) {
+                // Squeezed stays between this and the next shown photo: the photo stays up with a "+9 h" caption
+                for (int k = last; k < next; k++) {
+                    if (stay[k]) {
+                        Duration d = Duration.between(stops.get(k).time(), stops.get(k + 1).time());
+                        pause = null == pause ? d : pause.plus(d);
+                    }
+                }
+                if (null == pause && end - start >= minPhoto + MIN_MAP_TIME) {
                     GeoPosition a = lastKnown(last);
                     GeoPosition b = stops.get(next).position();
                     showMap = null == a || null == b || TrackMatcher.distanceMetres(a, b) >= MIN_TRAVEL_DISTANCE_M;
@@ -183,6 +201,14 @@ public class TravelTimeline {
             }
             slots.add(new Slot(shown, start, end, showMap, pause));
         }
+    }
+
+    /** The photo to show for a group of stops: the middle preferred one, else the middle one. */
+    private Stop pick(List<Integer> group) {
+        List<Integer> preferred = group.stream()
+                .filter(k -> TripMark.PREFER == stops.get(k).photo().getTripMark()).toList();
+        List<Integer> from = preferred.isEmpty() ? group : preferred;
+        return stops.get(from.get((from.size() - 1) / 2));
     }
 
     /**
@@ -258,6 +284,11 @@ public class TravelTimeline {
         return video;
     }
 
+    /** Photos marked "skip in trips". */
+    public int getSkipped() {
+        return skipped;
+    }
+
     public int getShortenedJourneys() {
         return shortenedJourneys;
     }
@@ -320,6 +351,9 @@ public class TravelTimeline {
             return "No photos with a date.";
         }
         StringBuilder sb = new StringBuilder("Shows " + slots.size() + " of " + stops.size() + " photos");
+        if (skipped > 0) {
+            sb.append(" (").append(skipped).append(" skipped)");
+        }
         if (secondsPerVideoSecond > 0) {
             sb.append("; 1 s of video = ").append(me.rothens.gpsexif.gpx.PhotoTime.describe(
                     Duration.ofMillis(Math.round(secondsPerVideoSecond * 1000)))).append(" of travel");

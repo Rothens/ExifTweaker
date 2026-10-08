@@ -145,15 +145,60 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 
 ---
 
-## 1.0 — Release
+## 1.0 — Release ✅
 
 - [x] Native installers via `jpackage` (Windows `.msi`, macOS `.dmg`, Linux `.deb`) built in GitHub Actions
       and attached to GitHub Releases (#24). They bundle a trimmed Java runtime, so users don't need Java.
+      On Windows it installs for all users, into Program Files (#34).
 - [x] Rename the Maven artifact from `GPSEditor` to `exiftweaker` (#25); MIT licence; an application icon.
 - [x] User documentation in the README with screenshots: downloads, a walkthrough (single, batch and GPX tagging,
       metadata, playback, export), formats and keyboard shortcuts (#26).
 - [x] Integration tests on sample photos from 16 cameras and phones, 6 RAW formats, HEIC, PNG and TIFF (#27):
       the location reads back, RAW files stay untouched, and every other tag (maker notes included) is unchanged.
+
+---
+
+## After 1.0
+
+- [x] **Guided tour**: on the first start (and Help → Show tutorial), an overlay dims the window except the part
+      being explained, with a bubble saying what to do; a step moves on by itself once it's done (folder opened,
+      photo selected, spot marked, saved). It can run on bundled sample photos (a weekend at Lake Balaton, copied
+      to a temporary folder) or on the user's own; Skip tour or Esc ends it. Settings can bring it back on the next
+      start.
+
+---
+
+## 1.1 — Smarter tagging ✅
+
+- [x] **Tag camera photos from phone photos** (#35): photos that have a location (this folder's, or another folder
+      such as the phone's) act as the track for the others, matched by time like a GPX file.
+- [x] **Drag photos onto the map** (#36) to set their location; a pin with the number of photos shows where they'll
+      land.
+- [x] **Thumbnails tab** (#37) on top of the photo list; the list stays the default.
+- [x] **File → Recent folders** (#38).
+- [x] **Skip or prefer photos in trips** (#46): right-click → Skip in trips / Prefer in trips. Skipped photos are left
+      out of Play photos, Travel mode and videos (their location still shapes the route); preferred ones win when
+      travel mode can't show every photo of a stretch. Marked with ⊘ / ★ in the list and the grid.
+
+---
+
+## 1.2 — Places
+
+- [ ] **Place names** (#39): look up the place for each location (OpenStreetMap Nominatim, within its usage policy)
+      and write it as City / State / Country into IPTC/XMP; show it in the app, playback and videos.
+- [ ] **Rename by date and place** (#40), e.g. `2026-07-11 Tihany 001.jpg`, with a preview and undo.
+- [ ] **Export copies for sharing** (#41): without location or without any metadata, optionally resized; the
+      originals stay untouched.
+
+---
+
+## 1.3 — More sources & reach
+
+- [ ] **More track formats** (#42): Google Maps Timeline, KML/KMZ, FIT and TCX.
+- [ ] **First-run download of ExifTool and FFmpeg** (#43): checkboxes on the first start, downloaded into the app's
+      own folder; the `.deb` depends on the distribution's packages instead.
+- [ ] **Hungarian translation** (#44), with all texts in resource bundles so more languages can be added.
+- [ ] **"New version available" check** (#45), at most once a day, can be turned off.
 
 ---
 

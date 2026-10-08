@@ -22,11 +22,21 @@ public class ImageFile {
     private final MetadataBackend backend;
     // Replaced as a whole, possibly from a background thread (batch writes) while the UI reads it
     private volatile PhotoMetadata metadata = PhotoMetadata.EMPTY;
+    private volatile TripMark tripMark = TripMark.NORMAL;
 
     public ImageFile(File file, MetadataBackend backend) {
         this.file = file;
         this.backend = backend;
         reload();
+    }
+
+    /** Whether the photo is skipped or preferred in Play photos and Travel mode. */
+    public TripMark getTripMark() {
+        return tripMark;
+    }
+
+    public void setTripMark(TripMark tripMark) {
+        this.tripMark = null == tripMark ? TripMark.NORMAL : tripMark;
     }
 
     /** Re-reads the metadata from disk, e.g. after the file was written or restored. */

@@ -1,6 +1,7 @@
 package me.rothens.gpsexif.ui;
 
 import me.rothens.gpsexif.gpx.GpxParser;
+import me.rothens.gpsexif.gpx.PhotoTrack;
 import me.rothens.gpsexif.gpx.PhotoTime;
 import me.rothens.gpsexif.gpx.Track;
 import me.rothens.gpsexif.gpx.TrackMatcher;
@@ -13,7 +14,6 @@ import org.jxmapviewer.viewer.GeoPosition;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.AbstractTableModel;
 import java.awt.*;
 import java.io.File;
@@ -52,6 +52,12 @@ public class GeotagDialog extends JDialog {
 
         /** Writes the positions (and altitudes, when given) in one undoable batch. */
         void apply(Map<ImageFile, TrackMatcher.Match> matches, boolean writeAltitude);
+
+        /** All photos of the opened folder. */
+        List<ImageFile> openedPhotos();
+
+        /** Reads the photos of another folder (called on a background thread). */
+        List<ImageFile> readFolder(File folder) throws IOException;
     }
 
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ROOT);
@@ -59,6 +65,9 @@ public class GeotagDialog extends JDialog {
     private final Host host;
     private final Settings settings;
     private final List<Track> tracks = new ArrayList<>();
+    /** Photos with a location used as a track, e.g. from a phone; rebuilt when the time zone changes. */
+    private final List<ImageFile> referencePhotos = new ArrayList<>();
+    private String referenceName;
     private final List<Row> rows = new ArrayList<>();
     private TrackMatcher matcher = new TrackMatcher(List.of());
     private Duration clockOffset = Duration.ZERO;
@@ -104,9 +113,14 @@ public class GeotagDialog extends JDialog {
 
         JButton btnAdd = new JButton("Add GPX files...");
         btnAdd.addActionListener(e -> addFiles());
+        JButton btnPhotos = new JButton("Use photos with a location...");
+        btnPhotos.setToolTipText("<html>Taken with a phone as well? Its photos know where they were taken:<br>"
+                + "use them as the track to place the photos of a camera without GPS.</html>");
+        btnPhotos.addActionListener(e -> choosePhotoTrack(btnPhotos));
         JButton btnClear = new JButton("Remove tracks");
         btnClear.addActionListener(e -> {
             tracks.clear();
+            referencePhotos.clear();
             trackChanged();
         });
         JButton btnFromClock = new JButton("From clock photo...");
@@ -118,6 +132,8 @@ public class GeotagDialog extends JDialog {
 
         cbZone.addActionListener(e -> {
             settings.setCameraZone(ZoneId.of((String) cbZone.getSelectedItem()));
+            // Photos without their own UTC offset are read in this zone, the reference photos too
+            matcher = new TrackMatcher(allTracks());
             updateTrackLabel();
             recompute();
         });
@@ -161,8 +177,10 @@ public class GeotagDialog extends JDialog {
 
         JPanel trackRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         trackRow.add(btnAdd);
+        trackRow.add(btnPhotos);
         trackRow.add(btnClear);
-        trackRow.add(lblTracks);
+        JPanel trackInfoRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        trackInfoRow.add(lblTracks);
 
         JPanel clockRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         clockRow.add(new JLabel("Camera time zone:"));
@@ -182,8 +200,9 @@ public class GeotagDialog extends JDialog {
         gapRow.add(Box.createHorizontalStrut(12));
         gapRow.add(chkAltitude);
 
-        JPanel top = new JPanel(new GridLayout(4, 1, 0, 6));
+        JPanel top = new JPanel(new GridLayout(5, 1, 0, 6));
         top.add(trackRow);
+        top.add(trackInfoRow);
         top.add(clockRow);
         top.add(helperRow);
         top.add(gapRow);
@@ -205,7 +224,7 @@ public class GeotagDialog extends JDialog {
                 JComponent.WHEN_IN_FOCUSED_WINDOW);
 
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setSize(900, 520);
+        setSize(900, 560);
         setLocationRelativeTo(owner);
         recompute();
     }
@@ -238,40 +257,115 @@ public class GeotagDialog extends JDialog {
     }
 
     private void addFiles() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setMultiSelectionEnabled(true);
-        chooser.setFileFilter(new FileNameExtensionFilter("GPX tracks (*.gpx)", "gpx"));
-        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            addTracks(List.of(chooser.getSelectedFiles()));
+        List<File> files = GpxFileChooser.choose(this, rows.stream().map(r -> r.image).toList(), settings);
+        if (!files.isEmpty()) {
+            addTracks(files);
         }
     }
 
     private void trackChanged() {
-        matcher = new TrackMatcher(tracks);
+        List<Track> all = allTracks();
+        matcher = new TrackMatcher(all);
         updateTrackLabel();
-        if (!tracks.isEmpty()) {
-            List<GeoPosition> all = new ArrayList<>();
-            tracks.forEach(t -> t.segments().forEach(s -> s.forEach(p -> all.add(p.position()))));
-            host.zoomTo(all);
+        if (!all.isEmpty()) {
+            List<GeoPosition> positions = new ArrayList<>();
+            all.forEach(t -> t.segments().forEach(s -> s.forEach(p -> positions.add(p.position()))));
+            host.zoomTo(positions);
         }
         recompute();
     }
 
+    /** The GPX tracks plus the reference photos as a track. */
+    private List<Track> allTracks() {
+        List<Track> all = new ArrayList<>(tracks);
+        Track photos = referencePhotos.isEmpty() ? null : PhotoTrack.of(referenceName, referencePhotos, zone());
+        if (null != photos) {
+            all.add(photos);
+        }
+        return all;
+    }
+
+    /** Offers this folder's photos with a location, or another folder's (e.g. the phone's), as the track. */
+    private void choosePhotoTrack(JComponent anchor) {
+        List<ImageFile> opened = host.openedPhotos();
+        long here = PhotoTrack.usable(opened);
+        JPopupMenu menu = new JPopupMenu();
+        JMenuItem thisFolder = new JMenuItem("Photos of this folder that have a location (" + here + ")");
+        thisFolder.setEnabled(here > 0);
+        thisFolder.addActionListener(e -> usePhotos(opened, "photos of this folder"));
+        JMenuItem other = new JMenuItem("Photos from another folder (e.g. your phone's)...");
+        other.addActionListener(e -> chooseOtherFolder());
+        menu.add(thisFolder);
+        menu.add(other);
+        menu.show(anchor, 0, anchor.getHeight());
+    }
+
+    private void chooseOtherFolder() {
+        JFileChooser chooser = new JFileChooser(GpxFileChooser.startFolder(rows.stream().map(r -> r.image).toList(),
+                settings));
+        chooser.setDialogTitle("Folder with photos that have a location");
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        File folder = chooser.getSelectedFile();
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        lblTracks.setText("Reading " + folder.getName() + "...");
+        new SwingWorker<List<ImageFile>, Void>() {
+            @Override
+            protected List<ImageFile> doInBackground() throws Exception {
+                return host.readFolder(folder);
+            }
+
+            @Override
+            protected void done() {
+                setCursor(Cursor.getDefaultCursor());
+                try {
+                    List<ImageFile> photos = get();
+                    if (PhotoTrack.usable(photos) == 0) {
+                        updateTrackLabel();
+                        message("None of the photos in " + folder.getName() + " has both a location and a date."
+                                + (photos.isEmpty() ? "\n(No photos found there.)" : ""));
+                    } else {
+                        usePhotos(photos, "photos in " + folder.getName());
+                    }
+                } catch (InterruptedException | java.util.concurrent.ExecutionException e) {
+                    updateTrackLabel();
+                    message("Couldn't read " + folder + ":\n" + e.getMessage());
+                }
+            }
+        }.execute();
+    }
+
+    private void usePhotos(List<ImageFile> photos, String name) {
+        referencePhotos.clear();
+        photos.stream().filter(p -> null != p.getGp() && null != p.getTaken()).forEach(referencePhotos::add);
+        referenceName = name;
+        trackChanged();
+    }
+
     /** Track summary; times are shown in the camera's time zone, like the photos' times. */
     private void updateTrackLabel() {
-        if (tracks.isEmpty()) {
+        List<Track> all = allTracks();
+        if (all.isEmpty()) {
             lblTracks.setText("No GPX file loaded");
-        } else {
-            int points = tracks.stream().mapToInt(Track::pointCount).sum();
-            Instant start = tracks.stream().map(Track::start).filter(java.util.Objects::nonNull)
-                    .min(Instant::compareTo).orElse(null);
-            Instant end = tracks.stream().map(Track::end).filter(java.util.Objects::nonNull)
-                    .max(Instant::compareTo).orElse(null);
-            String range = null == start ? "no times!"
-                    : format(start) + " - " + format(end) + " (" + zone().getId() + ")";
-            lblTracks.setText(tracks.size() + (tracks.size() == 1 ? " file, " : " files, ") + points
-                    + " points, " + range);
+            return;
         }
+        int points = all.stream().mapToInt(Track::pointCount).sum();
+        Instant start = all.stream().map(Track::start).filter(java.util.Objects::nonNull)
+                .min(Instant::compareTo).orElse(null);
+        Instant end = all.stream().map(Track::end).filter(java.util.Objects::nonNull)
+                .max(Instant::compareTo).orElse(null);
+        String range = null == start ? "no times!"
+                : format(start) + " - " + format(end) + " (" + zone().getId() + ")";
+        List<String> sources = new ArrayList<>();
+        if (!tracks.isEmpty()) {
+            sources.add(tracks.size() + (tracks.size() == 1 ? " file" : " files"));
+        }
+        if (!referencePhotos.isEmpty()) {
+            sources.add(referencePhotos.size() + " " + referenceName);
+        }
+        lblTracks.setText(String.join(" + ", sources) + ", " + points + " points, " + range);
     }
 
     private String format(Instant instant) {
@@ -332,12 +426,20 @@ public class GeotagDialog extends JDialog {
         int selected = toApply().size();
         StringBuilder sb = new StringBuilder();
         if (!matcher.hasTimedPoints()) {
-            sb.append(tracks.isEmpty() ? "Add a GPX file recorded while taking the photos."
+            sb.append(tracks.isEmpty() && referencePhotos.isEmpty()
+                    ? "Add a GPX file recorded while taking the photos, or use photos that have a location."
                     : "The loaded tracks have no times, so photos can't be matched.");
         } else {
             sb.append(matched).append(" of ").append(rows.size()).append(" photos matched");
             if (noDate > 0) {
                 sb.append(", ").append(noDate).append(" without date");
+            }
+            long unplaced = rows.stream().filter(r -> null != r.image.getTaken() && !r.image.hasExifGPS()
+                    && (null == r.match || !r.match.isMatched())).count();
+            if (!referencePhotos.isEmpty() && unplaced > 0) {
+                // Photos are much further apart than GPX points
+                sb.append(" - ").append(unplaced).append(unplaced == 1 ? " photo" : " photos")
+                        .append(" without a location left: try a larger Max. time");
             }
         }
         lblSummary.setText(sb.toString());
@@ -355,7 +457,7 @@ public class GeotagDialog extends JDialog {
                 highlight = row.match.position();
             }
         }
-        host.showPreview(tracks, proposed, highlight);
+        host.showPreview(allTracks(), proposed, highlight);
     }
 
     private Row selectedRow() {

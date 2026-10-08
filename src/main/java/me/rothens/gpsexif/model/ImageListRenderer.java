@@ -15,8 +15,13 @@ public class ImageListRenderer extends JLabel implements ListCellRenderer<ImageF
     private static final Color HAS_GPS_DARK = new Color(110, 210, 110);
     private static final Color NO_GPS_DARK = new Color(240, 110, 110);
 
+    private static final Icon PREFER = new TripMarkIcon(TripMark.PREFER, 13);
+    private static final Icon SKIP = new TripMarkIcon(TripMark.SKIP, 13);
+
     public ImageListRenderer() {
         setOpaque(true);
+        setHorizontalTextPosition(LEADING); // the trip badge after the name
+        setIconTextGap(6);
     }
 
     @Override
@@ -34,9 +39,16 @@ public class ImageListRenderer extends JLabel implements ListCellRenderer<ImageF
             setForeground(dark ? NO_GPS_DARK : NO_GPS);
         }
         setText(value.getFile().getName());
+        TripMark mark = value.getTripMark();
+        setIcon(TripMark.PREFER == mark ? PREFER : TripMark.SKIP == mark ? SKIP : null);
+        String trip = TripMark.PREFER == mark ? " - preferred in trips" : TripMark.SKIP == mark ? " - skipped in trips" : "";
+        if (TripMark.SKIP == mark && !isSelected) {
+            Color c = getForeground();
+            setForeground(new Color(c.getRed(), c.getGreen(), c.getBlue(), 130));
+        }
         if (value.isWritable()) {
             setFont(list.getFont());
-            setToolTipText(value.hasExifGPS() ? "Has GPS position" : "No GPS position");
+            setToolTipText((value.hasExifGPS() ? "Has GPS position" : "No GPS position") + trip);
         } else {
             setFont(list.getFont().deriveFont(Font.ITALIC));
             setForeground(UIManager.getColor("Label.disabledForeground"));

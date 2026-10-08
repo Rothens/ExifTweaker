@@ -1,6 +1,7 @@
 package me.rothens.gpsexif.playback;
 
 import me.rothens.gpsexif.model.ImageFile;
+import me.rothens.gpsexif.model.TripMark;
 import org.jxmapviewer.viewer.GeoPosition;
 
 import java.util.ArrayList;
@@ -17,13 +18,16 @@ public class PlaybackSequence {
     private final List<GeoPosition> mapPositions = new ArrayList<>();
     private final List<GeoPosition> route = new ArrayList<>();
     private final int withoutDate;
+    private final int skipped;
     private int index;
 
     public PlaybackSequence(List<ImageFile> candidates) {
-        this.photos = candidates.stream().filter(p -> null != p.getTaken())
+        this.skipped = (int) candidates.stream().filter(p -> TripMark.SKIP == p.getTripMark()).count();
+        this.photos = candidates.stream().filter(p -> null != p.getTaken() && TripMark.SKIP != p.getTripMark())
                 .sorted(Comparator.comparing(ImageFile::getTaken).thenComparing(p -> p.getFile().getName()))
                 .toList();
-        this.withoutDate = candidates.size() - photos.size();
+        this.withoutDate = (int) candidates.stream()
+                .filter(p -> null == p.getTaken() && TripMark.SKIP != p.getTripMark()).count();
         GeoPosition last = null;
         for (ImageFile photo : photos) {
             if (null != photo.getGp()) {
@@ -33,6 +37,11 @@ public class PlaybackSequence {
             // A photo without a location keeps the map where the previous one was
             mapPositions.add(last);
         }
+    }
+
+    /** Photos left out because they're marked "skip in trips". */
+    public int getSkipped() {
+        return skipped;
     }
 
     public int size() {
