@@ -168,10 +168,10 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 
 ---
 
-## 1.1 — Smarter tagging
+## 1.1 — Smarter tagging ✅
 
-- [ ] **Tag camera photos from phone photos** (#35): photos that have a location (e.g. from the phone) act as the
-      track for the others, matched by time like a GPX file.
+- [x] **Tag camera photos from phone photos** (#35): photos that have a location (this folder's, or another folder
+      such as the phone's) act as the track for the others, matched by time like a GPX file.
 - [x] **Drag photos onto the map** (#36) to set their location; a pin with the number of photos shows where they'll
       land.
 - [x] **Thumbnails tab** (#37) on top of the photo list; the list stays the default.

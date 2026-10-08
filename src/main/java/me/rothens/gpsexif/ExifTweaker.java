@@ -1516,6 +1516,24 @@ public class ExifTweaker {
                             image.savePosition(match.position(), writeAltitude ? match.elevation() : null);
                         });
             }
+
+            @Override
+            public List<ImageFile> openedPhotos() {
+                return listModel.getAll();
+            }
+
+            @Override
+            public List<ImageFile> readFolder(File folder) throws IOException {
+                File[] files = folder.listFiles(f -> f.isFile() && backend.canRead(f.toPath()));
+                if (null == files) {
+                    throw new IOException("Can't read the folder");
+                }
+                List<ImageFile> photos = new ArrayList<>();
+                for (File f : files) {
+                    photos.add(new ImageFile(f, backend));
+                }
+                return photos;
+            }
         });
         geotagDialog.setVisible(true);
     }

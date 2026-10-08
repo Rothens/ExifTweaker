@@ -29,7 +29,8 @@ photos or on your own. It's always there again under **Help → Show tutorial**.
 ### Tag a photo
 
 1. Open a folder: type its path at the top and press **Open**, or use **...** (File → Open folder, Ctrl+O).
-   Photos with a location are green in the list, the others are red.
+   **File → Recent folders** has the last ten. Photos with a location are green in the list, the others are red;
+   the **Thumbnails** tab shows them as small pictures, with a green or red dot.
 2. Select a photo. Its thumbnail and metadata show on the right, and the map jumps to where it was taken.
 3. Find the place: type a name in the search box above the map (e.g. `Tihany Abbey`) and press Enter, or drag and
    zoom the map.
@@ -46,6 +47,7 @@ Select several photos (Shift- or Ctrl-click, or Edit → Select all photos, Ctrl
 the map and press **Save**: the location goes to all of them, with a progress bar and a list of anything that
 failed. Undo takes back the whole batch.
 
+- **Drag photos onto the map**: drop them on the spot where they were taken, then Save.
 - Tick **Only without location** to see just the photos that still need a location.
 - **Copy and paste a location** from one photo to others: Ctrl+C and Ctrl+V on the photo list (or Edit → Copy
   location, Ctrl+Shift+C), then Save.
@@ -72,6 +74,11 @@ from the time it was taken.
 
 ![The Geotag from GPX dialog with the matched photos, and the track on the map](docs/images/geotag.png)
 
+**No GPX file, but a phone?** Its photos know where they were taken. Press **Use photos with a location...** and pick
+the photos of this folder that have one, or another folder (e.g. the phone's): the camera's photos are placed by time
+between them. Phone photos are usually further apart than track points, so raise **Max. time** if photos stay
+unmatched.
+
 ### Edit dates and other metadata
 
 Double-click a value in the table on the right to change the **date taken, camera make and model, artist,
@@ -90,6 +97,8 @@ left on home time during a trip.
   long stops are skipped over quickly, and longer journeys play on a full-screen map.
 - Both can show the time as the camera recorded it or in any time zone (**Times in**), and **Export video...**
   saves them as an MP4 video, from 720p to 4K, also in portrait for phones.
+- Right-click photos in the list for **Skip in trips** (left out of both, and of the videos) or **Prefer in trips**
+  (shown first when travel mode can't fit every photo of a stretch). They're marked ⊘ and ★ in the list.
 
 | Travel mode: on the road | Travel mode: arriving at a photo |
 |---|---|
