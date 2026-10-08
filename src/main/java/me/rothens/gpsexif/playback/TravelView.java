@@ -46,6 +46,8 @@ final class TravelView extends JLayeredPane {
     /** Width of the small map as a share of the view's width. */
     private double insetFraction = 0.25;
     private InsetGrip grip;
+    /** Whether the small map keeps its zoom and follows the marker, instead of showing the whole route. */
+    private boolean followMarker;
 
     /**
      * @param images the loaded photo to draw, or {@code null} while it isn't loaded yet
@@ -86,7 +88,9 @@ final class TravelView extends JLayeredPane {
         this.timeline = timeline;
         this.route = route;
         routePainter.route = route;
-        fitInset();
+        if (!followMarker) {
+            fitInset();
+        }
         mapSlot = -1;
     }
 
@@ -98,6 +102,9 @@ final class TravelView extends JLayeredPane {
             // A travel stretch starts: frame it on the full-screen map
             fitFullMap(frame.slot());
             mapSlot = frame.slot();
+        }
+        if (followMarker && null != frame.marker()) {
+            insetMap.setCenterPosition(frame.marker());
         }
         insetMap.setVisible(null != frame.visible() && !timeline.isEmpty());
         if (null != grip) {
@@ -142,7 +149,9 @@ final class TravelView extends JLayeredPane {
         photoLayer.setBounds(0, 0, getWidth(), getHeight());
         layoutInset();
         if (null != timeline) {
-            fitInset();
+            if (!followMarker) {
+                fitInset();
+            }
             mapSlot = -1;
         }
     }
@@ -156,6 +165,30 @@ final class TravelView extends JLayeredPane {
         if (null != grip) {
             grip.setBounds(insetMap.getX(), insetMap.getY(), InsetGrip.SIZE, InsetGrip.SIZE);
         }
+    }
+
+    /**
+     * Lets the small map follow the marker at {@code zoom} (or at its current zoom if {@code zoom} is negative), or
+     * show the whole route again.
+     */
+    void setFollowMarker(boolean follow, int zoom) {
+        followMarker = follow;
+        if (follow) {
+            if (zoom >= 0) {
+                insetMap.setZoom(zoom);
+            }
+            if (null != routePainter.marker) {
+                insetMap.setCenterPosition(routePainter.marker);
+            }
+        } else if (null != timeline) {
+            fitInset();
+        }
+        repaint();
+    }
+
+    /** The small map's zoom level. */
+    int getInsetZoom() {
+        return insetMap.getZoom();
     }
 
     double getInsetFraction() {

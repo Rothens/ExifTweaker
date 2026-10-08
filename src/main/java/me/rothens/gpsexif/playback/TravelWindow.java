@@ -69,6 +69,7 @@ public class TravelWindow extends JFrame {
     private final JCheckBox chkJourney = new JCheckBox("Travel at most", true);
     private final JSpinner spJourney = new JSpinner(new SpinnerNumberModel(8, 3, 120, 1));
     private final JCheckBox chkFullMap = new JCheckBox("Full-screen map between photos");
+    private final JCheckBox chkFollow = new JCheckBox("Small map follows the marker");
     private final JLabel lblRoute = new JLabel();
     private final JLabel lblSummary = new JLabel(" ");
     private final JButton btnPlay = new JButton("▶");
@@ -101,6 +102,12 @@ public class TravelWindow extends JFrame {
         view = new TravelView(tileFactory, cache::get, clock);
         view.setInsetFraction(settings.getTravelInset());
         view.enableInsetResize(settings::setTravelInset);
+        // The zoom chosen on the small map (mouse wheel) is kept while it follows the marker
+        view.getMaps()[1].addPropertyChangeListener("zoom", e -> {
+            if (chkFollow.isSelected()) {
+                settings.setTravelInsetZoom(view.getInsetZoom());
+            }
+        });
         for (JXMapViewer map : view.getMaps()) {
             MouseInputListener pan = new PanMouseInputListener(map);
             map.addMouseListener(pan);
@@ -130,6 +137,10 @@ public class TravelWindow extends JFrame {
             @Override
             public void windowOpened(java.awt.event.WindowEvent e) {
                 rebuild();
+                if (chkFollow.isSelected()) {
+                    view.setFollowMarker(true, settings.getTravelInsetZoom());
+                    render();
+                }
             }
         });
     }
@@ -162,6 +173,14 @@ public class TravelWindow extends JFrame {
             settings.setTravelFullMap(chkFullMap.isSelected());
             rebuild();
         });
+        chkFollow.setSelected(settings.isTravelFollow());
+        chkFollow.setToolTipText("<html>On: the small map stays at the zoom you choose with the mouse wheel and keeps"
+                + " the marker in the middle.<br>Off: it shows the whole route.</html>");
+        chkFollow.addActionListener(e -> {
+            settings.setTravelFollow(chkFollow.isSelected());
+            view.setFollowMarker(chkFollow.isSelected(), settings.getTravelInsetZoom());
+            render();
+        });
 
         JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
         row1.add(new JLabel("Film length (s):"));
@@ -186,6 +205,7 @@ public class TravelWindow extends JFrame {
         row2.add(btnStraight);
         row2.add(new JLabel("   "));
         row2.add(chkFullMap);
+        row2.add(chkFollow);
         row2.add(new JLabel("   "));
         row2.add(lblSummary);
         JPanel panel = new JPanel(new GridLayout(2, 1));
@@ -254,8 +274,11 @@ public class TravelWindow extends JFrame {
         List<List<GeoPosition>> filmRoute = route;
         ClockZone filmClock = clock;
         double inset = view.getInsetFraction();
+        boolean follow = chkFollow.isSelected();
+        int insetZoom = view.getInsetZoom();
         new VideoExportDialog(this, settings, defaultVideoName(photos, "travel"), null, film::getLength,
-                f -> new TravelFrames(film, filmRoute, filmClock, tileFactory, f.width(), f.height(), f.fps(), inset))
+                f -> new TravelFrames(film, filmRoute, filmClock, tileFactory, f.width(), f.height(), f.fps(), inset,
+                        follow, insetZoom))
                 .showDialog();
     }
 

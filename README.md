@@ -120,7 +120,8 @@ left on home time during a trip.
   route (along your GPX track, if you loaded one) and each photo fades in as the marker arrives. Nights and other
   long stops are skipped over quickly, and longer journeys play on a full-screen map - or, with **Full-screen map
   between photos** off, the last photo stays up while the marker travels on the small map. Drag the small map's top
-  left corner to resize it; zoom it with the mouse wheel.
+  left corner to resize it; zoom it with the mouse wheel. With **Small map follows the marker** it stays at the
+  zoom you chose and keeps the marker in the middle, instead of showing the whole route.
 - Both can show the time as the camera recorded it or in any time zone (**Times in**), and **Export video...**
   saves them as an MP4 video, from 720p to 4K, also in portrait for phones.
 - Right-click photos in the list for **Skip in trips** (left out of both, and of the videos) or **Prefer in trips**

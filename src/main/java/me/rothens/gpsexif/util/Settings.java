@@ -26,6 +26,8 @@ public class Settings {
     private static final String SHARE_DIRECTORY = "SHARE_DIRECTORY";
     private static final String TRAVEL_FULL_MAP = "TRAVEL_FULL_MAP";
     private static final String TRAVEL_INSET = "TRAVEL_INSET";
+    private static final String TRAVEL_FOLLOW = "TRAVEL_FOLLOW";
+    private static final String TRAVEL_INSET_ZOOM = "TRAVEL_INSET_ZOOM";
     private static final String SHARE_PRIVACY = "SHARE_PRIVACY";
     private static final String SHARE_SIZE = "SHARE_SIZE";
     private static final String SHARE_QUALITY = "SHARE_QUALITY";
@@ -292,6 +294,24 @@ public class Settings {
 
     public void setTravelInset(double fraction) {
         prefs.putDouble(TRAVEL_INSET, Math.max(0.15, Math.min(0.6, fraction)));
+    }
+
+    /** Whether Travel mode's small map follows the marker at a chosen zoom instead of showing the whole route. */
+    public boolean isTravelFollow() {
+        return prefs.getBoolean(TRAVEL_FOLLOW, false);
+    }
+
+    public void setTravelFollow(boolean follow) {
+        prefs.putBoolean(TRAVEL_FOLLOW, follow);
+    }
+
+    /** The zoom level chosen for the following small map; -1 if none yet. */
+    public int getTravelInsetZoom() {
+        return prefs.getInt(TRAVEL_INSET_ZOOM, -1);
+    }
+
+    public void setTravelInsetZoom(int zoom) {
+        prefs.putInt(TRAVEL_INSET_ZOOM, zoom);
     }
 
     /** Where shared copies went the last time; empty if never. */
