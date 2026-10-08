@@ -18,6 +18,7 @@ public class Settings {
     private static final String TILE_CACHE_MAX_MB = "TILE_CACHE_MAX_MB";
     private static final String CAMERA_ZONE = "CAMERA_ZONE";
     private static final String TUTORIAL_SHOWN = "TUTORIAL_SHOWN";
+    private static final String GPX_DIRECTORY = "GPX_DIRECTORY";
     private static final String DISPLAY_ZONE = "DISPLAY_ZONE";
     private static final String GPX_MAX_GAP_MINUTES = "GPX_MAX_GAP_MINUTES";
 
@@ -59,6 +60,15 @@ public class Settings {
 
     public void setTileCacheMaxMb(int megabytes) {
         prefs.putInt(TILE_CACHE_MAX_MB, Math.max(MIN_TILE_CACHE_MAX_MB, megabytes));
+    }
+
+    /** Folder of the last GPX file picked; empty if none yet. */
+    public String getGpxDirectory() {
+        return prefs.get(GPX_DIRECTORY, "");
+    }
+
+    public void setGpxDirectory(String directory) {
+        prefs.put(GPX_DIRECTORY, directory);
     }
 
     /** Whether the tutorial was offered already (it's offered once, on the first start). */

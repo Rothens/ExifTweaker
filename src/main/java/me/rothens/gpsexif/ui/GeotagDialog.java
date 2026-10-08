@@ -13,7 +13,6 @@ import org.jxmapviewer.viewer.GeoPosition;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.AbstractTableModel;
 import java.awt.*;
 import java.io.File;
@@ -238,11 +237,9 @@ public class GeotagDialog extends JDialog {
     }
 
     private void addFiles() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setMultiSelectionEnabled(true);
-        chooser.setFileFilter(new FileNameExtensionFilter("GPX tracks (*.gpx)", "gpx"));
-        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            addTracks(List.of(chooser.getSelectedFiles()));
+        List<File> files = GpxFileChooser.choose(this, rows.stream().map(r -> r.image).toList(), settings);
+        if (!files.isEmpty()) {
+            addTracks(files);
         }
     }
 

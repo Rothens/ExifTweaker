@@ -5,6 +5,7 @@ import me.rothens.gpsexif.gpx.Track;
 import me.rothens.gpsexif.gpx.TrackPoint;
 import me.rothens.gpsexif.model.ImageFile;
 import me.rothens.gpsexif.util.PhotoLoader;
+import me.rothens.gpsexif.ui.GpxFileChooser;
 import me.rothens.gpsexif.ui.VideoExportDialog;
 import me.rothens.gpsexif.util.Settings;
 import org.jxmapviewer.JXMapViewer;
@@ -17,7 +18,6 @@ import org.jxmapviewer.viewer.TileFactoryInfo;
 
 import javax.swing.*;
 import javax.swing.event.MouseInputListener;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
@@ -254,14 +254,12 @@ public class TravelWindow extends JFrame {
     }
 
     private void loadGpx() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setMultiSelectionEnabled(true);
-        chooser.setFileFilter(new FileNameExtensionFilter("GPX tracks (*.gpx)", "gpx"));
-        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+        List<File> files = GpxFileChooser.choose(this, photos, settings);
+        if (files.isEmpty()) {
             return;
         }
         List<Track> loaded = new ArrayList<>();
-        for (File f : chooser.getSelectedFiles()) {
+        for (File f : files) {
             try {
                 loaded.add(GpxParser.parse(f.toPath()));
             } catch (IOException e) {
