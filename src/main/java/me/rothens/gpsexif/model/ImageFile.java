@@ -18,7 +18,8 @@ import java.util.List;
  */
 public class ImageFile {
 
-    private final File file;
+    // Changes when the photo is renamed
+    private volatile File file;
     private final MetadataBackend backend;
     // Replaced as a whole, possibly from a background thread (batch writes) while the UI reads it
     private volatile PhotoMetadata metadata = PhotoMetadata.EMPTY;
@@ -76,6 +77,11 @@ public class ImageFile {
         return metadata.direction();
     }
 
+    /** Where the photo was taken in words (city, country), or {@code null}. */
+    public me.rothens.gpsexif.metadata.Place getPlace() {
+        return metadata.place();
+    }
+
     /** A text field's value, or {@code null} if it isn't set. */
     public String getText(TextTag field) {
         return metadata.text().get(field);
@@ -95,6 +101,11 @@ public class ImageFile {
 
     public Path getPath() {
         return file.toPath();
+    }
+
+    /** After the file was renamed or moved (by ExifTweaker): from now on it's {@code renamed}. */
+    public void moveTo(File renamed) {
+        this.file = renamed;
     }
 
     /** The file that edits actually change: the photo itself, or its XMP sidecar for RAW files. */

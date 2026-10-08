@@ -3,7 +3,16 @@ package me.rothens.gpsexif.metadata;
 import me.rothens.gpsexif.model.ExifData;
 import org.apache.commons.imaging.Imaging;
 import org.apache.commons.imaging.ImagingException;
+import org.apache.commons.imaging.bytesource.ByteSource;
 import org.apache.commons.imaging.common.ImageMetadata;
+import org.apache.commons.imaging.formats.jpeg.JpegImageParser;
+import org.apache.commons.imaging.formats.jpeg.JpegPhotoshopMetadata;
+import org.apache.commons.imaging.formats.jpeg.iptc.IptcBlock;
+import org.apache.commons.imaging.formats.jpeg.iptc.IptcRecord;
+import org.apache.commons.imaging.formats.jpeg.iptc.IptcTypes;
+import org.apache.commons.imaging.formats.jpeg.iptc.JpegIptcRewriter;
+import org.apache.commons.imaging.formats.jpeg.iptc.PhotoshopApp13Data;
+import org.apache.commons.imaging.formats.jpeg.xmp.JpegXmpRewriter;
 import org.apache.commons.imaging.formats.jpeg.JpegImageMetadata;
 import org.apache.commons.imaging.formats.jpeg.exif.ExifRewriter;
 import org.apache.commons.imaging.formats.tiff.TiffField;
@@ -20,6 +29,7 @@ import org.apache.commons.imaging.formats.tiff.write.TiffOutputSet;
 import org.jxmapviewer.viewer.GeoPosition;
 
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
@@ -69,13 +79,49 @@ public class CommonsImagingBackend implements MetadataBackend {
 
     @Override
     public PhotoMetadata read(Path file) throws IOException {
-        TiffImageMetadata exif = readExif(file);
+        ImageMetadata metadata = Imaging.getMetadata(file.toFile());
+        JpegImageMetadata jpeg = metadata instanceof JpegImageMetadata j ? j : null;
+        TiffImageMetadata exif = null == jpeg ? null : jpeg.getExif();
+        Place place = readPlace(file, null == jpeg ? null : jpeg.getPhotoshop());
         if (null == exif) {
-            return PhotoMetadata.EMPTY;
+            return PhotoMetadata.EMPTY.withPlace(place);
         }
         return new PhotoMetadata(readPosition(exif), readOrientation(exif), readFields(exif), readTaken(exif),
-                readTakenOffset(exif), readAltitude(exif), readDirection(exif), readText(exif));
+                readTakenOffset(exif), readAltitude(exif), readDirection(exif), readText(exif), place);
     }
+
+    /** IPTC IIM place records, in the order of {@link Place}'s components. */
+    private static final List<IptcTypes> IPTC_PLACE = List.of(IptcTypes.SUBLOCATION, IptcTypes.CITY,
+            IptcTypes.PROVINCE_STATE, IptcTypes.COUNTRY_PRIMARY_LOCATION_NAME, IptcTypes.COUNTRY_PRIMARY_LOCATION_CODE);
+
+    /** The place from XMP, else from IPTC, or {@code null}. */
+    private static Place readPlace(Path file, JpegPhotoshopMetadata photoshop) {
+        try {
+            Place place = XmpPlace.read(Imaging.getXmpXml(file.toFile()));
+            if (null != place) {
+                return place;
+            }
+        } catch (IOException | RuntimeException e) {
+            // Broken XMP: try IPTC
+        }
+        if (null == photoshop || null == photoshop.photoshopApp13Data) {
+            return null;
+        }
+        String[] values = new String[IPTC_PLACE.size()];
+        for (IptcRecord record : photoshop.photoshopApp13Data.getRecords()) {
+            int i = IPTC_PLACE.indexOf(record.iptcType instanceof IptcTypes t ? t : null);
+            if (i >= 0 && null == values[i]) {
+                values[i] = record.getValue();
+            }
+        }
+        String code = values[4];
+        if (null != code && code.strip().length() == 3) {
+            code = Place.alpha2(code.strip());
+        }
+        Place place = new Place(values[0], values[1], values[2], values[3], code);
+        return place.isEmpty() ? null : place;
+    }
+
 
     private static TiffImageMetadata readExif(Path file) throws IOException {
         ImageMetadata metadata = Imaging.getMetadata(file.toFile());
@@ -269,12 +315,70 @@ public class CommonsImagingBackend implements MetadataBackend {
             // Sub-seconds of the old time don't belong to the new one
             outputSet.getOrCreateExifDirectory().removeField(ExifTagConstants.EXIF_TAG_SUB_SEC_TIME_ORIGINAL);
         }
-        if (!outputSet.iterator().hasNext()) {
-            // No EXIF at all and nothing to add
-            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+        if (null == changes.getPlace()) {
+            if (!outputSet.iterator().hasNext()) {
+                // No EXIF at all and nothing to add
+                Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+                return;
+            }
+            write(source, target, outputSet);
             return;
         }
-        write(source, target, outputSet);
+        // The place goes into the XMP (and IPTC) segments, after the EXIF is done
+        byte[] bytes;
+        if (outputSet.iterator().hasNext()) {
+            Path exifDone = Files.createTempFile(target.toAbsolutePath().getParent(), ".exiftweaker-", ".tmp");
+            try {
+                write(source, exifDone, outputSet);
+                bytes = Files.readAllBytes(exifDone);
+            } finally {
+                Files.deleteIfExists(exifDone);
+            }
+        } else {
+            bytes = Files.readAllBytes(source);
+        }
+        bytes = withPlace(bytes, changes.getPlace(), changes.isRemovePosition());
+        Files.write(target, bytes);
+    }
+
+    /** The JPEG with its XMP place replaced, and its IPTC place too if it has IPTC data. */
+    static byte[] withPlace(byte[] jpeg, Place place, boolean removeGps) throws IOException {
+        String xmp = Imaging.getXmpXml(jpeg);
+        byte[] result = jpeg;
+        ByteArrayOutputStream out;
+        if (null != xmp || !place.isEmpty()) { // no XMP and nothing to add: leave it without
+            String updated = XmpPlace.apply(xmp, place, removeGps);
+            out = new ByteArrayOutputStream(jpeg.length + 4096);
+            new JpegXmpRewriter().updateXmpXml(jpeg, out, updated);
+            result = out.toByteArray();
+        }
+        JpegImageParser parser = new JpegImageParser();
+        if (!parser.hasIptcSegment(ByteSource.array(result))) {
+            // XMP is what today's tools read; no need to add a legacy IPTC block that wasn't there
+            return result;
+        }
+        JpegPhotoshopMetadata photoshop = parser.getPhotoshopMetadata(ByteSource.array(result), null);
+        if (null == photoshop || null == photoshop.photoshopApp13Data) {
+            return result;
+        }
+        PhotoshopApp13Data data = photoshop.photoshopApp13Data;
+        List<IptcRecord> records = new ArrayList<>();
+        for (IptcRecord record : data.getRecords()) {
+            if (!(record.iptcType instanceof IptcTypes t && IPTC_PLACE.contains(t))) {
+                records.add(record);
+            }
+        }
+        String[] values = {place.sublocation(), place.city(), place.state(), place.country(), place.countryCode3()};
+        for (int i = 0; i < values.length; i++) {
+            if (null != values[i]) {
+                records.add(new IptcRecord(IPTC_PLACE.get(i), values[i]));
+            }
+        }
+        // The IPTC digest (0x0425) no longer matches; without it, readers simply trust the data
+        List<IptcBlock> blocks = data.getNonIptcBlocks().stream().filter(b -> b.getBlockType() != 0x0425).toList();
+        out = new ByteArrayOutputStream(result.length + 1024);
+        new JpegIptcRewriter().writeIptc(result, out, new PhotoshopApp13Data(records, blocks, true));
+        return out.toByteArray();
     }
 
     /** DateTimeOriginal, DateTimeDigitized (EXIF directory) and DateTime (root) all move by {@code shift}. */

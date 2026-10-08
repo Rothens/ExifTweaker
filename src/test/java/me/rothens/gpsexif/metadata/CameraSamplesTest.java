@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 class CameraSamplesTest {
 
     private static final GeoPosition POSITION = new GeoPosition(47.497912, 19.040235);
+    private static final Place PLACE = new Place("Lánchíd", "Budapest", "Budapest", "Magyarország", "HU");
     private static final double ALTITUDE = 104.5;
 
     private static ExifTool exifTool;
@@ -67,7 +68,7 @@ class CameraSamplesTest {
         Path target = backend.writeTarget(photo);
         Path temp = dir.resolve("tmp-" + target.getFileName());
         Files.createFile(temp);
-        backend.write(photo, temp, new MetadataChanges().position(POSITION).altitude(ALTITUDE));
+        backend.write(photo, temp, new MetadataChanges().position(POSITION).altitude(ALTITUDE).place(PLACE));
         Files.move(temp, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         return target;
     }
@@ -77,6 +78,7 @@ class CameraSamplesTest {
         assertEquals(POSITION.getLatitude(), m.position().getLatitude(), 1e-6, name);
         assertEquals(POSITION.getLongitude(), m.position().getLongitude(), 1e-6, name);
         assertEquals(ALTITUDE, m.altitude(), 1e-3, name);
+        assertEquals(PLACE, m.place(), name);
     }
 
     /**
@@ -90,6 +92,10 @@ class CameraSamplesTest {
         tags.keySet().removeIf(k -> k.startsWith("GPS:") || k.startsWith("System:") || k.startsWith("File:")
                 || k.startsWith("Composite:") || k.startsWith("ExifTool:") || k.equals("SourceFile")
                 || k.startsWith("XMP-exif:GPS") || k.equals("XMP-x:XMPToolkit")
+                // the place, which we change too
+                || k.matches("XMP-photoshop:(City|State|Country)|XMP-iptcCore:(Location|CountryCode)")
+                || k.matches("IPTC:(City|Sub-location|Province-State|Country-PrimaryLocation(Name|Code)|CodedCharacterSet)")
+                || k.equals("Photoshop:IPTCDigest")
                 // where blocks sit in the file, which moves when the EXIF block grows
                 || k.endsWith(":ThumbnailOffset") || k.endsWith(":PreviewImageStart")
                 || k.endsWith(":ExifOffset") || k.endsWith(":GPSInfo") || k.endsWith(":InteropOffset")

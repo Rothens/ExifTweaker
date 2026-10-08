@@ -177,4 +177,31 @@ class ExifToolBackendTest {
     void shiftFormat() {
         assertEquals("0:0:1 2:3:4", ExifToolBackend.shiftValue(Duration.ofDays(1).plusHours(2).plusMinutes(3).plusSeconds(4)));
     }
+
+    @Test
+    void writesPlaceToXmpAndClearsStaleIptc() throws Exception {
+        Place tihany = new Place(null, "Tihany", "Veszprém", "Magyarország", "HU");
+        Path png = image("p.png", "png");
+        Path out = write(png, "p-out.png", new MetadataChanges().place(tihany));
+        assertEquals(tihany, backend.read(out).place());
+        Path cleared = write(out, "p-cleared.png", new MetadataChanges().removePosition());
+        assertNull(backend.read(cleared).place());
+
+        // A JPEG with an old IPTC city: the new place replaces it, no stale IPTC is left behind
+        Path jpeg = image("old.jpg", "jpg");
+        exifTool.execute(java.util.List.of("-overwrite_original", "-IPTC:City=Budapest", jpeg.toString()));
+        assertEquals("Budapest", backend.read(jpeg).place().city());
+        Path updated = write(jpeg, "new.jpg", new MetadataChanges().place(tihany));
+        assertEquals(tihany, backend.read(updated).place());
+        assertFalse(exifTool.execute(java.util.List.of("-IPTC:City", updated.toString())).contains("Budapest"));
+    }
+
+    @Test
+    void rawSidecarGetsThePlace() throws Exception {
+        Path raw = Files.move(image("base2.tif", "tiff"), dir.resolve("IMG_9.dng"));
+        Path tmp = write(raw, ".tmp-9.xmp", new MetadataChanges().position(new GeoPosition(46.9, 17.9))
+                .place(new Place("Abbey", "Tihany", null, "Hungary", "HU")));
+        Files.move(tmp, backend.writeTarget(raw));
+        assertEquals(new Place("Abbey", "Tihany", null, "Hungary", "HU"), backend.read(raw).place());
+    }
 }

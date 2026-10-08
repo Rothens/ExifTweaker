@@ -58,6 +58,15 @@ public class TripMarkStore {
         save();
     }
 
+    /** Moves a photo's mark along when it was renamed, and saves the store if it had one. */
+    public synchronized void move(Path from, Path to) throws IOException {
+        String mark = (String) marks.remove(key(from));
+        if (null != mark) {
+            marks.setProperty(key(to), mark);
+            save();
+        }
+    }
+
     private static String key(Path photo) {
         return photo.toAbsolutePath().normalize().toString();
     }

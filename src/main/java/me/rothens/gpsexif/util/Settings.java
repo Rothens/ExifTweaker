@@ -21,6 +21,16 @@ public class Settings {
     private static final String GPX_DIRECTORY = "GPX_DIRECTORY";
     private static final String RECENT_FOLDERS = "RECENT_FOLDERS";
     private static final String THUMBNAIL_VIEW = "THUMBNAIL_VIEW";
+    private static final String PLACE_NAMES = "PLACE_NAMES";
+    private static final String RENAME_PATTERN = "RENAME_PATTERN";
+    private static final String SHARE_DIRECTORY = "SHARE_DIRECTORY";
+    private static final String TRAVEL_FULL_MAP = "TRAVEL_FULL_MAP";
+    private static final String TRAVEL_INSET = "TRAVEL_INSET";
+    private static final String TRAVEL_FOLLOW = "TRAVEL_FOLLOW";
+    private static final String TRAVEL_INSET_ZOOM = "TRAVEL_INSET_ZOOM";
+    private static final String SHARE_PRIVACY = "SHARE_PRIVACY";
+    private static final String SHARE_SIZE = "SHARE_SIZE";
+    private static final String SHARE_QUALITY = "SHARE_QUALITY";
     public static final int MAX_RECENT_FOLDERS = 10;
     private static final String DISPLAY_ZONE = "DISPLAY_ZONE";
     private static final String GPX_MAX_GAP_MINUTES = "GPX_MAX_GAP_MINUTES";
@@ -247,5 +257,96 @@ public class Settings {
 
     public void setBackupsEnabled(boolean enabled) {
         prefs.putBoolean(BACKUPS_ENABLED, enabled);
+    }
+
+    /** Whether the place name (city, country) is looked up and written along with a new location. On by default. */
+    public boolean isPlaceNames() {
+        return prefs.getBoolean(PLACE_NAMES, true);
+    }
+
+    public void setPlaceNames(boolean enabled) {
+        prefs.putBoolean(PLACE_NAMES, enabled);
+    }
+
+    /** The last pattern used to rename photos. */
+    public String getRenamePattern() {
+        return prefs.get(RENAME_PATTERN, "{date} {place} {n:000}");
+    }
+
+    public void setRenamePattern(String pattern) {
+        prefs.put(RENAME_PATTERN, pattern.length() > 500 ? pattern.substring(0, 500) : pattern);
+    }
+
+    /** Whether Travel mode switches to the full-screen map between photos. On by default. */
+    public boolean isTravelFullMap() {
+        return prefs.getBoolean(TRAVEL_FULL_MAP, true);
+    }
+
+    public void setTravelFullMap(boolean fullMap) {
+        prefs.putBoolean(TRAVEL_FULL_MAP, fullMap);
+    }
+
+    /** Width of Travel mode's small map as a share of the picture's width (0.15-0.6, default 0.25). */
+    public double getTravelInset() {
+        double value = prefs.getDouble(TRAVEL_INSET, 0.25);
+        return Double.isNaN(value) ? 0.25 : Math.max(0.15, Math.min(0.6, value));
+    }
+
+    public void setTravelInset(double fraction) {
+        prefs.putDouble(TRAVEL_INSET, Math.max(0.15, Math.min(0.6, fraction)));
+    }
+
+    /** Whether Travel mode's small map follows the marker at a chosen zoom instead of showing the whole route. */
+    public boolean isTravelFollow() {
+        return prefs.getBoolean(TRAVEL_FOLLOW, false);
+    }
+
+    public void setTravelFollow(boolean follow) {
+        prefs.putBoolean(TRAVEL_FOLLOW, follow);
+    }
+
+    /** The zoom level chosen for the following small map; -1 if none yet. */
+    public int getTravelInsetZoom() {
+        return prefs.getInt(TRAVEL_INSET_ZOOM, -1);
+    }
+
+    public void setTravelInsetZoom(int zoom) {
+        prefs.putInt(TRAVEL_INSET_ZOOM, zoom);
+    }
+
+    /** Where shared copies went the last time; empty if never. */
+    public String getShareDirectory() {
+        return prefs.get(SHARE_DIRECTORY, "");
+    }
+
+    public void setShareDirectory(String directory) {
+        prefs.put(SHARE_DIRECTORY, directory);
+    }
+
+    /** The last "what to keep" choice for shared copies: ALL, NO_LOCATION (default) or NONE. */
+    public String getSharePrivacy() {
+        return prefs.get(SHARE_PRIVACY, "NO_LOCATION");
+    }
+
+    public void setSharePrivacy(String privacy) {
+        prefs.put(SHARE_PRIVACY, privacy);
+    }
+
+    /** Longest side of shared copies in pixels; 0 for the original size. */
+    public int getShareSize() {
+        return Math.max(0, prefs.getInt(SHARE_SIZE, 0));
+    }
+
+    public void setShareSize(int size) {
+        prefs.putInt(SHARE_SIZE, Math.max(0, size));
+    }
+
+    /** JPEG quality of shared copies that are encoded anew, 50-100. */
+    public int getShareQuality() {
+        return Math.max(50, Math.min(100, prefs.getInt(SHARE_QUALITY, 85)));
+    }
+
+    public void setShareQuality(int quality) {
+        prefs.putInt(SHARE_QUALITY, Math.max(50, Math.min(100, quality)));
     }
 }

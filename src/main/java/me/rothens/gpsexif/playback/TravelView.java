@@ -43,6 +43,11 @@ final class TravelView extends JLayeredPane {
     private ClockZone clock;
     private List<List<GeoPosition>> route = List.of();
     private int mapSlot = -1;
+    /** Width of the small map as a share of the view's width. */
+    private double insetFraction = 0.25;
+    private InsetGrip grip;
+    /** Whether the small map keeps its zoom and follows the marker, instead of showing the whole route. */
+    private boolean followMarker;
 
     /**
      * @param images the loaded photo to draw, or {@code null} while it isn't loaded yet
@@ -83,7 +88,9 @@ final class TravelView extends JLayeredPane {
         this.timeline = timeline;
         this.route = route;
         routePainter.route = route;
-        fitInset();
+        if (!followMarker) {
+            fitInset();
+        }
         mapSlot = -1;
     }
 
@@ -96,7 +103,13 @@ final class TravelView extends JLayeredPane {
             fitFullMap(frame.slot());
             mapSlot = frame.slot();
         }
+        if (followMarker && null != frame.marker()) {
+            insetMap.setCenterPosition(frame.marker());
+        }
         insetMap.setVisible(null != frame.visible() && !timeline.isEmpty());
+        if (null != grip) {
+            grip.setVisible(insetMap.isVisible());
+        }
         photoLayer.frame = frame;
         repaint();
     }
@@ -134,12 +147,120 @@ final class TravelView extends JLayeredPane {
     void layoutView() {
         fullMap.setBounds(0, 0, getWidth(), getHeight());
         photoLayer.setBounds(0, 0, getWidth(), getHeight());
-        int w = Math.max(240, getWidth() / 4);
-        int h = Math.max(180, w * 3 / 4);
-        insetMap.setBounds(getWidth() - w - 16, getHeight() - h - 16, w, h);
+        layoutInset();
         if (null != timeline) {
-            fitInset();
+            if (!followMarker) {
+                fitInset();
+            }
             mapSlot = -1;
+        }
+    }
+
+    /** Places the small map in the bottom right corner, at its share of the width (fitting the height). */
+    private void layoutInset() {
+        int w = (int) Math.round(Math.max(240, getWidth() * insetFraction));
+        w = Math.max(160, Math.min(w, Math.min(getWidth() - 32, (getHeight() - 32) * 4 / 3)));
+        int h = w * 3 / 4;
+        insetMap.setBounds(getWidth() - w - 16, getHeight() - h - 16, w, h);
+        if (null != grip) {
+            grip.setBounds(insetMap.getX(), insetMap.getY(), InsetGrip.SIZE, InsetGrip.SIZE);
+        }
+    }
+
+    /**
+     * Lets the small map follow the marker at {@code zoom} (or at its current zoom if {@code zoom} is negative), or
+     * show the whole route again.
+     */
+    void setFollowMarker(boolean follow, int zoom) {
+        followMarker = follow;
+        if (follow) {
+            if (zoom >= 0) {
+                insetMap.setZoom(zoom);
+            }
+            if (null != routePainter.marker) {
+                insetMap.setCenterPosition(routePainter.marker);
+            }
+        } else if (null != timeline) {
+            fitInset();
+        }
+        repaint();
+    }
+
+    /** The small map's zoom level. */
+    int getInsetZoom() {
+        return insetMap.getZoom();
+    }
+
+    double getInsetFraction() {
+        return insetFraction;
+    }
+
+    /** Sets the small map's width as a share of the view's width (0.15-0.6). */
+    void setInsetFraction(double fraction) {
+        insetFraction = Math.max(0.15, Math.min(0.6, fraction));
+        layoutInset();
+        revalidate();
+        repaint();
+    }
+
+    /**
+     * Adds a grip to the small map's top left corner to drag its size; {@code onResized} gets the new share of the
+     * width when the drag ends. On screen only, not in videos.
+     */
+    void enableInsetResize(java.util.function.DoubleConsumer onResized) {
+        grip = new InsetGrip(onResized);
+        add(grip, JLayeredPane.DRAG_LAYER);
+        layoutInset();
+    }
+
+    /** The handle in the small map's top left corner; dragging it resizes the map, anchored bottom right. */
+    private final class InsetGrip extends JComponent {
+        static final int SIZE = 18;
+
+        InsetGrip(java.util.function.DoubleConsumer onResized) {
+            setCursor(Cursor.getPredefinedCursor(Cursor.NW_RESIZE_CURSOR));
+            setToolTipText("Drag to resize the map");
+            java.awt.event.MouseAdapter drag = new java.awt.event.MouseAdapter() {
+                @Override
+                public void mouseDragged(java.awt.event.MouseEvent e) {
+                    Point p = SwingUtilities.convertPoint(InsetGrip.this, e.getPoint(), TravelView.this);
+                    int right = getWidthOfView() - 16;
+                    int bottom = TravelView.this.getHeight() - 16;
+                    // Follow whichever of the two edges was dragged further, keeping 4:3
+                    int byX = right - p.x;
+                    int byY = (bottom - p.y) * 4 / 3;
+                    setInsetFraction((double) Math.max(byX, byY) / Math.max(1, getWidthOfView()));
+                    fitInset();
+                }
+
+                @Override
+                public void mouseReleased(java.awt.event.MouseEvent e) {
+                    onResized.accept(insetFraction);
+                }
+            };
+            addMouseListener(drag);
+            addMouseMotionListener(drag);
+        }
+
+        private int getWidthOfView() {
+            return TravelView.this.getWidth();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(0, 0, 0, 120));
+                g2.fillRect(0, 0, SIZE, SIZE);
+                g2.setColor(Color.WHITE);
+                g2.setStroke(new BasicStroke(1.5f));
+                for (int i = 5; i <= 13; i += 4) {
+                    g2.drawLine(3, i, i, 3);
+                }
+            } finally {
+                g2.dispose();
+            }
         }
     }
 
@@ -259,8 +380,16 @@ final class TravelView extends JLayeredPane {
             FontMetrics fs = g2.getFontMetrics(small);
             String caption = frame.caption();
             int captionWidth = null == caption ? 0 : g2.getFontMetrics(big).stringWidth(caption) + 24;
+            // The place of the photo on screen; none while travelling on the map
+            ImageFile shown = null != frame.to()
+                    ? (frame.alpha() >= 0.5 || null == frame.from() ? frame.to() : frame.from())
+                    : (frame.alpha() < 0.5 ? frame.from() : null);
+            String place = null == shown || null == shown.getPlace() ? null : shown.getPlace().shortLabel();
             int w = Math.max(fb.stringWidth(time) + captionWidth, fs.stringWidth(date)) + 28;
-            int h = fb.getHeight() + fs.getHeight() + 14;
+            if (null != place) {
+                w = Math.max(w, fs.stringWidth(place) + 28);
+            }
+            int h = fb.getHeight() + (null == place ? 1 : 2) * fs.getHeight() + 14;
             g2.setColor(new Color(0, 0, 0, 150));
             g2.fillRoundRect(16, 16, w, h, 14, 14);
             g2.setColor(Color.WHITE);
@@ -274,6 +403,9 @@ final class TravelView extends JLayeredPane {
             }
             g2.setFont(small);
             g2.drawString(date, 30, y + fs.getHeight() + 2);
+            if (null != place) {
+                g2.drawString(place, 30, y + 2 * fs.getHeight() + 2);
+            }
         }
     }
 }

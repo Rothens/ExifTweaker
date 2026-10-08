@@ -19,6 +19,7 @@ public class SettingsDialog extends JDialog {
     private final JSpinner spMaxMarkers = new JSpinner(new SpinnerNumberModel(Settings.DEFAULT_MAX_PHOTO_MARKERS,
             Settings.MIN_PHOTO_MARKERS, Settings.MAX_PHOTO_MARKERS_LIMIT, 10));
     private final JButton btnClearCache = new JButton("Clear map cache");
+    private final JCheckBox chkPlaces = new JCheckBox("Add the place name when saving a location");
     private final JCheckBox chkTour = new JCheckBox("Show the guided tour again on the next start");
     private final TileDiskCache tileCache;
     private boolean accepted;
@@ -41,6 +42,7 @@ public class SettingsDialog extends JDialog {
         cbTheme.setSelectedItem(settings.getTheme());
         cbMapLayer.setSelectedItem(settings.getMapLayer());
         chkBackups.setSelected(settings.isBackupsEnabled());
+        chkPlaces.setSelected(settings.isPlaceNames());
 
         JLabel backupHint = new JLabel("Backups are saved next to the photo as <name>.bak and are never overwritten.");
         backupHint.putClientProperty("FlatLaf.styleClass", "small");
@@ -77,6 +79,17 @@ public class SettingsDialog extends JDialog {
         form.add(backupHint, c);
 
         c.gridy = 4;
+        c.insets = new Insets(8, 4, 0, 4);
+        form.add(chkPlaces, c);
+        c.gridy = 5;
+        c.insets = new Insets(0, 28, 4, 4);
+        JLabel placesHint = new JLabel("<html>Writes the city, state and country (IPTC/XMP), looked up with OpenStreetMap"
+                + " Nominatim.<br>Edit → Look up place names does it for photos that already have a location.</html>");
+        placesHint.putClientProperty("FlatLaf.styleClass", "small");
+        placesHint.setEnabled(false);
+        form.add(placesHint, c);
+
+        c.gridy = 6;
         c.gridwidth = 1;
         c.insets = new Insets(12, 4, 4, 4);
         form.add(new JLabel("Map cache limit (MB):"), c);
@@ -84,13 +97,13 @@ public class SettingsDialog extends JDialog {
         c.fill = GridBagConstraints.NONE;
         form.add(spCacheLimit, c);
         c.gridx = 0;
-        c.gridy = 5;
+        c.gridy = 7;
         c.insets = new Insets(4, 4, 4, 4);
         form.add(lblCacheSize, c);
         c.gridx = 1;
         form.add(btnClearCache, c);
         c.gridx = 0;
-        c.gridy = 6;
+        c.gridy = 8;
         c.gridwidth = 2;
         c.insets = new Insets(0, 4, 4, 4);
         JLabel cacheHint = new JLabel("Downloaded map tiles are kept for 30 days; the oldest are removed above the limit.");
@@ -98,7 +111,7 @@ public class SettingsDialog extends JDialog {
         cacheHint.setEnabled(false);
         form.add(cacheHint, c);
 
-        c.gridy = 7;
+        c.gridy = 9;
         c.gridwidth = 1;
         c.insets = new Insets(12, 4, 4, 4);
         form.add(new JLabel("Max. photo markers:"), c);
@@ -106,7 +119,7 @@ public class SettingsDialog extends JDialog {
         c.fill = GridBagConstraints.NONE;
         form.add(spMaxMarkers, c);
         c.gridx = 0;
-        c.gridy = 8;
+        c.gridy = 10;
         c.gridwidth = 2;
         c.insets = new Insets(0, 4, 4, 4);
         JLabel markerHint = new JLabel("View > Show photos on map: nearby photos are grouped; more markers than this "
@@ -116,7 +129,7 @@ public class SettingsDialog extends JDialog {
         form.add(markerHint, c);
 
         c.gridx = 0;
-        c.gridy = 9;
+        c.gridy = 11;
         c.gridwidth = 1;
         c.insets = new Insets(12, 4, 4, 4);
         form.add(btnExifTool, c);
@@ -135,7 +148,7 @@ public class SettingsDialog extends JDialog {
             }
         });
         c.gridx = 0;
-        c.gridy = 10;
+        c.gridy = 12;
         c.insets = new Insets(4, 4, 4, 4);
         form.add(btnFfmpeg, c);
         c.gridx = 1;
@@ -143,14 +156,14 @@ public class SettingsDialog extends JDialog {
 
         chkTour.setSelected(!settings.isTutorialShown());
         c.gridx = 0;
-        c.gridy = 11;
+        c.gridy = 13;
         c.gridwidth = 2;
         c.insets = new Insets(12, 4, 0, 4);
         form.add(chkTour, c);
         JLabel tourHint = new JLabel("To take the tour right now: Help → Show tutorial.");
         tourHint.putClientProperty("FlatLaf.styleClass", "small");
         tourHint.setEnabled(false);
-        c.gridy = 12;
+        c.gridy = 14;
         c.insets = new Insets(0, 28, 4, 4);
         form.add(tourHint, c);
 
@@ -160,6 +173,7 @@ public class SettingsDialog extends JDialog {
             settings.setTheme((Theme) cbTheme.getSelectedItem());
             settings.setMapLayer((MapLayer) cbMapLayer.getSelectedItem());
             settings.setBackupsEnabled(chkBackups.isSelected());
+            settings.setPlaceNames(chkPlaces.isSelected());
             settings.setTileCacheMaxMb((Integer) spCacheLimit.getValue());
             settings.setMaxPhotoMarkers((Integer) spMaxMarkers.getValue());
             settings.setTutorialShown(!chkTour.isSelected());

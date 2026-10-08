@@ -72,7 +72,14 @@ public class MetadataTableModel extends AbstractTableModel {
     /** Shows the given photos; {@code lead} provides the read-only information rows. */
     public void setPhotos(List<ImageFile> photos, ImageFile lead) {
         this.photos = List.copyOf(photos);
-        this.info = null == lead ? List.of() : lead.getExifData();
+        List<ExifData> rows = new ArrayList<>();
+        if (null != lead && null != lead.getPlace()) {
+            rows.add(new ExifData("Place", lead.getPlace().label()));
+        }
+        if (null != lead) {
+            rows.addAll(lead.getExifData());
+        }
+        this.info = rows;
         fireTableDataChanged();
     }
 

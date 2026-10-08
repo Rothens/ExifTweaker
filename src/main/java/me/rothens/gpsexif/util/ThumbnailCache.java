@@ -201,7 +201,7 @@ public final class ThumbnailCache {
     }
 
     /** Scales down (never up) to fit {@code size}, smoothly. */
-    static BufferedImage scale(BufferedImage image, int size) {
+    public static BufferedImage scale(BufferedImage image, int size) {
         double factor = Math.min(1.0, (double) size / Math.max(image.getWidth(), image.getHeight()));
         int w = Math.max(1, (int) Math.round(image.getWidth() * factor));
         int h = Math.max(1, (int) Math.round(image.getHeight() * factor));

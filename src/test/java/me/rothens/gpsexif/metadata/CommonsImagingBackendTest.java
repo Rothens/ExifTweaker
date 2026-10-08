@@ -238,4 +238,59 @@ class CommonsImagingBackendTest {
         backend.write(noDate, stillNoDate, new MetadataChanges().shiftTime(java.time.Duration.ofHours(1)));
         assertNull(backend.read(stillNoDate).taken(), "nothing to shift");
     }
+
+    @Test
+    void writesPlaceToXmpAndKeepsEverythingElse() throws Exception {
+        Path source = createJpeg("place.jpg");
+        Path located = dir.resolve("located.jpg");
+        backend.write(source, located, new MetadataChanges().position(new GeoPosition(46.9137, 17.8893))
+                .text(TextTag.ARTIST, "Máté").place(new Place("Apátság", "Tihany", "Veszprém", "Magyarország", "HU")));
+        PhotoMetadata m = backend.read(located);
+        assertEquals(46.9137, m.position().getLatitude(), 1e-4);
+        assertEquals("Máté", m.text().get(TextTag.ARTIST));
+        assertEquals(new Place("Apátság", "Tihany", "Veszprém", "Magyarország", "HU"), m.place());
+        assertNotNull(javax.imageio.ImageIO.read(located.toFile()), "still a valid JPEG");
+
+        // Only the place changes: EXIF stays, the place is replaced
+        Path moved = dir.resolve("moved.jpg");
+        backend.write(located, moved, new MetadataChanges().place(new Place(null, "Budapest", null, "Hungary", "HU")));
+        PhotoMetadata m2 = backend.read(moved);
+        assertEquals(new Place(null, "Budapest", null, "Hungary", "HU"), m2.place());
+        assertEquals(46.9137, m2.position().getLatitude(), 1e-4);
+
+        // Removing the location removes the place too
+        Path removed = dir.resolve("removed.jpg");
+        backend.removePosition(moved, removed);
+        assertNull(backend.read(removed).place());
+        assertNull(backend.read(removed).position());
+    }
+
+    @Test
+    void updatesAnExistingIptcPlace() throws Exception {
+        Path source = createJpeg("iptc.jpg");
+        Path withIptc = dir.resolve("with-iptc.jpg");
+        java.util.List<org.apache.commons.imaging.formats.jpeg.iptc.IptcRecord> records = java.util.List.of(
+                new org.apache.commons.imaging.formats.jpeg.iptc.IptcRecord(
+                        org.apache.commons.imaging.formats.jpeg.iptc.IptcTypes.CITY, "Budapest"),
+                new org.apache.commons.imaging.formats.jpeg.iptc.IptcRecord(
+                        org.apache.commons.imaging.formats.jpeg.iptc.IptcTypes.KEYWORDS, "holiday"),
+                new org.apache.commons.imaging.formats.jpeg.iptc.IptcRecord(
+                        org.apache.commons.imaging.formats.jpeg.iptc.IptcTypes.COUNTRY_PRIMARY_LOCATION_CODE, "HUN"));
+        try (OutputStream os = Files.newOutputStream(withIptc)) {
+            new org.apache.commons.imaging.formats.jpeg.iptc.JpegIptcRewriter().writeIptc(source.toFile(), os,
+                    new org.apache.commons.imaging.formats.jpeg.iptc.PhotoshopApp13Data(records, java.util.List.of()));
+        }
+        assertEquals(new Place(null, "Budapest", null, null, "HU"), backend.read(withIptc).place(), "read from IPTC");
+
+        Path updated = dir.resolve("updated.jpg");
+        backend.write(withIptc, updated, new MetadataChanges().place(new Place(null, "Győr", null, "Hungary", "HU")));
+        var photoshop = ((org.apache.commons.imaging.formats.jpeg.JpegImageMetadata)
+                org.apache.commons.imaging.Imaging.getMetadata(updated.toFile())).getPhotoshop();
+        java.util.Map<String, String> iptc = new java.util.HashMap<>();
+        photoshop.photoshopApp13Data.getRecords().forEach(r -> iptc.put(r.getIptcTypeName(), r.getValue()));
+        assertEquals("Győr", iptc.get("City"));
+        assertEquals("holiday", iptc.get("Keywords"), "other IPTC data is kept");
+        assertEquals("HUN", iptc.get("Country/Primary Location Code"));
+        assertEquals(new Place(null, "Győr", null, "Hungary", "HU"), backend.read(updated).place());
+    }
 }

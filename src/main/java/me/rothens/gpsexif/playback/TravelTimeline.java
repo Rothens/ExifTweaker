@@ -37,9 +37,18 @@ public class TravelTimeline {
      * @param stayVideo     video time a squeezed stay takes
      * @param maxJourney    a journey (a long gap with real distance covered) takes at most this much video time;
      *                      {@code null} for no limit
+     * @param mapBetweenPhotos whether journeys switch to the full-screen map; otherwise the last photo stays up
+     *                      while the marker travels on the small map
      */
     public record Settings(Duration videoLength, Duration minPhoto, Duration fade, boolean squeezeStays,
-                           Duration stayGap, double stayDistanceM, Duration stayVideo, Duration maxJourney) {
+                           Duration stayGap, double stayDistanceM, Duration stayVideo, Duration maxJourney,
+                           boolean mapBetweenPhotos) {
+
+        /** With the full-screen map between photos. */
+        public Settings(Duration videoLength, Duration minPhoto, Duration fade, boolean squeezeStays,
+                        Duration stayGap, double stayDistanceM, Duration stayVideo, Duration maxJourney) {
+            this(videoLength, minPhoto, fade, squeezeStays, stayGap, stayDistanceM, stayVideo, maxJourney, true);
+        }
 
         /** Without a journey limit. */
         public Settings(Duration videoLength, Duration minPhoto, Duration fade, boolean squeezeStays,
@@ -193,7 +202,7 @@ public class TravelTimeline {
                         pause = null == pause ? d : pause.plus(d);
                     }
                 }
-                if (null == pause && end - start >= minPhoto + MIN_MAP_TIME) {
+                if (null == pause && settings.mapBetweenPhotos() && end - start >= minPhoto + MIN_MAP_TIME) {
                     GeoPosition a = lastKnown(last);
                     GeoPosition b = stops.get(next).position();
                     showMap = null == a || null == b || TrackMatcher.distanceMetres(a, b) >= MIN_TRAVEL_DISTANCE_M;

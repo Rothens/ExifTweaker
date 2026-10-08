@@ -148,4 +148,21 @@ class EditHistoryTest {
             budget.close();
         }
     }
+    @Test
+    void recordedReversalsUndoInOrderWithFileEdits() throws IOException {
+        Path f = file("a.jpg", "v1");
+        edit("to v2", f, "v2");
+        java.util.List<String> log = new java.util.ArrayList<>();
+        history.record("rename", () -> {
+            log.add("renamed back");
+            return java.util.List.of();
+        });
+        assertEquals("rename", history.getUndoDescription());
+        history.undo();
+        assertEquals(java.util.List.of("renamed back"), log);
+        assertEquals("v2", Files.readString(f));
+        history.undo();
+        assertEquals("v1", Files.readString(f));
+        assertFalse(history.canUndo());
+    }
 }

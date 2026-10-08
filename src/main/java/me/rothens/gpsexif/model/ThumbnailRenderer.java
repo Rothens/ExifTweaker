@@ -55,7 +55,8 @@ public class ThumbnailRenderer extends JComponent implements ListCellRenderer<Im
         foreground = isSelected ? list.getSelectionForeground() : list.getForeground();
         dimForeground = isSelected ? list.getSelectionForeground() : UIManager.getColor("Label.disabledForeground");
         setFont(list.getFont());
-        String place = (value.hasExifGPS() ? "has a location" : "no location yet")
+        String place = (value.hasExifGPS() ? null == value.getPlace() ? "has a location"
+                : escape(value.getPlace().label()) : "no location yet")
                 + (TripMark.PREFER == value.getTripMark() ? "<br>preferred in trips"
                 : TripMark.SKIP == value.getTripMark() ? "<br>skipped in trips" : "");
         setToolTipText("<html><b>" + escape(value.getFile().getName()) + "</b><br>"

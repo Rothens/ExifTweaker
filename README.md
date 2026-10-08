@@ -12,7 +12,7 @@ It includes everything it needs; you don't have to install Java.
 
 | System | File | Notes |
 |--------|------|-------|
-| Windows 10/11 | `ExifTweaker-<version>-windows-x64.msi` | Installs for your user only, no administrator rights needed. |
+| Windows 10/11 | `ExifTweaker-<version>-windows-x64.msi` | Installs for all users (asks for administrator rights); you can pick the folder. |
 | macOS (Apple silicon) | `ExifTweaker-<version>-macos-arm64.dmg` | The app isn't signed: the first time, right-click it in Applications and choose **Open**. |
 | Linux (Debian, Ubuntu, Mint) | `exiftweaker_<version>_amd64.deb` | `sudo apt install ./exiftweaker_<version>_amd64.deb` |
 | Anything with Java 17+ | `exiftweaker-<version>-all.jar` | `java -jar exiftweaker-<version>-all.jar` (also for Intel Macs) |
@@ -58,6 +58,30 @@ failed. Undo takes back the whole batch.
 **View → Show photos on map** shows where the opened photos were taken (off by default). Photos close to each
 other are grouped into one marker with a count; click a group to zoom in, or a photo to select it.
 
+### Place names
+
+When a location is saved, ExifTweaker also writes **where** that is in words: the city, state and country (and a
+landmark or neighbourhood when there is one), e.g. *Tihany, Veszprém, Magyarország*. Lightroom, digiKam, photo
+sites and the photo's own details show these (IPTC/XMP location fields). The place shows in the details on the right
+and in Play photos, Travel mode and their videos.
+
+- **Edit → Look up place names** adds them to photos that already have a location.
+- The names come from OpenStreetMap Nominatim, in your system's language. Each lookup is remembered, so photos
+  close to one another (within 150 m) and later saves don't ask again; offline, the location is saved without the
+  name and you can add it later.
+- Removing a location removes the place name too. Turn it off in **Settings**.
+
+### Rename photos
+
+**Edit → Rename photos...** (F2) names the selected photos (or all of them) after when and where they were taken,
+e.g. `{date} {place} {n:000}` gives `2026-07-11 Tihany 001.jpg`. The new names are listed before anything is renamed.
+
+- Fields: `{date}` (or any format, e.g. `{date:yyyy-MM-dd HH.mm.ss}`), `{place}` (the city), `{country}`,
+  `{state}`, `{sublocation}`, `{name}` (the current name), `{camera}` and `{n}`, a number in date order (`{n:000}`
+  for three digits). A photo without a place simply leaves that part out.
+- Nothing is ever overwritten: a name that is taken gets " (2)". Backups (`.bak`) and XMP sidecars are renamed
+  along, and a RAW and a JPEG of the same shot keep sharing a name. **Edit → Undo** puts the old names back.
+
 ### Geotag from a GPX track
 
 If your phone, watch or GPS logger recorded where you went, ExifTweaker can work out where each photo was taken
@@ -94,7 +118,10 @@ left on home time during a trip.
   map following the route.
 - **View → Travel mode** (Shift+F5) plays the trip as a short film of the length you choose: a marker travels the
   route (along your GPX track, if you loaded one) and each photo fades in as the marker arrives. Nights and other
-  long stops are skipped over quickly, and longer journeys play on a full-screen map.
+  long stops are skipped over quickly, and longer journeys play on a full-screen map - or, with **Full-screen map
+  between photos** off, the last photo stays up while the marker travels on the small map. Drag the small map's top
+  left corner to resize it; zoom it with the mouse wheel. With **Small map follows the marker** it stays at the
+  zoom you chose and keeps the marker in the middle, instead of showing the whole route.
 - Both can show the time as the camera recorded it or in any time zone (**Times in**), and **Export video...**
   saves them as an MP4 video, from 720p to 4K, also in portrait for phones.
 - Right-click photos in the list for **Skip in trips** (left out of both, and of the videos) or **Prefer in trips**
@@ -114,6 +141,17 @@ left on home time during a trip.
   in the background.
 
   ![The video export dialog](docs/images/video-export.png)
+
+### Share photos
+
+**File → Export copies for sharing...** (Ctrl+Shift+E) saves copies of the selected photos (or all of them) into
+another folder; the originals aren't touched.
+
+- **Without location**: no GPS position and no place name; the date, camera and everything else stay.
+- **Without any metadata**: only the picture, still shown the right way up (and in the same colors).
+- **All metadata**: exact copies.
+- Optionally **smaller** (from 4K down to 1024 px on the longest side) at the JPEG quality you choose; smaller copies
+  and RAW files are saved as JPEG, turned upright. Copies at the original size keep the picture byte for byte.
 
 ## Formats
 
@@ -143,8 +181,10 @@ On macOS use Cmd instead of Ctrl.
 | Ctrl+Shift+C / Ctrl+Shift+V | Copy / paste a location (from anywhere) |
 | Ctrl+Shift+A | Select all photos |
 | Ctrl+T | Shift date/time |
+| F2 | Rename photos |
 | Ctrl+G | Geotag from GPX |
 | Ctrl+E | Export photos as GPX |
+| Ctrl+Shift+E | Export copies for sharing |
 | F5 | Play photos |
 | Shift+F5 | Travel mode |
 | Ctrl+, | Settings (on macOS: ExifTweaker → Settings) |
@@ -164,8 +204,8 @@ On macOS use Cmd instead of Ctrl.
   turned off in Settings). Edit → Undo restores the last save without them.
 - Light or dark theme (or following the system), OpenStreetMap or satellite imagery, the size of the map cache, and
   where ExifTool and FFmpeg are, in **Settings**.
-- ExifTweaker goes online only for map tiles (OpenStreetMap, Esri) and place search (OpenStreetMap Nominatim).
-  Your photos never leave your computer.
+- ExifTweaker goes online only for map tiles (OpenStreetMap, Esri), place search and place names (OpenStreetMap
+  Nominatim: only the coordinates are sent). Your photos never leave your computer.
 
 ## Building from source
 

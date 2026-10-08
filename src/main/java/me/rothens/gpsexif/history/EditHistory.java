@@ -26,7 +26,13 @@ public class EditHistory implements AutoCloseable {
     private record Snapshot(Path original, Path copy, long size) {
     }
 
-    private record Edit(String description, List<Snapshot> snapshots) {
+    /** An edit that's undone by running code rather than copying files back, e.g. renaming photos. */
+    public interface Reversal {
+        /** Undoes the edit; returns the files it changed. */
+        List<Path> undo() throws IOException;
+    }
+
+    private record Edit(String description, List<Snapshot> snapshots, Reversal reversal) {
         long size() {
             return snapshots.stream().mapToLong(Snapshot::size).sum();
         }
@@ -101,6 +107,13 @@ public class EditHistory implements AutoCloseable {
         if (null == edit) {
             return List.of();
         }
+        if (null != edit.reversal()) {
+            try {
+                return edit.reversal().undo();
+            } finally {
+                fireChanged();
+            }
+        }
         List<Path> restored = new ArrayList<>();
         List<String> failures = new ArrayList<>();
         for (Snapshot s : edit.snapshots()) {
@@ -128,6 +141,11 @@ public class EditHistory implements AutoCloseable {
             throw new IOException("Couldn't restore " + failures.size() + " file(s):\n" + String.join("\n", failures));
         }
         return restored;
+    }
+
+    /** Records an edit that {@link #undo()} reverts by running {@code reversal}. */
+    public void record(String description, Reversal reversal) {
+        push(new Edit(description, List.of(), reversal));
     }
 
     /** Forgets all edits and deletes their snapshots. */
@@ -242,7 +260,7 @@ public class EditHistory implements AutoCloseable {
                     clear();
                 }
             } else if (!snapshots.isEmpty()) {
-                push(new Edit(description, List.copyOf(snapshots.values())));
+                push(new Edit(description, List.copyOf(snapshots.values()), null));
             }
         }
 
