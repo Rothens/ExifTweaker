@@ -145,7 +145,7 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 
 ---
 
-## 1.0 — Release
+## 1.0 — Release ✅
 
 - [x] Native installers via `jpackage` (Windows `.msi`, macOS `.dmg`, Linux `.deb`) built in GitHub Actions
       and attached to GitHub Releases (#24). They bundle a trimmed Java runtime, so users don't need Java.
@@ -164,8 +164,43 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
       photo selected, spot marked, saved). It can run on bundled sample photos (a weekend at Lake Balaton, copied
       to a temporary folder) or on the user's own; Skip tour or Esc ends it. Settings can bring it back on the next
       start.
-- [ ] Windows installer: install for all users into Program Files (asks for administrator rights).
-- [ ] First-run download of ExifTool and FFmpeg (checkboxes, into the app's own folder).
+
+---
+
+## 1.0.1 — Installer fix
+
+- [ ] **Windows: install for all users** (#34) into Program Files, asking for administrator rights once. The 1.0.0
+      installer was per-user but offered a folder chooser, so choosing Program Files failed.
+
+---
+
+## 1.1 — Smarter tagging
+
+- [ ] **Tag camera photos from phone photos** (#35): photos that have a location (e.g. from the phone) act as the
+      track for the others, matched by time like a GPX file.
+- [ ] **Drag photos onto the map** (#36) to set their location.
+- [ ] **Thumbnails tab** (#37) on top of the photo list; the list stays the default.
+- [ ] **File → Recent folders** (#38).
+
+---
+
+## 1.2 — Places
+
+- [ ] **Place names** (#39): look up the place for each location (OpenStreetMap Nominatim, within its usage policy)
+      and write it as City / State / Country into IPTC/XMP; show it in the app, playback and videos.
+- [ ] **Rename by date and place** (#40), e.g. `2026-07-11 Tihany 001.jpg`, with a preview and undo.
+- [ ] **Export copies for sharing** (#41): without location or without any metadata, optionally resized; the
+      originals stay untouched.
+
+---
+
+## 1.3 — More sources & reach
+
+- [ ] **More track formats** (#42): Google Maps Timeline, KML/KMZ, FIT and TCX.
+- [ ] **First-run download of ExifTool and FFmpeg** (#43): checkboxes on the first start, downloaded into the app's
+      own folder; the `.deb` depends on the distribution's packages instead.
+- [ ] **Hungarian translation** (#44), with all texts in resource bundles so more languages can be added.
+- [ ] **"New version available" check** (#45), at most once a day, can be turned off.
 
 ---
 
