@@ -67,6 +67,8 @@ Tihany, Veszprém, Magyarország*. The part of the city has no standard field, s
 sites and the photo's own details show these (IPTC/XMP location fields). The place shows in the details on the right
 and in Play photos, Travel mode and their videos.
 
+- Each part has its own row in the details on the right (Landmark, City, District, State, Country, Country code):
+  double-click to correct one. With several photos selected, only that part changes on each of them.
 - **Edit → Look up place names** adds them to photos that already have a location: to the selected ones, or with
   none selected, to every photo that doesn't have a place name yet. Big batches tell you first how long they take.
 - The names come from OpenStreetMap Nominatim, in your system's language. Each lookup is remembered, so photos
@@ -109,7 +111,7 @@ unmatched.
 ### Edit dates and other metadata
 
 Double-click a value in the table on the right to change the **date taken, camera make and model, artist,
-copyright, description, altitude or camera direction** - for one photo, or for all selected ones (values that
+copyright, description, altitude, camera direction or the parts of the place name** - for one photo, or for all selected ones (values that
 differ show as *(multiple values)* and are only written if you change them). Save writes them.
 
 **Edit → Shift date/time** (Ctrl+T) moves the date taken of the selected photos, e.g. +1 h for a camera that was

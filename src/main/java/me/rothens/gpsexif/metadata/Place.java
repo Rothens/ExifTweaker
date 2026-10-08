@@ -60,6 +60,45 @@ public record Place(String sublocation, String city, String state, String countr
         return null == s || s.isEmpty() ? null : s;
     }
 
+    /** The parts of a place, each editable on its own. */
+    public enum Part {
+        SUBLOCATION("Landmark"),
+        CITY("City"),
+        DISTRICT("District"),
+        STATE("State"),
+        COUNTRY("Country"),
+        COUNTRY_CODE("Country code");
+
+        private final String label;
+
+        Part(String label) {
+            this.label = label;
+        }
+
+        public String label() {
+            return label;
+        }
+    }
+
+    /** One part of the place, or {@code null}. */
+    public String get(Part part) {
+        return switch (part) {
+            case SUBLOCATION -> sublocation;
+            case CITY -> city;
+            case DISTRICT -> district;
+            case STATE -> state;
+            case COUNTRY -> country;
+            case COUNTRY_CODE -> countryCode;
+        };
+    }
+
+    /** The same place with one part replaced; blank removes it. */
+    public Place with(Part part, String value) {
+        return new Place(part == Part.SUBLOCATION ? value : sublocation, part == Part.CITY ? value : city,
+                part == Part.STATE ? value : state, part == Part.COUNTRY ? value : country,
+                part == Part.COUNTRY_CODE ? value : countryCode, part == Part.DISTRICT ? value : district);
+    }
+
     /** The same place with another district. */
     public Place withDistrict(String district) {
         return new Place(sublocation, city, state, country, countryCode, district);

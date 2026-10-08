@@ -315,7 +315,9 @@ public class CommonsImagingBackend implements MetadataBackend {
             // Sub-seconds of the old time don't belong to the new one
             outputSet.getOrCreateExifDirectory().removeField(ExifTagConstants.EXIF_TAG_SUB_SEC_TIME_ORIGINAL);
         }
-        if (null == changes.getPlace()) {
+        // Only some parts of the place may change: the rest comes from the photo as it is
+        Place newPlace = changes.hasPlaceChange() ? changes.placeFor(read(source).place()) : null;
+        if (null == newPlace) {
             if (!outputSet.iterator().hasNext()) {
                 // No EXIF at all and nothing to add
                 Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
@@ -337,7 +339,7 @@ public class CommonsImagingBackend implements MetadataBackend {
         } else {
             bytes = Files.readAllBytes(source);
         }
-        bytes = withPlace(bytes, changes.getPlace(), changes.isRemovePosition());
+        bytes = withPlace(bytes, newPlace, changes.isRemovePosition());
         Files.write(target, bytes);
     }
 

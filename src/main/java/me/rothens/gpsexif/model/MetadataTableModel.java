@@ -1,6 +1,7 @@
 package me.rothens.gpsexif.model;
 
 import me.rothens.gpsexif.metadata.MetadataChanges;
+import me.rothens.gpsexif.metadata.Place;
 import me.rothens.gpsexif.metadata.TextTag;
 
 import javax.swing.table.AbstractTableModel;
@@ -41,22 +42,38 @@ public class MetadataTableModel extends AbstractTableModel {
         COPYRIGHT(TextTag.COPYRIGHT),
         DESCRIPTION(TextTag.DESCRIPTION),
         ALTITUDE("Altitude (m)", p -> null == p.getAltitude() ? null : number(p.getAltitude())),
-        DIRECTION("Direction (°)", p -> null == p.getDirection() ? null : number(p.getDirection()));
+        DIRECTION("Direction (°)", p -> null == p.getDirection() ? null : number(p.getDirection())),
+        LANDMARK(Place.Part.SUBLOCATION),
+        CITY(Place.Part.CITY),
+        DISTRICT(Place.Part.DISTRICT),
+        STATE(Place.Part.STATE),
+        COUNTRY(Place.Part.COUNTRY),
+        COUNTRY_CODE(Place.Part.COUNTRY_CODE);
 
         final String label;
         final Function<ImageFile, String> value;
         final TextTag textField;
+        final Place.Part placePart;
 
         Editable(String label, Function<ImageFile, String> value) {
             this.label = label;
             this.value = value;
             this.textField = null;
+            this.placePart = null;
         }
 
         Editable(TextTag field) {
             this.label = field.label();
             this.value = p -> p.getText(field);
             this.textField = field;
+            this.placePart = null;
+        }
+
+        Editable(Place.Part part) {
+            this.label = part.label();
+            this.value = p -> null == p.getPlace() ? null : p.getPlace().get(part);
+            this.textField = null;
+            this.placePart = part;
         }
     }
 
@@ -72,14 +89,7 @@ public class MetadataTableModel extends AbstractTableModel {
     /** Shows the given photos; {@code lead} provides the read-only information rows. */
     public void setPhotos(List<ImageFile> photos, ImageFile lead) {
         this.photos = List.copyOf(photos);
-        List<ExifData> rows = new ArrayList<>();
-        if (null != lead && null != lead.getPlace()) {
-            rows.add(new ExifData("Place", lead.getPlace().label()));
-        }
-        if (null != lead) {
-            rows.addAll(lead.getExifData());
-        }
-        this.info = rows;
+        this.info = null == lead ? List.of() : lead.getExifData();
         fireTableDataChanged();
     }
 
@@ -168,6 +178,18 @@ public class MetadataTableModel extends AbstractTableModel {
                 throw new IllegalArgumentException(field.label + " is too long (at most 2000 characters)");
             }
             return changes.text(field.textField, text);
+        }
+        if (null != field.placePart) {
+            if (text.length() > 200) {
+                throw new IllegalArgumentException(field.label + " is too long (at most 200 characters)");
+            }
+            if (field.placePart == Place.Part.COUNTRY_CODE) {
+                if (!text.isEmpty() && !text.matches("[A-Za-z]{2,3}")) {
+                    throw new IllegalArgumentException("The country code has 2 letters, e.g. HU or JP");
+                }
+                text = text.toUpperCase(Locale.ROOT);
+            }
+            return changes.placePart(field.placePart, text);
         }
         switch (field) {
             case TAKEN -> {

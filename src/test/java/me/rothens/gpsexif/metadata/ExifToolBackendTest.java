@@ -207,4 +207,18 @@ class ExifToolBackendTest {
         assertTrue(exifTool.execute(java.util.List.of("-XMP-exiftweaker:District", backend.writeTarget(raw).toString()))
                 .contains("Óvár"));
     }
+
+    @Test
+    void editingOnePartOfThePlaceKeepsTheOthers() throws Exception {
+        Place place = new Place("Abbey", "Tihny", "Veszprém", "Hungary", "HU", "Óvár");
+        Path png = write(image("q.png", "png"), "q-1.png", new MetadataChanges().place(place));
+        Path fixed = write(png, "q-2.png", new MetadataChanges().placePart(Place.Part.CITY, "Tihany"));
+        assertEquals(place.with(Place.Part.CITY, "Tihany"), backend.read(fixed).place());
+
+        Path raw = Files.move(image("base3.tif", "tiff"), dir.resolve("IMG_7.dng"));
+        Files.move(write(raw, ".tmp-7a.xmp", new MetadataChanges().place(place)), backend.writeTarget(raw));
+        Path tmp = write(raw, ".tmp-7b.xmp", new MetadataChanges().placePart(Place.Part.DISTRICT, ""));
+        Files.move(tmp, backend.writeTarget(raw), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        assertEquals(place.with(Place.Part.DISTRICT, null), backend.read(raw).place());
+    }
 }
