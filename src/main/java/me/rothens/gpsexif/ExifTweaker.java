@@ -36,6 +36,9 @@ import me.rothens.gpsexif.util.PhotoLoader;
 import me.rothens.gpsexif.util.PositionUtil;
 import me.rothens.gpsexif.util.Settings;
 import me.rothens.gpsexif.util.ThumbnailCache;
+import me.rothens.gpsexif.util.TripMarkStore;
+import me.rothens.gpsexif.model.TripMark;
+import me.rothens.gpsexif.model.TripMarkIcon;
 import me.rothens.gpsexif.model.ThumbnailRenderer;
 import me.rothens.gpsexif.tutorial.SampleTrip;
 import me.rothens.gpsexif.tutorial.Tutorial;
@@ -84,6 +87,7 @@ public class ExifTweaker {
     private final ThumbnailCache thumbnails = new ThumbnailCache(ThumbnailRenderer.THUMBNAIL_SIZE, 1000,
             lThumbs::repaint);
     private final JTabbedPane photoTabs = new JTabbedPane();
+    private final TripMarkStore tripMarks = TripMarkStore.openDefault();
     /** Photos on the left, the rest on the right. */
     private JSplitPane centerSplit;
     private final JCheckBox chkOnlyWithoutLocation = new JCheckBox("Only without location");
@@ -455,7 +459,63 @@ public class ExifTweaker {
         popup.add(menuItem("Paste location", null, e -> pasteLocation()));
         popup.addSeparator();
         popup.add(menuItem("Remove location...", null, e -> removeLocation()));
+        popup.addSeparator();
+        JCheckBoxMenuItem prefer = new JCheckBoxMenuItem("Prefer in trips");
+        prefer.setIcon(new TripMarkIcon(TripMark.PREFER, 14));
+        prefer.setToolTipText("Travel mode shows these first when it can't show every photo of a stretch");
+        prefer.addActionListener(e -> setTripMark(prefer.isSelected() ? TripMark.PREFER : TripMark.NORMAL));
+        JCheckBoxMenuItem skip = new JCheckBoxMenuItem("Skip in trips");
+        skip.setIcon(new TripMarkIcon(TripMark.SKIP, 14));
+        skip.setToolTipText("Leave these out of Play photos, Travel mode and the videos");
+        skip.addActionListener(e -> setTripMark(skip.isSelected() ? TripMark.SKIP : TripMark.NORMAL));
+        popup.add(prefer);
+        popup.add(skip);
+        popup.addPopupMenuListener(new javax.swing.event.PopupMenuListener() {
+            @Override
+            public void popupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent e) {
+                boolean any = !selection.isEmpty();
+                prefer.setEnabled(any);
+                skip.setEnabled(any);
+                prefer.setSelected(any && selection.stream().allMatch(p -> TripMark.PREFER == p.getTripMark()));
+                skip.setSelected(any && selection.stream().allMatch(p -> TripMark.SKIP == p.getTripMark()));
+            }
+
+            @Override
+            public void popupMenuWillBecomeInvisible(javax.swing.event.PopupMenuEvent e) {
+            }
+
+            @Override
+            public void popupMenuCanceled(javax.swing.event.PopupMenuEvent e) {
+            }
+        });
         return popup;
+    }
+
+    /** Marks the selected photos as preferred, skipped or normal in Play photos and Travel mode. */
+    private void setTripMark(TripMark mark) {
+        if (selection.isEmpty()) {
+            return;
+        }
+        String error = null;
+        for (ImageFile photo : selection) {
+            photo.setTripMark(mark);
+            try {
+                tripMarks.set(photo.getPath(), mark);
+            } catch (IOException e) {
+                error = e.getMessage();
+            }
+        }
+        lFiles.repaint();
+        lThumbs.repaint();
+        String photos = selection.size() == 1 ? "1 photo" : selection.size() + " photos";
+        lblStatus.setText(switch (mark) {
+            case PREFER -> photos + " preferred in trips";
+            case SKIP -> photos + " skipped in trips";
+            case NORMAL -> photos + " shown as usual in trips";
+        });
+        if (null != error) {
+            showError("Couldn't remember this for the next time:\n" + error);
+        }
     }
 
     private JMenuBar createMenuBar() {
@@ -983,7 +1043,9 @@ public class ExifTweaker {
             protected List<ImageFile> doInBackground() {
                 List<ImageFile> loaded = new ArrayList<>();
                 for (File f : files) {
-                    loaded.add(new ImageFile(f, backend));
+                    ImageFile image = new ImageFile(f, backend);
+                    image.setTripMark(tripMarks.get(f.toPath()));
+                    loaded.add(image);
                     publish(loaded.size());
                 }
                 return loaded;
@@ -1370,15 +1432,23 @@ public class ExifTweaker {
         List<ImageFile> photos = selection.size() > 1 ? selection : listModel.getAll();
         PlaybackSequence sequence = new PlaybackSequence(photos);
         if (sequence.isEmpty()) {
-            showError("None of these photos has a date, so they can't be played back in order.");
+            showError(sequence.getSkipped() > 0
+                    ? "Nothing to play: these photos are skipped in trips or have no date.\n"
+                    + "Right-click a photo and untick Skip in trips to show it again."
+                    : "None of these photos has a date, so they can't be played back in order.");
             return;
         }
         PlaybackWindow window = new PlaybackWindow(frame, sequence, settings.getMapLayer().createInfo(), tileCache,
                 USER_AGENT, settings);
+        List<String> leftOut = new ArrayList<>();
         if (sequence.getWithoutDate() > 0) {
-            int n = sequence.getWithoutDate();
-            lblStatus.setText(n + (n == 1 ? " photo without a date is" : " photos without a date are")
-                    + " left out of the playback");
+            leftOut.add(sequence.getWithoutDate() + " without a date");
+        }
+        if (sequence.getSkipped() > 0) {
+            leftOut.add(sequence.getSkipped() + " skipped");
+        }
+        if (!leftOut.isEmpty()) {
+            lblStatus.setText("Left out: " + String.join(", ", leftOut));
         }
         window.setVisible(true);
     }
@@ -1388,6 +1458,11 @@ public class ExifTweaker {
         List<ImageFile> photos = selection.size() > 1 ? selection : listModel.getAll();
         if (photos.stream().noneMatch(p -> null != p.getTaken())) {
             showError("None of these photos has a date, so the trip can't be played back.");
+            return;
+        }
+        if (photos.stream().noneMatch(p -> null != p.getTaken() && TripMark.SKIP != p.getTripMark())) {
+            showError("All of these photos are skipped in trips.\n"
+                    + "Right-click a photo and untick Skip in trips to show it again.");
             return;
         }
         new TravelWindow(frame, photos, settings, lastTracks, settings.getMapLayer().createInfo(),

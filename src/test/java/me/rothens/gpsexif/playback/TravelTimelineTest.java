@@ -117,6 +117,48 @@ class TravelTimelineTest {
     }
 
     @Test
+    void aPreferredPhotoWinsItsBurst() throws Exception {
+        List<ImageFile> photos = new ArrayList<>();
+        photos.add(photo("start.jpg", day(1, 9, 0), HOME));
+        for (int i = 0; i < 5; i++) {
+            photos.add(photo("burst" + i + ".jpg", day(1, 10, i), PARK));
+        }
+        photos.add(photo("end.jpg", day(1, 11, 0), HOTEL));
+        photos.get(5).setTripMark(me.rothens.gpsexif.model.TripMark.PREFER); // burst4
+        TravelTimeline t = new TravelTimeline(photos, TravelTimelineTest::utc, List.of(), SETTINGS);
+        assertEquals(List.of("start.jpg", "burst4.jpg", "end.jpg"),
+                t.getSlots().stream().map(s -> s.stop().photo().getFile().getName()).toList());
+        // Two preferred: the middle of those
+        photos.get(1).setTripMark(me.rothens.gpsexif.model.TripMark.PREFER); // burst0
+        photos.get(2).setTripMark(me.rothens.gpsexif.model.TripMark.PREFER); // burst1
+        t = new TravelTimeline(photos, TravelTimelineTest::utc, List.of(), SETTINGS);
+        assertEquals("burst1.jpg", t.getSlots().get(1).stop().photo().getFile().getName());
+    }
+
+    @Test
+    void skippedPhotosAreNotShownButTheTripStaysTheSame() throws Exception {
+        List<ImageFile> photos = trip();
+        TravelTimeline all = new TravelTimeline(photos, TravelTimelineTest::utc, List.of(), SETTINGS);
+        photos.get(1).setTripMark(me.rothens.gpsexif.model.TripMark.SKIP); // the park
+        photos.get(2).setTripMark(me.rothens.gpsexif.model.TripMark.SKIP); // the hotel, before the night
+        TravelTimeline t = new TravelTimeline(photos, TravelTimelineTest::utc, List.of(), SETTINGS);
+        assertEquals(List.of("a.jpg", "d.jpg", "e.jpg"),
+                t.getSlots().stream().map(s -> s.stop().photo().getFile().getName()).toList());
+        assertTrue(t.summary().startsWith("Shows 3 of 5 photos (2 skipped)"), t.summary());
+        // Same timing and route: the marker still goes past the park
+        assertEquals(all.getStops().get(3).videoTime(), t.getStops().get(3).videoTime(), 1e-9);
+        assertEquals(PARK.getLatitude(), t.markerAt(day(1, 9, 30).toInstant(ZoneOffset.UTC)).getLatitude(), 1e-9);
+        // The night after the skipped hotel photo is still squeezed with its caption
+        assertEquals(Duration.ofHours(23), t.getSlots().get(0).pause());
+
+        // Everything skipped: nothing to show
+        photos.forEach(p -> p.setTripMark(me.rothens.gpsexif.model.TripMark.SKIP));
+        TravelTimeline none = new TravelTimeline(photos, TravelTimelineTest::utc, List.of(), SETTINGS);
+        assertTrue(none.getSlots().isEmpty());
+        assertNull(none.frameAt(3).visible());
+    }
+
+    @Test
     void burstShowsTheMiddlePhoto() throws Exception {
         List<ImageFile> photos = new ArrayList<>();
         photos.add(photo("start.jpg", day(1, 9, 0), HOME));

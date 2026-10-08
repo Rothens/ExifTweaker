@@ -55,7 +55,9 @@ public class ThumbnailRenderer extends JComponent implements ListCellRenderer<Im
         foreground = isSelected ? list.getSelectionForeground() : list.getForeground();
         dimForeground = isSelected ? list.getSelectionForeground() : UIManager.getColor("Label.disabledForeground");
         setFont(list.getFont());
-        String place = value.hasExifGPS() ? "has a location" : "no location yet";
+        String place = (value.hasExifGPS() ? "has a location" : "no location yet")
+                + (TripMark.PREFER == value.getTripMark() ? "<br>preferred in trips"
+                : TripMark.SKIP == value.getTripMark() ? "<br>skipped in trips" : "");
         setToolTipText("<html><b>" + escape(value.getFile().getName()) + "</b><br>"
                 + (null == value.getTaken() ? "no date" : FULL_DATE.format(value.getTaken())) + "<br>" + place
                 + (value.isWritable() ? "" : "<br>Read-only: this file type needs ExifTool") + "</html>");
@@ -92,6 +94,11 @@ public class ThumbnailRenderer extends JComponent implements ListCellRenderer<Im
                     g2.setColor(new Color(128, 128, 128, 140));
                     g2.fillRect(x, y, image.getWidth(), image.getHeight());
                 }
+                if (TripMark.SKIP == photo.getTripMark()) {
+                    Color bg = UIManager.getColor("List.background");
+                    g2.setColor(new Color(bg.getRed(), bg.getGreen(), bg.getBlue(), 150));
+                    g2.fillRect(x, y, image.getWidth(), image.getHeight());
+                }
             } else {
                 g2.setColor(FlatLaf.isLafDark() ? new Color(60, 63, 65) : new Color(225, 225, 225));
                 g2.fill(new RoundRectangle2D.Double(bx + 8, by + 18, box - 16, box - 36, 6, 6));
@@ -112,6 +119,8 @@ public class ThumbnailRenderer extends JComponent implements ListCellRenderer<Im
             g2.setColor(Color.WHITE);
             g2.setStroke(new BasicStroke(1.5f));
             g2.draw(dot);
+            // Trip mark, top left of the box
+            TripMarkIcon.paint(g2, photo.getTripMark(), bx + 2, by + 2, 16);
             // Name and date
             Font font = getFont();
             FontMetrics fm = g2.getFontMetrics(font);

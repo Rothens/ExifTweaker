@@ -172,9 +172,13 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 
 - [ ] **Tag camera photos from phone photos** (#35): photos that have a location (e.g. from the phone) act as the
       track for the others, matched by time like a GPX file.
-- [ ] **Drag photos onto the map** (#36) to set their location.
-- [ ] **Thumbnails tab** (#37) on top of the photo list; the list stays the default.
-- [ ] **File → Recent folders** (#38).
+- [x] **Drag photos onto the map** (#36) to set their location; a pin with the number of photos shows where they'll
+      land.
+- [x] **Thumbnails tab** (#37) on top of the photo list; the list stays the default.
+- [x] **File → Recent folders** (#38).
+- [x] **Skip or prefer photos in trips** (#46): right-click → Skip in trips / Prefer in trips. Skipped photos are left
+      out of Play photos, Travel mode and videos (their location still shapes the route); preferred ones win when
+      travel mode can't show every photo of a stretch. Marked with ⊘ / ★ in the list and the grid.
 
 ---
 

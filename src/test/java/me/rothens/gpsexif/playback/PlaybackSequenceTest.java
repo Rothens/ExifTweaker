@@ -84,4 +84,16 @@ class PlaybackSequenceTest {
         seq.next(false);
         assertNotNull(seq.mapPosition());
     }
+
+    @Test
+    void skippedPhotosAreLeftOut() throws Exception {
+        ImageFile a = photo("a.jpg", 9, null);
+        ImageFile b = photo("b.jpg", 10, null);
+        ImageFile c = photo("c.jpg", 11, null);
+        b.setTripMark(me.rothens.gpsexif.model.TripMark.SKIP);
+        PlaybackSequence sequence = new PlaybackSequence(List.of(a, b, c));
+        assertEquals(List.of(a, c), sequence.getPhotos());
+        assertEquals(1, sequence.getSkipped());
+        assertEquals(0, sequence.getWithoutDate());
+    }
 }
