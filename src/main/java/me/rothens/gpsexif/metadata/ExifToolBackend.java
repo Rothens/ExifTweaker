@@ -52,7 +52,15 @@ public class ExifToolBackend implements MetadataBackend {
             "-GPSImgDirection", "-Orientation", "-DateTimeOriginal", "-SubSecTimeOriginal", "-OffsetTimeOriginal",
             "-CreateDate", "-Make", "-Model", "-Artist", "-Creator", "-Copyright", "-Rights", "-ImageDescription",
             "-Description", "-ExposureTime", "-FNumber", "-ISO", "-FocalLength", "-LensModel", "-ImageWidth",
-            "-ImageHeight");
+            "-ImageHeight", "-XMP-photoshop:City", "-XMP-photoshop:State", "-XMP-photoshop:Country",
+            "-XMP-iptcCore:Location", "-XMP-iptcCore:CountryCode", "-IPTC:City", "-IPTC:Sub-location",
+            "-IPTC:Province-State", "-IPTC:Country-PrimaryLocationName", "-IPTC:Country-PrimaryLocationCode");
+
+    /** XMP place tags, in the order of {@link Place}'s components. */
+    private static final List<String> XMP_PLACE = List.of("XMP-iptcCore:Location", "XMP-photoshop:City",
+            "XMP-photoshop:State", "XMP-photoshop:Country", "XMP-iptcCore:CountryCode");
+    private static final List<String> IPTC_PLACE = List.of("IPTC:Sub-location", "IPTC:City", "IPTC:Province-State",
+            "IPTC:Country-PrimaryLocationName", "IPTC:Country-PrimaryLocationCode");
 
     private final ExifTool exifTool;
 
@@ -202,7 +210,38 @@ public class ExifToolBackend implements MetadataBackend {
 
         int orient = null == orientation ? 1 : orientation.intValue();
         return new PhotoMetadata(position, orient >= 1 && orient <= 8 ? orient : 1, fields, taken, offset, altitude,
-                null == direction ? null : MetadataChanges.normalizeDegrees(direction), text);
+                null == direction ? null : MetadataChanges.normalizeDegrees(direction), text, readPlace(tags));
+    }
+
+    /** The XMP place, else the IPTC one, or {@code null}. */
+    private static Place readPlace(Map<String, Object> tags) {
+        for (List<String> names : List.of(XMP_PLACE, IPTC_PLACE)) {
+            Place place = new Place(string(tags.get(names.get(0))), string(tags.get(names.get(1))),
+                    string(tags.get(names.get(2))), string(tags.get(names.get(3))), string(tags.get(names.get(4))));
+            if (!place.isEmpty()) {
+                if (null != place.countryCode() && place.countryCode().length() == 3) {
+                    place = new Place(place.sublocation(), place.city(), place.state(), place.country(),
+                            Place.alpha2(place.countryCode()));
+                }
+                return place;
+            }
+        }
+        return null;
+    }
+
+
+    /** Sets (or with {@link Place#NONE} clears) the XMP place; {@code clearIptc} also drops a stale IPTC one. */
+    private static void placeArgs(List<String> a, Place place, boolean clearIptc) {
+        if (null == place) {
+            return;
+        }
+        String[] values = {place.sublocation(), place.city(), place.state(), place.country(), place.countryCode()};
+        for (int i = 0; i < values.length; i++) {
+            a.add("-" + XMP_PLACE.get(i) + "=" + (null == values[i] ? "" : values[i]));
+            if (clearIptc) {
+                a.add("-" + IPTC_PLACE.get(i) + "=");
+            }
+        }
     }
 
     @Override
@@ -211,6 +250,20 @@ public class ExifToolBackend implements MetadataBackend {
         boolean sidecar = !writeTarget.equals(photo);
         List<String> tags = sidecar ? sidecarArgs(photo, changes) : inPlaceArgs(changes);
         Path source = sidecar && !Files.exists(writeTarget) ? photo : writeTarget;
+        if (sidecar && source.equals(photo) && null != changes.getPlace()) {
+            // A new sidecar is filled with the RAW file's own values (e.g. an old IPTC city), which would override
+            // ours: write the place in a second step
+            List<String> place = new ArrayList<>(List.of("-n", "-overwrite_original"));
+            placeArgs(place, changes.getPlace(), false);
+            tags.removeIf(a -> XMP_PLACE.stream().anyMatch(t -> a.startsWith("-" + t + "=")));
+            if (tags.isEmpty()) {
+                tags.add("-XMP-xmp:MetadataDate=now");
+            }
+            write(source, target, tags);
+            place.add(target.toString());
+            exifTool.execute(place);
+            return;
+        }
         if (tags.isEmpty()) {
             if (source.equals(photo) && sidecar) {
                 throw new IOException("Nothing to write for " + photo.getFileName());
@@ -218,6 +271,10 @@ public class ExifToolBackend implements MetadataBackend {
             Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
             return;
         }
+        write(source, target, tags);
+    }
+
+    private void write(Path source, Path target, List<String> tags) throws IOException {
         // ExifTool refuses to overwrite with -o; the caller's (empty) temporary file is replaced
         Files.deleteIfExists(target);
         List<String> args = new ArrayList<>(List.of("-n"));
@@ -225,7 +282,7 @@ public class ExifToolBackend implements MetadataBackend {
         args.addAll(List.of("-o", target.toString(), source.toString()));
         exifTool.execute(args);
         if (!Files.exists(target)) {
-            throw new IOException("ExifTool didn't write " + photo.getFileName());
+            throw new IOException("ExifTool didn't write " + source.getFileName());
         }
     }
 
@@ -269,6 +326,7 @@ public class ExifToolBackend implements MetadataBackend {
             a.add("-ExifIFD:DateTimeOriginal=" + EXIF_DATE_TIME.format(c.getTaken()));
             a.add("-ExifIFD:SubSecTimeOriginal=");
         }
+        placeArgs(a, c.getPlace(), true);
         return a;
     }
 
@@ -322,6 +380,7 @@ public class ExifToolBackend implements MetadataBackend {
         if (null != taken) {
             a.add("-XMP-exif:DateTimeOriginal=" + EXIF_DATE_TIME.format(taken));
         }
+        placeArgs(a, c.getPlace(), false);
         return a;
     }
 

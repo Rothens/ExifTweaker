@@ -53,25 +53,53 @@ public class PlaceSearch {
         void sleep(long millis) throws InterruptedException;
     }
 
+    /**
+     * Keeps requests to Nominatim at least a second apart. One instance is shared by the place search and the place
+     * name lookup, so together they stay within the limit.
+     */
+    public static final class Throttle {
+        /** The one used by the app. */
+        public static final Throttle SHARED = new Throttle(System::currentTimeMillis, Thread::sleep);
+
+        private final LongSupplier clock;
+        private final Sleeper sleeper;
+        private long lastRequest = Long.MIN_VALUE / 2;
+
+        Throttle(LongSupplier clock, Sleeper sleeper) {
+            this.clock = clock;
+            this.sleeper = sleeper;
+        }
+
+        /** Waits until the next request may be sent. */
+        synchronized void await() throws InterruptedException {
+            long wait = lastRequest + MIN_INTERVAL_MS - clock.getAsLong();
+            if (wait > 0) {
+                sleeper.sleep(wait);
+            }
+            lastRequest = clock.getAsLong();
+        }
+    }
+
     private final Fetcher fetcher;
-    private final LongSupplier clock;
-    private final Sleeper sleeper;
+    private final Throttle throttle;
     private final Map<String, List<Place>> cache = new LinkedHashMap<>(16, 0.75f, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, List<Place>> eldest) {
             return size() > CACHE_SIZE;
         }
     };
-    private long lastRequest = Long.MIN_VALUE / 2;
 
     public PlaceSearch(String userAgent) {
-        this(httpFetcher(userAgent), System::currentTimeMillis, Thread::sleep);
+        this(httpFetcher(userAgent), Throttle.SHARED);
     }
 
     PlaceSearch(Fetcher fetcher, LongSupplier clock, Sleeper sleeper) {
+        this(fetcher, new Throttle(clock, sleeper));
+    }
+
+    PlaceSearch(Fetcher fetcher, Throttle throttle) {
         this.fetcher = fetcher;
-        this.clock = clock;
-        this.sleeper = sleeper;
+        this.throttle = throttle;
     }
 
     /** Searches for places; blocks, so call it off the event thread. Returns an empty list if nothing matched. */
@@ -84,11 +112,7 @@ public class PlaceSearch {
         if (null != cached) {
             return cached;
         }
-        long wait = lastRequest + MIN_INTERVAL_MS - clock.getAsLong();
-        if (wait > 0) {
-            sleeper.sleep(wait);
-        }
-        lastRequest = clock.getAsLong();
+        throttle.await();
         URI uri = URI.create(ENDPOINT + "?format=xml&limit=" + MAX_RESULTS + "&q="
                 + URLEncoder.encode(query.trim(), StandardCharsets.UTF_8));
         List<Place> places;
@@ -138,7 +162,7 @@ public class PlaceSearch {
         return new double[]{Double.NaN, Double.NaN, Double.NaN, Double.NaN};
     }
 
-    private static Fetcher httpFetcher(String userAgent) {
+    static Fetcher httpFetcher(String userAgent) {
         HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NORMAL)
@@ -154,12 +178,12 @@ public class PlaceSearch {
                 HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
                 if (response.statusCode() != 200) {
                     response.body().close();
-                    throw new IOException("Place search failed (HTTP " + response.statusCode() + ")");
+                    throw new IOException("OpenStreetMap Nominatim answered HTTP " + response.statusCode());
                 }
                 return response.body();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                throw new IOException("Place search interrupted", e);
+                throw new IOException("Interrupted", e);
             }
         };
     }

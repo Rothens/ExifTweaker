@@ -165,10 +165,15 @@ final class PlaybackView extends JLayeredPane {
             String offset = clock.offsetLabel(photo);
             String date = DATE.format(local) + (null == offset ? "" : "  ·  " + offset);
             String info = showFileInfo ? (index + 1) + " / " + total + "   " + photo.getFile().getName() : "";
+            String place = null == photo.getPlace() ? null : photo.getPlace().shortLabel();
             FontMetrics fb = g2.getFontMetrics(big);
             FontMetrics fs = g2.getFontMetrics(small);
             int w = Math.max(fb.stringWidth(time), Math.max(fs.stringWidth(date), fs.stringWidth(info))) + 28;
-            int h = fb.getHeight() + (showFileInfo ? 2 : 1) * fs.getHeight() + (showFileInfo ? 18 : 14);
+            if (null != place) {
+                w = Math.max(w, fs.stringWidth(place) + 28);
+            }
+            int lines = (showFileInfo ? 2 : 1) + (null == place ? 0 : 1);
+            int h = fb.getHeight() + lines * fs.getHeight() + (showFileInfo ? 18 : 14);
             g2.setColor(new Color(0, 0, 0, 150));
             g2.fillRoundRect(16, 16, w, h, 14, 14);
             g2.setColor(Color.WHITE);
@@ -178,6 +183,10 @@ final class PlaybackView extends JLayeredPane {
             g2.setFont(small);
             y += fs.getHeight() + 2;
             g2.drawString(date, 30, y);
+            if (null != place) {
+                y += fs.getHeight();
+                g2.drawString(place, 30, y);
+            }
             g2.setColor(new Color(200, 200, 200));
             y += fs.getHeight();
             g2.drawString(info, 30, y);

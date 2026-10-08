@@ -48,7 +48,8 @@ public class ImageListRenderer extends JLabel implements ListCellRenderer<ImageF
         }
         if (value.isWritable()) {
             setFont(list.getFont());
-            setToolTipText((value.hasExifGPS() ? "Has GPS position" : "No GPS position") + trip);
+            setToolTipText((value.hasExifGPS() ? null == value.getPlace() ? "Has GPS position"
+                    : value.getPlace().label() : "No GPS position") + trip);
         } else {
             setFont(list.getFont().deriveFont(Font.ITALIC));
             setForeground(UIManager.getColor("Label.disabledForeground"));

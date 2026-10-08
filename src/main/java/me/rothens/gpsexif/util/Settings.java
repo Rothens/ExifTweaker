@@ -21,6 +21,7 @@ public class Settings {
     private static final String GPX_DIRECTORY = "GPX_DIRECTORY";
     private static final String RECENT_FOLDERS = "RECENT_FOLDERS";
     private static final String THUMBNAIL_VIEW = "THUMBNAIL_VIEW";
+    private static final String PLACE_NAMES = "PLACE_NAMES";
     public static final int MAX_RECENT_FOLDERS = 10;
     private static final String DISPLAY_ZONE = "DISPLAY_ZONE";
     private static final String GPX_MAX_GAP_MINUTES = "GPX_MAX_GAP_MINUTES";
@@ -247,5 +248,14 @@ public class Settings {
 
     public void setBackupsEnabled(boolean enabled) {
         prefs.putBoolean(BACKUPS_ENABLED, enabled);
+    }
+
+    /** Whether the place name (city, country) is looked up and written along with a new location. On by default. */
+    public boolean isPlaceNames() {
+        return prefs.getBoolean(PLACE_NAMES, true);
+    }
+
+    public void setPlaceNames(boolean enabled) {
+        prefs.putBoolean(PLACE_NAMES, enabled);
     }
 }

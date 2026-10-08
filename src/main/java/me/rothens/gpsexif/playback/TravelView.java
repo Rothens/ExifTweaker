@@ -259,8 +259,16 @@ final class TravelView extends JLayeredPane {
             FontMetrics fs = g2.getFontMetrics(small);
             String caption = frame.caption();
             int captionWidth = null == caption ? 0 : g2.getFontMetrics(big).stringWidth(caption) + 24;
+            // The place of the photo on screen; none while travelling on the map
+            ImageFile shown = null != frame.to()
+                    ? (frame.alpha() >= 0.5 || null == frame.from() ? frame.to() : frame.from())
+                    : (frame.alpha() < 0.5 ? frame.from() : null);
+            String place = null == shown || null == shown.getPlace() ? null : shown.getPlace().shortLabel();
             int w = Math.max(fb.stringWidth(time) + captionWidth, fs.stringWidth(date)) + 28;
-            int h = fb.getHeight() + fs.getHeight() + 14;
+            if (null != place) {
+                w = Math.max(w, fs.stringWidth(place) + 28);
+            }
+            int h = fb.getHeight() + (null == place ? 1 : 2) * fs.getHeight() + 14;
             g2.setColor(new Color(0, 0, 0, 150));
             g2.fillRoundRect(16, 16, w, h, 14, 14);
             g2.setColor(Color.WHITE);
@@ -274,6 +282,9 @@ final class TravelView extends JLayeredPane {
             }
             g2.setFont(small);
             g2.drawString(date, 30, y + fs.getHeight() + 2);
+            if (null != place) {
+                g2.drawString(place, 30, y + 2 * fs.getHeight() + 2);
+            }
         }
     }
 }

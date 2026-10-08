@@ -9,7 +9,9 @@ import me.rothens.gpsexif.map.AttributionPainter;
 import me.rothens.gpsexif.map.DirectionOverlay;
 import me.rothens.gpsexif.map.MapLayer;
 import me.rothens.gpsexif.map.PhotoMarkerLayer;
+import me.rothens.gpsexif.map.PlaceNames;
 import me.rothens.gpsexif.map.PlaceSearch;
+import me.rothens.gpsexif.metadata.Place;
 import me.rothens.gpsexif.map.TileDiskCache;
 import me.rothens.gpsexif.map.TrackPainter;
 import me.rothens.gpsexif.metadata.ExifTool;
@@ -112,6 +114,9 @@ public class ExifTweaker {
     private DirectionOverlay directionOverlay;
     private final JTextField tfSearch = new JTextField();
     private final PlaceSearch placeSearch = new PlaceSearch(USER_AGENT);
+    private final PlaceNames placeNames = new PlaceNames(USER_AGENT, PlaceNames.defaultCacheFile());
+    /** Photos of the running batch whose place name couldn't be looked up. */
+    private final java.util.concurrent.atomic.AtomicInteger placesMissed = new java.util.concurrent.atomic.AtomicInteger();
     private final JButton btnCoordinate = new JButton("Go!");
     private final JFrame frame;
     private final Settings settings = new Settings(Preferences.userNodeForPackage(ExifTweaker.class));
@@ -127,6 +132,7 @@ public class ExifTweaker {
     private final JMenuItem miSave = new JMenuItem("Save location");
     private final JMenuItem miRemove = new JMenuItem("Remove location...");
     private final JMenuItem miShiftTime = new JMenuItem("Shift date/time...");
+    private final JMenuItem miPlaces = new JMenuItem("Look up place names");
     private final JMenuItem miCopy = new JMenuItem("Copy location");
     private final JMenuItem miPaste = new JMenuItem("Paste location");
     private final Map<Theme, JRadioButtonMenuItem> themeItems = new EnumMap<>(Theme.class);
@@ -427,7 +433,10 @@ public class ExifTweaker {
                     boolean dim = !editableRow || (column == 1 && metadataModel.isMultiple(row));
                     setForeground(dim ? UIManager.getColor("Label.disabledForeground") : table.getForeground());
                 }
-                setToolTipText(editableRow && column == 1 ? "Double-click to edit" : null);
+                String text = null == value ? "" : value.toString();
+                boolean cut = column == 1 && getFontMetrics(getFont()).stringWidth(text)
+                        > table.getColumnModel().getColumn(1).getWidth() - 4;
+                setToolTipText(cut ? text : editableRow && column == 1 ? "Double-click to edit" : null);
                 return this;
             }
         });
@@ -459,6 +468,7 @@ public class ExifTweaker {
         popup.add(menuItem("Paste location", null, e -> pasteLocation()));
         popup.addSeparator();
         popup.add(menuItem("Remove location...", null, e -> removeLocation()));
+        popup.add(menuItem("Look up place names", null, e -> lookUpPlaces()));
         popup.addSeparator();
         JCheckBoxMenuItem prefer = new JCheckBoxMenuItem("Prefer in trips");
         prefer.setIcon(new TripMarkIcon(TripMark.PREFER, 14));
@@ -571,6 +581,9 @@ public class ExifTweaker {
         edit.add(miSave);
         miRemove.addActionListener(e -> removeLocation());
         edit.add(miRemove);
+        miPlaces.setToolTipText("Writes the city, state and country of the selected photos' locations");
+        miPlaces.addActionListener(e -> lookUpPlaces());
+        edit.add(miPlaces);
         miShiftTime.setAccelerator(KeyStroke.getKeyStroke('T', menuKey));
         miShiftTime.addActionListener(e -> shiftTime());
         edit.add(miShiftTime);
@@ -906,6 +919,7 @@ public class ExifTweaker {
         miSave.setEnabled(canWrite);
         miRemove.setEnabled(canWrite && selection.stream().anyMatch(ImageFile::hasExifGPS));
         miShiftTime.setEnabled(canWrite && selection.stream().anyMatch(p -> null != p.getTaken()));
+        miPlaces.setEnabled(miRemove.isEnabled());
         miPaste.setEnabled(!busy);
         miGeotag.setEnabled(!busy && !listModel.getAll().isEmpty());
         miExportGpx.setEnabled(!busy && listModel.getAll().stream().anyMatch(ImageFile::hasExifGPS));
@@ -1139,7 +1153,12 @@ public class ExifTweaker {
             parts.add("direction");
         }
         String what = targets.size() == 1 ? targets.get(0).getFile().getName() : targets.size() + " photos";
-        runBatch("Set " + String.join(", ", parts) + " of " + what, targets, image -> image.apply(changes));
+        runBatch("Set " + String.join(", ", parts) + " of " + what, targets, image -> {
+            if (null != position) {
+                changes.place(placeFor(position)); // looked up once, then cached
+            }
+            image.apply(changes);
+        });
         altitudeEdited = false;
         directionEdited = false;
     }
@@ -1154,6 +1173,47 @@ public class ExifTweaker {
             return;
         }
         runBatch("Remove location from " + what, targets, ImageFile::removePosition);
+    }
+
+    /**
+     * The place name to write along with a new location; {@code null} (leave it as it is) if place names are off
+     * or it couldn't be looked up. Runs in the batch's background thread.
+     */
+    private Place placeFor(GeoPosition position) {
+        if (!settings.isPlaceNames()) {
+            return null;
+        }
+        try {
+            return placeNames.lookup(position);
+        } catch (IOException e) {
+            placesMissed.incrementAndGet();
+            return null;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            placesMissed.incrementAndGet();
+            return null;
+        }
+    }
+
+    /** Looks up and writes the place names of the selected photos' locations (also when it's off in Settings). */
+    private void lookUpPlaces() {
+        List<ImageFile> targets = selection.stream().filter(ImageFile::hasExifGPS).toList();
+        if (busy || targets.isEmpty()) {
+            return;
+        }
+        String what = targets.size() == 1 ? targets.get(0).getFile().getName() : targets.size() + " photos";
+        runBatch("Look up place names of " + what, targets, image -> {
+            Place place;
+            try {
+                place = placeNames.lookup(image.getGp());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Interrupted", e);
+            }
+            if (!place.equals(null == image.getPlace() ? Place.NONE : image.getPlace())) {
+                image.apply(new MetadataChanges().place(place));
+            }
+        });
     }
 
     private void shiftTime() {
@@ -1197,6 +1257,7 @@ public class ExifTweaker {
         }
         setBusy(true);
         cancelBatch.set(false);
+        placesMissed.set(0);
         progress.setValue(0);
         progress.setMaximum(targets.size());
         batchWorker = new SwingWorker<>() {
@@ -1231,6 +1292,10 @@ public class ExifTweaker {
                     if (readOnly > 0) {
                         lblStatus.setText(readOnly + (readOnly == 1 ? " file was" : " files were")
                                 + " skipped: needs ExifTool");
+                    }
+                    if (placesMissed.get() > 0) {
+                        lblStatus.setText("Saved without the place name (offline?): Edit → Look up place names "
+                                + "tries again");
                     }
                     if (result.skipped() > 0) {
                         lblStatus.setText("Cancelled after " + (targets.size() - result.skipped()) + " of "
@@ -1513,7 +1578,12 @@ public class ExifTweaker {
                 runBatch("Geotag " + targets.size() + (targets.size() == 1 ? " photo" : " photos") + " from GPX",
                         targets, image -> {
                             TrackMatcher.Match match = matches.get(image);
-                            image.savePosition(match.position(), writeAltitude ? match.elevation() : null);
+                            MetadataChanges changes = new MetadataChanges().position(match.position())
+                                    .place(placeFor(match.position()));
+                            if (writeAltitude && null != match.elevation()) {
+                                changes.altitude(match.elevation());
+                            }
+                            image.apply(changes);
                         });
             }
 

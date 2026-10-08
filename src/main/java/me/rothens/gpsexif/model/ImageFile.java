@@ -76,6 +76,11 @@ public class ImageFile {
         return metadata.direction();
     }
 
+    /** Where the photo was taken in words (city, country), or {@code null}. */
+    public me.rothens.gpsexif.metadata.Place getPlace() {
+        return metadata.place();
+    }
+
     /** A text field's value, or {@code null} if it isn't set. */
     public String getText(TextTag field) {
         return metadata.text().get(field);

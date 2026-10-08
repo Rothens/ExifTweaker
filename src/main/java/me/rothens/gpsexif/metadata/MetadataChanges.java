@@ -21,6 +21,7 @@ public final class MetadataChanges {
     private boolean removeDirection;
     private final Map<TextTag, String> text = new EnumMap<>(TextTag.class);
     private LocalDateTime taken;
+    private Place place;
     private Duration timeShift;
 
     public MetadataChanges position(GeoPosition position) {
@@ -28,10 +29,27 @@ public final class MetadataChanges {
         return this;
     }
 
-    /** Removes all GPS data (position, altitude, direction). Applied before any new GPS values in this change. */
+    /**
+     * Removes all GPS data (position, altitude, direction) and the place name. Applied before any new GPS values in
+     * this change.
+     */
     public MetadataChanges removePosition() {
         this.removePosition = true;
+        if (null == place) {
+            place = Place.NONE;
+        }
         return this;
+    }
+
+    /** Sets the place name (City, State, Country, ...); {@link Place#NONE} removes it. */
+    public MetadataChanges place(Place place) {
+        this.place = place;
+        return this;
+    }
+
+    /** The place to write, {@link Place#NONE} to remove it, or {@code null} to leave it as it is. */
+    public Place getPlace() {
+        return place;
     }
 
     /** Altitude in metres above sea level (negative below); {@code null} removes it. */

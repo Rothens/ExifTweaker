@@ -58,6 +58,19 @@ failed. Undo takes back the whole batch.
 **View → Show photos on map** shows where the opened photos were taken (off by default). Photos close to each
 other are grouped into one marker with a count; click a group to zoom in, or a photo to select it.
 
+### Place names
+
+When a location is saved, ExifTweaker also writes **where** that is in words: the city, state and country (and a
+landmark or neighbourhood when there is one), e.g. *Tihany, Veszprém, Magyarország*. Lightroom, digiKam, photo
+sites and the photo's own details show these (IPTC/XMP location fields). The place shows in the details on the right
+and in Play photos, Travel mode and their videos.
+
+- **Edit → Look up place names** adds them to photos that already have a location.
+- The names come from OpenStreetMap Nominatim, in your system's language. Each lookup is remembered, so photos
+  close to one another (within 150 m) and later saves don't ask again; offline, the location is saved without the
+  name and you can add it later.
+- Removing a location removes the place name too. Turn it off in **Settings**.
+
 ### Geotag from a GPX track
 
 If your phone, watch or GPS logger recorded where you went, ExifTweaker can work out where each photo was taken
@@ -164,8 +177,8 @@ On macOS use Cmd instead of Ctrl.
   turned off in Settings). Edit → Undo restores the last save without them.
 - Light or dark theme (or following the system), OpenStreetMap or satellite imagery, the size of the map cache, and
   where ExifTool and FFmpeg are, in **Settings**.
-- ExifTweaker goes online only for map tiles (OpenStreetMap, Esri) and place search (OpenStreetMap Nominatim).
-  Your photos never leave your computer.
+- ExifTweaker goes online only for map tiles (OpenStreetMap, Esri), place search and place names (OpenStreetMap
+  Nominatim: only the coordinates are sent). Your photos never leave your computer.
 
 ## Building from source
 
