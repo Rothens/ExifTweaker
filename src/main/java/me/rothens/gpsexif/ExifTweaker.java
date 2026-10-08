@@ -34,6 +34,8 @@ import me.rothens.gpsexif.util.ExitWatchdog;
 import me.rothens.gpsexif.util.PhotoLoader;
 import me.rothens.gpsexif.util.PositionUtil;
 import me.rothens.gpsexif.util.Settings;
+import me.rothens.gpsexif.util.ThumbnailCache;
+import me.rothens.gpsexif.model.ThumbnailRenderer;
 import me.rothens.gpsexif.tutorial.SampleTrip;
 import me.rothens.gpsexif.tutorial.Tutorial;
 import org.jxmapviewer.JXMapViewer;
@@ -76,6 +78,13 @@ public class ExifTweaker {
     private final JButton btnOpen = new JButton("Open");
     private final ImageListModel listModel = new ImageListModel();
     private final JList<ImageFile> lFiles = new JList<>(listModel);
+    /** The same photos as a grid of thumbnails; shares the list's model and selection. */
+    private final JList<ImageFile> lThumbs = new JList<>(listModel);
+    private final ThumbnailCache thumbnails = new ThumbnailCache(ThumbnailRenderer.THUMBNAIL_SIZE, 1000,
+            lThumbs::repaint);
+    private final JTabbedPane photoTabs = new JTabbedPane();
+    /** Photos on the left, the rest on the right. */
+    private JSplitPane centerSplit;
     private final JCheckBox chkOnlyWithoutLocation = new JCheckBox("Only without location");
     private final JLabel lblStatus = new JLabel(" ");
     private final JButton btnSave = new JButton("Save");
@@ -160,6 +169,7 @@ public class ExifTweaker {
         lFiles.getActionMap().put(TransferHandler.getCopyAction().getValue(Action.NAME), action(this::copyLocation));
         lFiles.getActionMap().put(TransferHandler.getPasteAction().getValue(Action.NAME), action(this::pasteLocation));
         lFiles.setComponentPopupMenu(createListPopup());
+        setUpThumbnailGrid();
         setUpMetadataTable();
         chkOnlyWithoutLocation.addActionListener(e -> {
             List<ImageFile> keep = selection;
@@ -622,6 +632,48 @@ public class ExifTweaker {
         }
     }
 
+    /** The photo grid: same model, selection, shortcuts and context menu as the list. */
+    private void setUpThumbnailGrid() {
+        lThumbs.setSelectionModel(lFiles.getSelectionModel());
+        lThumbs.setLayoutOrientation(JList.HORIZONTAL_WRAP);
+        lThumbs.setVisibleRowCount(-1);
+        lThumbs.setCellRenderer(new ThumbnailRenderer(thumbnails));
+        lThumbs.setFixedCellWidth(ThumbnailRenderer.CELL_WIDTH);
+        lThumbs.setFixedCellHeight(ThumbnailRenderer.cellHeight(lThumbs.getFont(), lThumbs));
+        lThumbs.getActionMap().put(TransferHandler.getCopyAction().getValue(Action.NAME), action(this::copyLocation));
+        lThumbs.getActionMap().put(TransferHandler.getPasteAction().getValue(Action.NAME), action(this::pasteLocation));
+        lThumbs.setComponentPopupMenu(createListPopup());
+        photoTabs.setSelectedIndex(settings.isThumbnailView() ? 1 : 0);
+        photoTabs.setToolTipTextAt(1, "The photos as small pictures");
+        photoTabs.addChangeListener(e -> {
+            settings.setThumbnailView(photoTabs.getSelectedIndex() == 1);
+            if (photoTabs.getSelectedIndex() == 1) {
+                SwingUtilities.invokeLater(this::fitTwoThumbnailColumns);
+            }
+            int lead = lFiles.getLeadSelectionIndex();
+            if (lead >= 0 && lead < listModel.getSize()) {
+                photoView().ensureIndexIsVisible(lead);
+            }
+        });
+    }
+
+    /** Widens the photo panel if the grid would only fit one column. */
+    private void fitTwoThumbnailColumns() {
+        JViewport viewport = (JViewport) lThumbs.getParent();
+        JScrollPane scroll = (JScrollPane) viewport.getParent();
+        int scrollbar = scroll.getVerticalScrollBar().getPreferredSize().width;
+        int needed = 2 * ThumbnailRenderer.CELL_WIDTH + scrollbar + 4;
+        int missing = needed - viewport.getWidth();
+        if (viewport.getWidth() > 0 && missing > 0) {
+            centerSplit.setDividerLocation(centerSplit.getDividerLocation() + missing);
+        }
+    }
+
+    /** The photo list or the thumbnail grid, whichever tab is showing. */
+    private JList<ImageFile> photoView() {
+        return photoTabs.getSelectedIndex() == 1 ? lThumbs : lFiles;
+    }
+
     /** Rebuilds the File → Recent folders menu; folders that no longer exist are shown disabled. */
     private void fillRecentFolders(JMenu menu) {
         menu.removeAll();
@@ -692,11 +744,11 @@ public class ExifTweaker {
                 "Type the path of a folder of photos here and press <b>Open</b>, or click <b>...</b> to pick it "
                         + "(File → Open folder, " + ctrl + "+O).<br><br>With the sample photos, it's already open.",
                 null, () -> !samples[0] && listModel.getSize() > 0 && !busy));
-        steps.add(Tutorial.Step.explain(() -> lFiles, "Your photos",
+        steps.add(Tutorial.Step.explain(this::photoView, "Your photos",
                 "These are the photos in the folder. <font color='#2a9d3a'><b>Green</b></font> ones already have a "
                         + "location, <font color='#d33'><b>red</b></font> ones don't yet.<br><br>"
                         + "Tick <b>Only without location</b> above to see just the red ones."));
-        steps.add(Tutorial.Step.action(() -> lFiles, "Select a photo",
+        steps.add(Tutorial.Step.action(this::photoView, "Select a photo",
                 "Click a red photo to select it. With the sample photos, try <b>IMG_4515.jpg</b>: the abbey in "
                         + "Tihany.",
                 null, () -> !selection.isEmpty()));
@@ -725,7 +777,7 @@ public class ExifTweaker {
                 "The photo is green now. <b>Undo</b> (" + ctrl + "+Z) puts photos back exactly as they were - a "
                         + "whole batch at once.<br><br>Before a photo is changed for the first time, a copy of the "
                         + "original is also kept next to it as <i>name.bak</i>."));
-        steps.add(Tutorial.Step.explain(() -> lFiles, "Many photos at once",
+        steps.add(Tutorial.Step.explain(this::photoView, "Many photos at once",
                 "Select several photos with Shift- or " + ctrl + "-click: the location you set goes to all of "
                         + "them when you save.<br><br>"
                         + ctrl + "+C and " + ctrl + "+V on this list copy one photo's location to others."));
@@ -781,6 +833,7 @@ public class ExifTweaker {
         theme.install();
         FlatLaf.updateUI();
         styleBanner();
+        lThumbs.setFixedCellHeight(ThumbnailRenderer.cellHeight(lThumbs.getFont(), lThumbs));
     }
 
     /** Enables the actions that make sense for the current selection, and updates the status line. */
@@ -836,7 +889,9 @@ public class ExifTweaker {
 
         JPanel filePanel = new JPanel(new BorderLayout(0, 2));
         filePanel.add(chkOnlyWithoutLocation, BorderLayout.NORTH);
-        filePanel.add(new JScrollPane(lFiles), BorderLayout.CENTER);
+        photoTabs.addTab("List", new JScrollPane(lFiles));
+        photoTabs.addTab("Thumbnails", new JScrollPane(lThumbs));
+        filePanel.add(photoTabs, BorderLayout.CENTER);
         filePanel.add(lblStatus, BorderLayout.SOUTH);
         filePanel.setPreferredSize(new Dimension(220, 0));
 
@@ -852,7 +907,7 @@ public class ExifTweaker {
         mapSplit.setResizeWeight(1.0);
         mapSplit.setDividerSize(5);
 
-        JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, filePanel, mapSplit);
+        centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, filePanel, mapSplit);
         centerSplit.setDividerSize(5);
 
         JPanel coordinatePanel = new JPanel(new BorderLayout(4, 0));
@@ -939,6 +994,7 @@ public class ExifTweaker {
             @Override
             protected void done() {
                 try {
+                    thumbnails.clear();
                     listModel.setAll(get());
                     markerLayer.setPhotos(listModel.getAll());
                 } catch (InterruptedException | ExecutionException e) {
@@ -1235,7 +1291,7 @@ public class ExifTweaker {
         int index = listModel.indexOf(photo);
         if (index >= 0) {
             lFiles.setSelectedIndex(index);
-            lFiles.ensureIndexIsVisible(index);
+            photoView().ensureIndexIsVisible(index);
         }
     }
 
@@ -1508,6 +1564,9 @@ public class ExifTweaker {
             frame.setSize(1200, 700);
             frame.setLocationRelativeTo(null);
             frame.setVisible(true);
+            if (app.settings.isThumbnailView()) {
+                SwingUtilities.invokeLater(app::fitTwoThumbnailColumns);
+            }
             if (!app.settings.isTutorialShown()) {
                 SwingUtilities.invokeLater(app::startTutorial);
             }

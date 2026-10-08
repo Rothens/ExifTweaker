@@ -20,6 +20,7 @@ public class Settings {
     private static final String TUTORIAL_SHOWN = "TUTORIAL_SHOWN";
     private static final String GPX_DIRECTORY = "GPX_DIRECTORY";
     private static final String RECENT_FOLDERS = "RECENT_FOLDERS";
+    private static final String THUMBNAIL_VIEW = "THUMBNAIL_VIEW";
     public static final int MAX_RECENT_FOLDERS = 10;
     private static final String DISPLAY_ZONE = "DISPLAY_ZONE";
     private static final String GPX_MAX_GAP_MINUTES = "GPX_MAX_GAP_MINUTES";
@@ -62,6 +63,15 @@ public class Settings {
 
     public void setTileCacheMaxMb(int megabytes) {
         prefs.putInt(TILE_CACHE_MAX_MB, Math.max(MIN_TILE_CACHE_MAX_MB, megabytes));
+    }
+
+    /** Whether the photos are shown as thumbnails rather than a list (the default). */
+    public boolean isThumbnailView() {
+        return prefs.getBoolean(THUMBNAIL_VIEW, false);
+    }
+
+    public void setThumbnailView(boolean thumbnails) {
+        prefs.putBoolean(THUMBNAIL_VIEW, thumbnails);
     }
 
     /** Recently opened folders, the most recent first. */
