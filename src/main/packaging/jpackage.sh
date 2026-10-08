@@ -54,7 +54,8 @@ case "$(uname -s)" in
       --mac-package-identifier me.rothens.exiftweaker --mac-package-name ExifTweaker)
     ;;
   MINGW* | MSYS* | CYGWIN*)
-    # Per-user install (no administrator rights needed); the fixed upgrade UUID lets a new version replace the old
+    # Installs for all users (Program Files, asks for administrator rights once); the fixed upgrade UUID lets a
+    # new version replace the old one
     platform=(--type "${type:-msi}" --icon "$here/ExifTweaker.ico"
       --win-dir-chooser --win-menu --win-menu-group ExifTweaker --win-shortcut-prompt
       --win-upgrade-uuid 71bb0ac6-5b81-45a3-9fb9-7fef13b1aa6e)

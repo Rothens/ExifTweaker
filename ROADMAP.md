@@ -149,6 +149,7 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 
 - [x] Native installers via `jpackage` (Windows `.msi`, macOS `.dmg`, Linux `.deb`) built in GitHub Actions
       and attached to GitHub Releases (#24). They bundle a trimmed Java runtime, so users don't need Java.
+      On Windows it installs for all users, into Program Files (#34).
 - [x] Rename the Maven artifact from `GPSEditor` to `exiftweaker` (#25); MIT licence; an application icon.
 - [x] User documentation in the README with screenshots: downloads, a walkthrough (single, batch and GPX tagging,
       metadata, playback, export), formats and keyboard shortcuts (#26).
@@ -164,13 +165,6 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
       photo selected, spot marked, saved). It can run on bundled sample photos (a weekend at Lake Balaton, copied
       to a temporary folder) or on the user's own; Skip tour or Esc ends it. Settings can bring it back on the next
       start.
-
----
-
-## 1.0.1 — Installer fix
-
-- [ ] **Windows: install for all users** (#34) into Program Files, asking for administrator rights once. The 1.0.0
-      installer was per-user but offered a folder chooser, so choosing Program Files failed.
 
 ---
 
