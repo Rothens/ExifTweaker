@@ -26,6 +26,7 @@ import me.rothens.gpsexif.playback.PlaybackWindow;
 import me.rothens.gpsexif.playback.TravelWindow;
 import me.rothens.gpsexif.ui.ExifToolDialog;
 import me.rothens.gpsexif.ui.GeotagDialog;
+import me.rothens.gpsexif.ui.PhotoDrag;
 import me.rothens.gpsexif.ui.SettingsDialog;
 import me.rothens.gpsexif.ui.ShiftTimeDialog;
 import me.rothens.gpsexif.gpx.PhotoTime;
@@ -170,6 +171,8 @@ public class ExifTweaker {
         lFiles.getActionMap().put(TransferHandler.getPasteAction().getValue(Action.NAME), action(this::pasteLocation));
         lFiles.setComponentPopupMenu(createListPopup());
         setUpThumbnailGrid();
+        PhotoDrag.enableDrag(lFiles);
+        PhotoDrag.enableDrag(lThumbs);
         setUpMetadataTable();
         chkOnlyWithoutLocation.addActionListener(e -> {
             List<ImageFile> keep = selection;
@@ -996,6 +999,9 @@ public class ExifTweaker {
                 try {
                     thumbnails.clear();
                     listModel.setAll(get());
+                    if (photoTabs.getSelectedIndex() == 1) {
+                        fitTwoThumbnailColumns();
+                    }
                     markerLayer.setPhotos(listModel.getAll());
                 } catch (InterruptedException | ExecutionException e) {
                     showError("Error while opening folder:\n" + e.getMessage());
@@ -1649,6 +1655,16 @@ public class ExifTweaker {
         thumbnailWorker.execute();
     }
 
+    /** Photos dragged onto the map: like right-clicking there with those photos selected. */
+    private void photosDropped(List<ImageFile> photos, GeoPosition position) {
+        if (!new HashSet<>(photos).equals(new HashSet<>(selection))) {
+            reselect(photos);
+        }
+        selectPosition(position);
+        lblStatus.setText((photos.size() == 1 ? "1 photo" : photos.size() + " photos") + " placed - Save to keep");
+        lblStatus.setToolTipText("The location is written to the photos when you press Save");
+    }
+
     private void selectPosition(GeoPosition position) {
         waypoints.removeIf(w -> w instanceof SelectionWaypoint);
         waypoints.add(new SelectionWaypoint(position));
@@ -1695,7 +1711,8 @@ public class ExifTweaker {
         directionOverlay = new DirectionOverlay(mapViewer);
         directionOverlay.setOnDrag(degrees -> tfDirection.setText(MetadataTableModel.number(degrees)));
         markerLayer = new PhotoMarkerLayer(mapViewer, settings::getMaxPhotoMarkers, this::selectFromMap);
-        mapViewer.setOverlayPainter(new CompoundPainter<>(trackPainter, markerLayer, directionOverlay, waypointPainter,
+        org.jxmapviewer.painter.Painter<JXMapViewer> dropPin = PhotoDrag.enableDrop(mapViewer, this::photosDropped);
+        mapViewer.setOverlayPainter(new CompoundPainter<>(trackPainter, markerLayer, directionOverlay, waypointPainter, dropPin,
                 new AttributionPainter()));
         markerLayer.setEnabled(settings.isShowPhotoMarkers());
 
