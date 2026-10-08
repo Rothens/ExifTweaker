@@ -19,6 +19,7 @@ public class SettingsDialog extends JDialog {
     private final JSpinner spMaxMarkers = new JSpinner(new SpinnerNumberModel(Settings.DEFAULT_MAX_PHOTO_MARKERS,
             Settings.MIN_PHOTO_MARKERS, Settings.MAX_PHOTO_MARKERS_LIMIT, 10));
     private final JButton btnClearCache = new JButton("Clear map cache");
+    private final JCheckBox chkTour = new JCheckBox("Show the guided tour again on the next start");
     private final TileDiskCache tileCache;
     private boolean accepted;
 
@@ -140,6 +141,19 @@ public class SettingsDialog extends JDialog {
         c.gridx = 1;
         form.add(lblFfmpeg, c);
 
+        chkTour.setSelected(!settings.isTutorialShown());
+        c.gridx = 0;
+        c.gridy = 11;
+        c.gridwidth = 2;
+        c.insets = new Insets(12, 4, 0, 4);
+        form.add(chkTour, c);
+        JLabel tourHint = new JLabel("To take the tour right now: Help → Show tutorial.");
+        tourHint.putClientProperty("FlatLaf.styleClass", "small");
+        tourHint.setEnabled(false);
+        c.gridy = 12;
+        c.insets = new Insets(0, 28, 4, 4);
+        form.add(tourHint, c);
+
         JButton ok = new JButton("OK");
         JButton cancel = new JButton("Cancel");
         ok.addActionListener(e -> {
@@ -148,6 +162,7 @@ public class SettingsDialog extends JDialog {
             settings.setBackupsEnabled(chkBackups.isSelected());
             settings.setTileCacheMaxMb((Integer) spCacheLimit.getValue());
             settings.setMaxPhotoMarkers((Integer) spMaxMarkers.getValue());
+            settings.setTutorialShown(!chkTour.isSelected());
             tileCache.scheduleMaintenance();
             accepted = true;
             dispose();
