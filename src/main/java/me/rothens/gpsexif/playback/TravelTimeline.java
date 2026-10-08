@@ -79,9 +79,17 @@ public class TravelTimeline {
      * @param marker  where the moving marker is, or {@code null} if nothing is known yet
      * @param photoAt location of the photo being shown (the small dot), or {@code null}
      * @param caption e.g. "+9 h" while a stay is squeezed, or {@code null}
+     * @param travelTo while travelling to the next shown photo (on the map, or with the last photo up), that photo;
+     *                 otherwise {@code null}
      */
     public record Frame(double videoTime, Instant time, ImageFile from, ImageFile to, double alpha,
-                        GeoPosition marker, GeoPosition photoAt, String caption, int slot) {
+                        GeoPosition marker, GeoPosition photoAt, String caption, int slot, ImageFile travelTo) {
+
+        public Frame(double videoTime, Instant time, ImageFile from, ImageFile to, double alpha,
+                     GeoPosition marker, GeoPosition photoAt, String caption, int slot) {
+            this(videoTime, time, from, to, alpha, marker, photoAt, caption, slot, null);
+        }
+
         /** The photo mostly visible, or {@code null} while the map is. */
         public ImageFile visible() {
             return alpha >= 0.5 ? to : from;
@@ -463,13 +471,23 @@ public class TravelTimeline {
             ImageFile from = previous.showMap() ? null : previous.stop().photo();
             return new Frame(v, time, from, photo, t / fade, marker, photoAt, null, index);
         }
+        ImageFile travelTo = null;
+        if (index + 1 < slots.size() && null == slot.pause() && t >= (slot.showMap() ? hold - fade : hold)) {
+            Slot next = slots.get(index + 1);
+            GeoPosition a = slot.stop().position();
+            GeoPosition b = next.stop().position();
+            if (slot.showMap() || null == a || null == b
+                    || TrackMatcher.distanceMetres(a, b) >= MIN_TRAVEL_DISTANCE_M) {
+                travelTo = next.stop().photo();
+            }
+        }
         if (slot.showMap() && t >= hold - fade) {
             double alpha = Math.min(1, (t - (hold - fade)) / fade);
-            return new Frame(v, time, photo, null, alpha, marker, photoAt, null, index);
+            return new Frame(v, time, photo, null, alpha, marker, photoAt, null, index, travelTo);
         }
         // The clock races through the stop during the whole slot, so the caption shows once the photo is in
         String caption = null != slot.pause() && t >= Math.min(fade, hold)
                 ? "+" + me.rothens.gpsexif.gpx.PhotoTime.describe(slot.pause()) : null;
-        return new Frame(v, time, photo, photo, 1, marker, photoAt, caption, index);
+        return new Frame(v, time, photo, photo, 1, marker, photoAt, caption, index, travelTo);
     }
 }

@@ -16,8 +16,8 @@ import java.util.regex.Pattern;
  * <ul>
  *     <li>{@code {date}} the date taken as {@code yyyy-MM-dd}; {@code {date:FORMAT}} in any format, e.g.
  *         {@code {date:yyyy-MM-dd HH.mm.ss}}</li>
- *     <li>{@code {place}} the city (or the most specific part of the place name), {@code {country}}, {@code {state}}
- *         and {@code {sublocation}}</li>
+ *     <li>{@code {place}} the city (or the most specific part of the place name), {@code {district}},
+ *         {@code {country}}, {@code {state}} and {@code {sublocation}}</li>
  *     <li>{@code {name}} the current name without the extension, {@code {camera}} the camera model</li>
  *     <li>{@code {n}} a running number; {@code {n:000}} padded to that many digits</li>
  * </ul>
@@ -30,7 +30,8 @@ public final class RenamePattern {
     }
 
     private static final Pattern TOKEN = Pattern.compile("\\{([a-z]+)(?::([^}]*))?}");
-    private static final List<String> NAMES = List.of("date", "place", "city", "country", "state", "sublocation",
+    private static final List<String> NAMES = List.of("date", "place", "city", "district", "country", "state",
+            "sublocation",
             "name", "camera", "n");
     private static final String SEPARATORS = " -_.,";
 
@@ -148,6 +149,7 @@ public final class RenamePattern {
                     : null != place.city() ? place.city() : null != place.sublocation() ? place.sublocation()
                     : null != place.state() ? place.state() : place.country();
             case "city" -> null == place ? null : place.city();
+            case "district" -> null == place ? null : place.district();
             case "country" -> null == place ? null : place.country();
             case "state" -> null == place ? null : place.state();
             case "sublocation" -> null == place ? null : place.sublocation();

@@ -70,6 +70,7 @@ public class TravelWindow extends JFrame {
     private final JSpinner spJourney = new JSpinner(new SpinnerNumberModel(8, 3, 120, 1));
     private final JCheckBox chkFullMap = new JCheckBox("Full-screen map between photos");
     private final JCheckBox chkFollow = new JCheckBox("Small map follows the marker");
+    private final JCheckBox chkTransfers = new JCheckBox("Show from → to");
     private final JLabel lblRoute = new JLabel();
     private final JLabel lblSummary = new JLabel(" ");
     private final JButton btnPlay = new JButton("▶");
@@ -173,6 +174,14 @@ public class TravelWindow extends JFrame {
             settings.setTravelFullMap(chkFullMap.isSelected());
             rebuild();
         });
+        chkTransfers.setSelected(settings.isTravelTransfers());
+        view.setShowTransfers(chkTransfers.isSelected());
+        chkTransfers.setToolTipText("While travelling, show where from and where to, e.g. Osaka, Namba → Tokyo, Chiyoda"
+                + " (from the photos' place names)");
+        chkTransfers.addActionListener(e -> {
+            settings.setTravelTransfers(chkTransfers.isSelected());
+            view.setShowTransfers(chkTransfers.isSelected());
+        });
         chkFollow.setSelected(settings.isTravelFollow());
         chkFollow.setToolTipText("<html>On: the small map stays at the zoom you choose with the mouse wheel and keeps"
                 + " the marker in the middle.<br>Off: it shows the whole route.</html>");
@@ -206,6 +215,7 @@ public class TravelWindow extends JFrame {
         row2.add(new JLabel("   "));
         row2.add(chkFullMap);
         row2.add(chkFollow);
+        row2.add(chkTransfers);
         row2.add(new JLabel("   "));
         row2.add(lblSummary);
         JPanel panel = new JPanel(new GridLayout(2, 1));
@@ -276,9 +286,10 @@ public class TravelWindow extends JFrame {
         double inset = view.getInsetFraction();
         boolean follow = chkFollow.isSelected();
         int insetZoom = view.getInsetZoom();
+        boolean transfers = chkTransfers.isSelected();
         new VideoExportDialog(this, settings, defaultVideoName(photos, "travel"), null, film::getLength,
                 f -> new TravelFrames(film, filmRoute, filmClock, tileFactory, f.width(), f.height(), f.fps(), inset,
-                        follow, insetZoom))
+                        follow, insetZoom, transfers))
                 .showDialog();
     }
 

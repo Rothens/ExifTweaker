@@ -33,21 +33,26 @@ public final class XmpPlace {
     static final String RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
     static final String PHOTOSHOP = "http://ns.adobe.com/photoshop/1.0/";
     static final String IPTC_CORE = "http://iptc.org/std/Iptc4xmpCore/1.0/xmlns/";
+    /** ExifTweaker's own namespace, for the district (no standard field has it). */
+    public static final String EXIFTWEAKER = "https://github.com/rothens/ExifTweaker/ns/1.0/";
     private static final String X = "adobe:ns:meta/";
     static final String EXIF = "http://ns.adobe.com/exif/1.0/";
 
     private enum Field {
-        CITY(PHOTOSHOP, "City"),
-        STATE(PHOTOSHOP, "State"),
-        COUNTRY(PHOTOSHOP, "Country"),
-        SUBLOCATION(IPTC_CORE, "Location"),
-        COUNTRY_CODE(IPTC_CORE, "CountryCode");
+        CITY(PHOTOSHOP, "photoshop", "City"),
+        STATE(PHOTOSHOP, "photoshop", "State"),
+        COUNTRY(PHOTOSHOP, "photoshop", "Country"),
+        SUBLOCATION(IPTC_CORE, "Iptc4xmpCore", "Location"),
+        COUNTRY_CODE(IPTC_CORE, "Iptc4xmpCore", "CountryCode"),
+        DISTRICT(EXIFTWEAKER, "exiftweaker", "District");
 
         final String ns;
+        final String prefix;
         final String name;
 
-        Field(String ns, String name) {
+        Field(String ns, String prefix, String name) {
             this.ns = ns;
+            this.prefix = prefix;
             this.name = name;
         }
 
@@ -58,6 +63,7 @@ public final class XmpPlace {
                 case COUNTRY -> p.country();
                 case SUBLOCATION -> p.sublocation();
                 case COUNTRY_CODE -> p.countryCode();
+                case DISTRICT -> p.district();
             };
         }
     }
@@ -82,7 +88,7 @@ public final class XmpPlace {
             }
             Place place = new Place(values[Field.SUBLOCATION.ordinal()], values[Field.CITY.ordinal()],
                     values[Field.STATE.ordinal()], values[Field.COUNTRY.ordinal()],
-                    values[Field.COUNTRY_CODE.ordinal()]);
+                    values[Field.COUNTRY_CODE.ordinal()], values[Field.DISTRICT.ordinal()]);
             return place.isEmpty() ? null : place;
         } catch (IOException e) {
             return null;
@@ -137,11 +143,13 @@ public final class XmpPlace {
             description.setAttributeNS(RDF, "rdf:about", "");
             description.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:photoshop", PHOTOSHOP);
             description.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:Iptc4xmpCore", IPTC_CORE);
+            if (null != place.district()) {
+                description.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:exiftweaker", EXIFTWEAKER);
+            }
             for (Field f : Field.values()) {
                 String value = f.value(place);
                 if (null != value) {
-                    Element e = doc.createElementNS(f.ns, (f.ns.equals(PHOTOSHOP) ? "photoshop:" : "Iptc4xmpCore:")
-                            + f.name);
+                    Element e = doc.createElementNS(f.ns, f.prefix + ":" + f.name);
                     e.setTextContent(value);
                     description.appendChild(e);
                 }

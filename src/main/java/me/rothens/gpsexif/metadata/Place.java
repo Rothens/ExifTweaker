@@ -14,13 +14,22 @@ import java.util.MissingResourceException;
  * @param state       state, province or county
  * @param country     country name
  * @param countryCode ISO 3166-1 alpha-2 code, upper case, e.g. "HU"
+ * @param district    the part of the city, e.g. "Namba" in Osaka or "Chiyoda" in Tokyo; not a standard IPTC field,
+ *                    ExifTweaker keeps it in its own XMP field
  */
-public record Place(String sublocation, String city, String state, String country, String countryCode) {
+public record Place(String sublocation, String city, String state, String country, String countryCode,
+                    String district) {
 
     /** A position without a place, e.g. out at sea. Writing it removes the place fields. */
     public static final Place NONE = new Place(null, null, null, null, null);
 
+    /** Without a district. */
+    public Place(String sublocation, String city, String state, String country, String countryCode) {
+        this(sublocation, city, state, country, countryCode, null);
+    }
+
     public Place {
+        district = clean(district);
         sublocation = clean(sublocation);
         city = clean(city);
         state = clean(state);
@@ -33,12 +42,27 @@ public record Place(String sublocation, String city, String state, String countr
     }
 
     public boolean isEmpty() {
-        return null == sublocation && null == city && null == state && null == country && null == countryCode;
+        return null == sublocation && null == city && null == state && null == country && null == countryCode
+                && null == district;
     }
 
     /** E.g. "Tihany Abbey, Tihany, Veszprém County, Hungary"; empty if there's no place. */
     public String label() {
-        return join(sublocation, city, state, country);
+        return join(sublocation, district, city, state, country);
+    }
+
+    /**
+     * The settlement and its part, e.g. "Osaka, Namba" or "Tihany"; the state or country where there's no
+     * settlement; {@code null} if nothing is known.
+     */
+    public String settlement() {
+        String s = null != city ? join(city, district) : null != district ? district : null != state ? state : country;
+        return null == s || s.isEmpty() ? null : s;
+    }
+
+    /** The same place with another district. */
+    public Place withDistrict(String district) {
+        return new Place(sublocation, city, state, country, countryCode, district);
     }
 
     /** E.g. "Tihany, Hungary": the most specific of city / state / sublocation, and the country. */

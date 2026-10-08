@@ -180,7 +180,7 @@ class ExifToolBackendTest {
 
     @Test
     void writesPlaceToXmpAndClearsStaleIptc() throws Exception {
-        Place tihany = new Place(null, "Tihany", "Veszprém", "Magyarország", "HU");
+        Place tihany = new Place(null, "Tihany", "Veszprém", "Magyarország", "HU", "Óvár");
         Path png = image("p.png", "png");
         Path out = write(png, "p-out.png", new MetadataChanges().place(tihany));
         assertEquals(tihany, backend.read(out).place());
@@ -199,9 +199,12 @@ class ExifToolBackendTest {
     @Test
     void rawSidecarGetsThePlace() throws Exception {
         Path raw = Files.move(image("base2.tif", "tiff"), dir.resolve("IMG_9.dng"));
-        Path tmp = write(raw, ".tmp-9.xmp", new MetadataChanges().position(new GeoPosition(46.9, 17.9))
-                .place(new Place("Abbey", "Tihany", null, "Hungary", "HU")));
+        Place place = new Place("Abbey", "Tihany", null, "Hungary", "HU", "Óvár");
+        Path tmp = write(raw, ".tmp-9.xmp", new MetadataChanges().position(new GeoPosition(46.9, 17.9)).place(place));
         Files.move(tmp, backend.writeTarget(raw));
-        assertEquals(new Place("Abbey", "Tihany", null, "Hungary", "HU"), backend.read(raw).place());
+        assertEquals(place, backend.read(raw).place());
+        // The district is in ExifTweaker's own XMP namespace, which ExifTool reads back with the config
+        assertTrue(exifTool.execute(java.util.List.of("-XMP-exiftweaker:District", backend.writeTarget(raw).toString()))
+                .contains("Óvár"));
     }
 }

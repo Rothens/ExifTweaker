@@ -40,6 +40,17 @@ class XmpPlaceTest {
     }
 
     @Test
+    void districtGoesIntoItsOwnField() throws Exception {
+        Place osaka = new Place("Namba Parks", "Osaka", "Osaka Prefecture", "Japan", "JP", "Namba");
+        String xmp = XmpPlace.apply(null, osaka);
+        assertTrue(xmp.contains("<exiftweaker:District>Namba</exiftweaker:District>"), xmp);
+        assertEquals(osaka, XmpPlace.read(xmp));
+        assertEquals("Osaka, Namba", osaka.settlement());
+        assertEquals("Tihany", TIHANY.settlement());
+        assertNull(XmpPlace.read(XmpPlace.apply(xmp, Place.NONE)));
+    }
+
+    @Test
     void noneRemovesThePlace() throws Exception {
         String xmp = XmpPlace.apply(XmpPlace.apply(null, TIHANY), Place.NONE);
         assertNull(XmpPlace.read(xmp));

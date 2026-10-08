@@ -48,6 +48,8 @@ final class TravelView extends JLayeredPane {
     private InsetGrip grip;
     /** Whether the small map keeps its zoom and follows the marker, instead of showing the whole route. */
     private boolean followMarker;
+    /** Whether "Osaka, Namba → Tokyo, Chiyoda" shows while travelling. */
+    private boolean showTransfers = true;
 
     /**
      * @param images the loaded photo to draw, or {@code null} while it isn't loaded yet
@@ -184,6 +186,17 @@ final class TravelView extends JLayeredPane {
             fitInset();
         }
         repaint();
+    }
+
+    /** Whether to show where the trip goes from and to while travelling. */
+    void setShowTransfers(boolean show) {
+        showTransfers = show;
+        repaint();
+    }
+
+    /** The settlement a photo was taken in, e.g. "Osaka, Namba", or {@code null}. */
+    private static String settlement(ImageFile photo) {
+        return null == photo || null == photo.getPlace() ? null : photo.getPlace().settlement();
     }
 
     /** The small map's zoom level. */
@@ -384,7 +397,14 @@ final class TravelView extends JLayeredPane {
             ImageFile shown = null != frame.to()
                     ? (frame.alpha() >= 0.5 || null == frame.from() ? frame.to() : frame.from())
                     : (frame.alpha() < 0.5 ? frame.from() : null);
-            String place = null == shown || null == shown.getPlace() ? null : shown.getPlace().shortLabel();
+            String place = settlement(shown);
+            if (showTransfers && null != frame.travelTo() && frame.slot() >= 0) {
+                String from = settlement(timeline.getSlots().get(frame.slot()).stop().photo());
+                String to = settlement(frame.travelTo());
+                if (null != from && null != to && !from.equals(to)) {
+                    place = from + "  →  " + to;
+                }
+            }
             int w = Math.max(fb.stringWidth(time) + captionWidth, fs.stringWidth(date)) + 28;
             if (null != place) {
                 w = Math.max(w, fs.stringWidth(place) + 28);

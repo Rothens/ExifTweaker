@@ -125,7 +125,8 @@ public final class ShareExport {
     private static final List<String> LOCATION_TAGS = List.of("-GPS:all=", "-XMP-exif:GPS*=",
             "-XMP-photoshop:City=", "-XMP-photoshop:State=", "-XMP-photoshop:Country=", "-XMP-iptcCore:Location=",
             "-XMP-iptcCore:CountryCode=", "-IPTC:City=", "-IPTC:Sub-location=", "-IPTC:Province-State=",
-            "-IPTC:Country-PrimaryLocationName=", "-IPTC:Country-PrimaryLocationCode=");
+            "-IPTC:Country-PrimaryLocationName=", "-IPTC:Country-PrimaryLocationCode=",
+            "-XMP-exiftweaker:District=");
 
     /** ExifTool arguments that write a copy without the location / any metadata (keeping the orientation). */
     private static List<String> withoutMetadataArgs(Path source, Path target, Privacy privacy) throws IOException {

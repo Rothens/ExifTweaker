@@ -60,8 +60,10 @@ other are grouped into one marker with a count; click a group to zoom in, or a p
 
 ### Place names
 
-When a location is saved, ExifTweaker also writes **where** that is in words: the city, state and country (and a
-landmark or neighbourhood when there is one), e.g. *Tihany, Veszprém, Magyarország*. Lightroom, digiKam, photo
+When a location is saved, ExifTweaker also writes **where** that is in words: the city, town or village, the part
+of it (e.g. *Namba* in Osaka), state and country, and a landmark when there is one, e.g. *Tihanyi bencés apátság,
+Tihany, Veszprém, Magyarország*. The part of the city has no standard field, so it goes into ExifTweaker's own
+(`XMP-exiftweaker:District`); the rest are the standard ones. Lightroom, digiKam, photo
 sites and the photo's own details show these (IPTC/XMP location fields). The place shows in the details on the right
 and in Play photos, Travel mode and their videos.
 
@@ -77,7 +79,7 @@ and in Play photos, Travel mode and their videos.
 **Edit → Rename photos...** (F2) names the selected photos (or all of them) after when and where they were taken,
 e.g. `{date} {place} {n:000}` gives `2026-07-11 Tihany 001.jpg`. The new names are listed before anything is renamed.
 
-- Fields: `{date}` (or any format, e.g. `{date:yyyy-MM-dd HH.mm.ss}`), `{place}` (the city), `{country}`,
+- Fields: `{date}` (or any format, e.g. `{date:yyyy-MM-dd HH.mm.ss}`), `{place}` (the city), `{district}`, `{country}`,
   `{state}`, `{sublocation}`, `{name}` (the current name), `{camera}` and `{n}`, a number in date order (`{n:000}`
   for three digits). A photo without a place simply leaves that part out.
 - Nothing is ever overwritten: a name that is taken gets " (2)". Backups (`.bak`) and XMP sidecars are renamed
@@ -123,6 +125,8 @@ left on home time during a trip.
   between photos** off, the last photo stays up while the marker travels on the small map. Drag the small map's top
   left corner to resize it; zoom it with the mouse wheel. With **Small map follows the marker** it stays at the
   zoom you chose and keeps the marker in the middle, instead of showing the whole route.
+- With place names, the clock shows where the photo was taken (*Osaka, Namba*), and while travelling where from
+  and where to (*Osaka, Namba → Tokyo, Chiyoda*; **Show from → to**).
 - Both can show the time as the camera recorded it or in any time zone (**Times in**), and **Export video...**
   saves them as an MP4 video, from 720p to 4K, also in portrait for phones.
 - Right-click photos in the list for **Skip in trips** (left out of both, and of the videos) or **Prefer in trips**

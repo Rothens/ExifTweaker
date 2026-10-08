@@ -53,7 +53,7 @@ public class RenameDialog extends JDialog {
         cbPattern.setEditable(true);
         cbPattern.setSelectedItem(settings.getRenamePattern());
         cbPattern.setToolTipText("<html>{date} or e.g. {date:yyyy-MM-dd HH.mm}: the date taken<br>"
-                + "{place}: the city, {country}, {state}, {sublocation}: the place name<br>"
+                + "{place}: the city, {district}, {country}, {state}, {sublocation}: the place name<br>"
                 + "{name}: the current name, {camera}: the camera model<br>"
                 + "{n}: a number in date order, {n:000} with 3 digits</html>");
         JTextComponent editor = (JTextComponent) cbPattern.getEditor().getEditorComponent();

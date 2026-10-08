@@ -30,6 +30,12 @@ class PlaceNamesTest {
              "address":{"road":"Bancroft Way","suburb":"Southside","city":"Berkeley","county":"Alameda County",
                "state":"California","country":"United States","country_code":"us"}}""";
 
+    static final String OSAKA = """
+            {"category":"tourism","type":"attraction","name":"Namba Parks",
+             "address":{"tourism":"Namba Parks","road":"Nankai Line","neighbourhood":"Namba Parks","suburb":"Namba",
+               "city_district":"Naniwa Ward","city":"Osaka","state":"Osaka Prefecture","country":"Japan",
+               "country_code":"jp"}}""";
+
     @TempDir
     Path dir;
 
@@ -55,8 +61,11 @@ class PlaceNamesTest {
     void parsesAnswers() throws Exception {
         assertEquals(new Place("Tihanyi bencés apátság", "Tihany", "Veszprém", "Magyarország", "HU"),
                 PlaceNames.parse(TIHANY));
-        assertEquals(new Place("Southside", "Berkeley", "California", "United States", "US"),
+        assertEquals(new Place(null, "Berkeley", "California", "United States", "US", "Southside"),
                 PlaceNames.parse(BERKELEY));
+        Place namba = PlaceNames.parse(OSAKA);
+        assertEquals(new Place("Namba Parks", "Osaka", "Osaka Prefecture", "Japan", "JP", "Namba"), namba);
+        assertEquals("Osaka, Namba", namba.settlement());
         assertEquals(Place.NONE, PlaceNames.parse("{\"error\":\"Unable to geocode\"}"));
         assertThrows(IOException.class, () -> PlaceNames.parse("<html>"));
     }

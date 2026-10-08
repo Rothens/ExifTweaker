@@ -27,6 +27,7 @@ public class Settings {
     private static final String TRAVEL_FULL_MAP = "TRAVEL_FULL_MAP";
     private static final String TRAVEL_INSET = "TRAVEL_INSET";
     private static final String TRAVEL_FOLLOW = "TRAVEL_FOLLOW";
+    private static final String TRAVEL_TRANSFERS = "TRAVEL_TRANSFERS";
     private static final String TRAVEL_INSET_ZOOM = "TRAVEL_INSET_ZOOM";
     private static final String SHARE_PRIVACY = "SHARE_PRIVACY";
     private static final String SHARE_SIZE = "SHARE_SIZE";
@@ -303,6 +304,15 @@ public class Settings {
 
     public void setTravelFollow(boolean follow) {
         prefs.putBoolean(TRAVEL_FOLLOW, follow);
+    }
+
+    /** Whether Travel mode shows "from → to" while travelling. On by default. */
+    public boolean isTravelTransfers() {
+        return prefs.getBoolean(TRAVEL_TRANSFERS, true);
+    }
+
+    public void setTravelTransfers(boolean show) {
+        prefs.putBoolean(TRAVEL_TRANSFERS, show);
     }
 
     /** The zoom level chosen for the following small map; -1 if none yet. */

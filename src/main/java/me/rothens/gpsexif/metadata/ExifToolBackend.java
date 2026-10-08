@@ -54,7 +54,10 @@ public class ExifToolBackend implements MetadataBackend {
             "-Description", "-ExposureTime", "-FNumber", "-ISO", "-FocalLength", "-LensModel", "-ImageWidth",
             "-ImageHeight", "-XMP-photoshop:City", "-XMP-photoshop:State", "-XMP-photoshop:Country",
             "-XMP-iptcCore:Location", "-XMP-iptcCore:CountryCode", "-IPTC:City", "-IPTC:Sub-location",
-            "-IPTC:Province-State", "-IPTC:Country-PrimaryLocationName", "-IPTC:Country-PrimaryLocationCode");
+            "-IPTC:Province-State", "-IPTC:Country-PrimaryLocationName", "-IPTC:Country-PrimaryLocationCode",
+            "-XMP-exiftweaker:District");
+
+    private static final String DISTRICT = "XMP-exiftweaker:District";
 
     /** XMP place tags, in the order of {@link Place}'s components. */
     private static final List<String> XMP_PLACE = List.of("XMP-iptcCore:Location", "XMP-photoshop:City",
@@ -229,12 +232,11 @@ public class ExifToolBackend implements MetadataBackend {
                     place = new Place(place.sublocation(), place.city(), place.state(), place.country(),
                             Place.alpha2(place.countryCode()));
                 }
-                return place;
+                return place.withDistrict(string(tags.get(DISTRICT)));
             }
         }
         return null;
     }
-
 
     /** Sets (or with {@link Place#NONE} clears) the XMP place; {@code clearIptc} also drops a stale IPTC one. */
     private static void placeArgs(List<String> a, Place place, boolean clearIptc) {
@@ -248,6 +250,7 @@ public class ExifToolBackend implements MetadataBackend {
                 a.add("-" + IPTC_PLACE.get(i) + "=");
             }
         }
+        a.add("-" + DISTRICT + "=" + (null == place.district() ? "" : place.district()));
     }
 
     @Override
@@ -261,7 +264,8 @@ public class ExifToolBackend implements MetadataBackend {
             // ours: write the place in a second step
             List<String> place = new ArrayList<>(List.of("-n", "-overwrite_original"));
             placeArgs(place, changes.getPlace(), false);
-            tags.removeIf(a -> XMP_PLACE.stream().anyMatch(t -> a.startsWith("-" + t + "=")));
+            tags.removeIf(a -> a.startsWith("-" + DISTRICT + "=")
+                    || XMP_PLACE.stream().anyMatch(t -> a.startsWith("-" + t + "=")));
             if (tags.isEmpty()) {
                 tags.add("-XMP-xmp:MetadataDate=now");
             }
