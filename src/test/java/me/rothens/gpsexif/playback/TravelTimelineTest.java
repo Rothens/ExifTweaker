@@ -276,4 +276,19 @@ class TravelTimelineTest {
         assertEquals(28, t.getStops().get(1).videoTime(), 1e-9);
         assertEquals(0, t.getShortenedJourneys());
     }
+
+    @Test
+    void withoutTheFullMapThePhotoStaysUpWhileTheMarkerTravels() throws Exception {
+        TravelTimeline.Settings s = new TravelTimeline.Settings(Duration.ofSeconds(60), Duration.ofSeconds(2),
+                Duration.ofMillis(500), true, Duration.ofHours(1), 2000, Duration.ofSeconds(2), null, false);
+        TravelTimeline t = new TravelTimeline(trip(), TravelTimelineTest::utc, List.of(), s);
+        assertTrue(t.getSlots().stream().noneMatch(TravelTimeline.Slot::showMap));
+        for (double v = 0; v <= t.getLength(); v += 0.25) {
+            assertNotNull(t.frameAt(v).visible(), "a photo is always up, at " + v);
+        }
+        // Same timing as with the map: halfway to the lake, the breakfast photo is up and the marker halfway there
+        TravelTimeline.Frame onTheRoad = t.frameAt(37);
+        assertEquals("d.jpg", onTheRoad.visible().getFile().getName());
+        assertEquals((BREAKFAST.getLatitude() + LAKE.getLatitude()) / 2, onTheRoad.marker().getLatitude(), 1e-6);
+    }
 }

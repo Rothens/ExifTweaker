@@ -24,6 +24,8 @@ public class Settings {
     private static final String PLACE_NAMES = "PLACE_NAMES";
     private static final String RENAME_PATTERN = "RENAME_PATTERN";
     private static final String SHARE_DIRECTORY = "SHARE_DIRECTORY";
+    private static final String TRAVEL_FULL_MAP = "TRAVEL_FULL_MAP";
+    private static final String TRAVEL_INSET = "TRAVEL_INSET";
     private static final String SHARE_PRIVACY = "SHARE_PRIVACY";
     private static final String SHARE_SIZE = "SHARE_SIZE";
     private static final String SHARE_QUALITY = "SHARE_QUALITY";
@@ -271,6 +273,25 @@ public class Settings {
 
     public void setRenamePattern(String pattern) {
         prefs.put(RENAME_PATTERN, pattern.length() > 500 ? pattern.substring(0, 500) : pattern);
+    }
+
+    /** Whether Travel mode switches to the full-screen map between photos. On by default. */
+    public boolean isTravelFullMap() {
+        return prefs.getBoolean(TRAVEL_FULL_MAP, true);
+    }
+
+    public void setTravelFullMap(boolean fullMap) {
+        prefs.putBoolean(TRAVEL_FULL_MAP, fullMap);
+    }
+
+    /** Width of Travel mode's small map as a share of the picture's width (0.15-0.6, default 0.25). */
+    public double getTravelInset() {
+        double value = prefs.getDouble(TRAVEL_INSET, 0.25);
+        return Double.isNaN(value) ? 0.25 : Math.max(0.15, Math.min(0.6, value));
+    }
+
+    public void setTravelInset(double fraction) {
+        prefs.putDouble(TRAVEL_INSET, Math.max(0.15, Math.min(0.6, fraction)));
     }
 
     /** Where shared copies went the last time; empty if never. */

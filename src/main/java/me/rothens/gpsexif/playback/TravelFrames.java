@@ -15,11 +15,12 @@ final class TravelFrames extends OffscreenFrames {
 
     /** Call on the Swing thread. */
     TravelFrames(TravelTimeline timeline, List<List<GeoPosition>> route, ClockZone clock, TileFactory tileFactory,
-                 int width, int height, int fps) {
+                 int width, int height, int fps, double insetFraction) {
         super(width, height);
         this.timeline = timeline;
         this.fps = fps;
         this.view = new TravelView(tileFactory, this::photo, clock);
+        view.setInsetFraction(insetFraction);
         hideLoadingTiles(view.getMaps());
         size(view);
         view.setTimeline(timeline, route);
