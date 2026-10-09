@@ -7,7 +7,9 @@ import me.rothens.gpsexif.gpx.TrackPoint;
 import me.rothens.gpsexif.model.ImageFile;
 import me.rothens.gpsexif.util.PhotoLoader;
 import me.rothens.gpsexif.ui.GpxFileChooser;
+import me.rothens.gpsexif.ui.Screens;
 import me.rothens.gpsexif.ui.VideoExportDialog;
+import me.rothens.gpsexif.ui.WrapLayout;
 import me.rothens.gpsexif.util.Settings;
 import org.jxmapviewer.JXMapViewer;
 import org.jxmapviewer.cache.LocalCache;
@@ -133,7 +135,7 @@ public class TravelWindow extends JFrame {
         setContentPane(content);
         installKeys(content);
 
-        setSize(1280, 860);
+        setSize(Screens.windowSize(owner, 1280, 860, 0.9));
         setLocationRelativeTo(owner);
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
@@ -189,7 +191,7 @@ public class TravelWindow extends JFrame {
             render();
         });
 
-        JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        JPanel row1 = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 2));
         row1.add(new JLabel(tr("Film length (s):")));
         row1.add(spLength);
         row1.add(new JLabel("  " + tr("Each photo at least (s):")));
@@ -206,7 +208,7 @@ public class TravelWindow extends JFrame {
         row1.add(chkJourney);
         row1.add(spJourney);
         row1.add(new JLabel("s"));
-        JPanel row2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        JPanel row2 = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 2));
         row2.add(lblRoute);
         row2.add(btnLoad);
         row2.add(btnStraight);
@@ -216,7 +218,8 @@ public class TravelWindow extends JFrame {
         row2.add(chkTransfers);
         row2.add(new JLabel("   "));
         row2.add(lblSummary);
-        JPanel panel = new JPanel(new GridLayout(2, 1));
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
         panel.add(row1);
         panel.add(row2);

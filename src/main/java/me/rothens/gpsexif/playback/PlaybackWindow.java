@@ -2,6 +2,7 @@ package me.rothens.gpsexif.playback;
 
 import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.model.ImageFile;
+import me.rothens.gpsexif.ui.Screens;
 import me.rothens.gpsexif.ui.VideoExportDialog;
 import me.rothens.gpsexif.util.PhotoLoader;
 import me.rothens.gpsexif.util.Settings;
@@ -158,7 +159,7 @@ public class PlaybackWindow extends JFrame {
         installKeys(content);
         applyFade();
 
-        setSize(1280, 820);
+        setSize(Screens.windowSize(owner, 1280, 820, 0.9));
         setLocationRelativeTo(owner);
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override

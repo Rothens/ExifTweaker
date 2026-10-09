@@ -112,6 +112,14 @@ final class PlaybackView extends JLayeredPane {
         }
     }
 
+    /**
+     * How much to enlarge the time overlay in a picture of this size: 1 up to 600 pixels on the short side, growing
+     * with the picture (up to 3x) so it stays readable on a large screen and in videos, portrait ones too.
+     */
+    static double overlayScale(Component picture) {
+        return Math.max(1, Math.min(3, Math.min(picture.getWidth(), picture.getHeight()) / 600.0));
+    }
+
     void layoutLayers() {
         photoPanel.setBounds(0, 0, getWidth(), getHeight());
         int w = Math.max(240, getWidth() / 4);
@@ -232,7 +240,14 @@ final class PlaybackView extends JLayeredPane {
                 String text = tr("Loading {0}...", photo.getFile().getName());
                 g2.drawString(text, (getWidth() - g2.getFontMetrics().stringWidth(text)) / 2, getHeight() / 2);
             }
-            paintTimestamp(g2);
+            Graphics2D overlay = (Graphics2D) g2.create();
+            try {
+                double scale = overlayScale(this);
+                overlay.scale(scale, scale);
+                paintTimestamp(overlay);
+            } finally {
+                overlay.dispose();
+            }
         }
 
         private void paintTimestamp(Graphics2D g2) {

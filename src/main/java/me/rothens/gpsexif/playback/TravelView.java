@@ -359,6 +359,8 @@ final class TravelView extends JLayeredPane {
                 if (null != frame.to() && frame.to() != frame.from()) {
                     drawPhoto(g2, frame.to(), frame.alpha());
                 }
+                double scale = PlaybackView.overlayScale(this);
+                g2.scale(scale, scale);
                 paintClock(g2);
             } finally {
                 g2.dispose();
