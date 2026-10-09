@@ -34,6 +34,7 @@ public class Settings {
     private static final String UPDATE_LATEST_URL = "UPDATE_LATEST_URL";
     private static final String UPDATE_DISMISSED = "UPDATE_DISMISSED";
     private static final String TRAVEL_INSET = "TRAVEL_INSET";
+    private static final String PLAYBACK_FADE = "PLAYBACK_FADE";
     private static final String TRAVEL_FOLLOW = "TRAVEL_FOLLOW";
     private static final String TRAVEL_TRANSFERS = "TRAVEL_TRANSFERS";
     private static final String TRAVEL_INSET_ZOOM = "TRAVEL_INSET_ZOOM";
@@ -293,6 +294,16 @@ public class Settings {
 
     public void setTravelFullMap(boolean fullMap) {
         prefs.putBoolean(TRAVEL_FULL_MAP, fullMap);
+    }
+
+    /** Play photos' cross-fade between photos, in seconds (0-3, default 0.5; 0 for a hard cut). */
+    public double getPlaybackFade() {
+        double value = prefs.getDouble(PLAYBACK_FADE, 0.5);
+        return Double.isNaN(value) ? 0.5 : Math.max(0, Math.min(3, value));
+    }
+
+    public void setPlaybackFade(double seconds) {
+        prefs.putDouble(PLAYBACK_FADE, Math.max(0, Math.min(3, seconds)));
     }
 
     /** Width of Travel mode's small map as a share of the picture's width (0.15-0.6, default 0.25). */

@@ -49,6 +49,7 @@ public class PlaybackWindow extends JFrame {
     private final JSlider slider;
     private final JComboBox<String> cbSpeed = new JComboBox<>();
     private final JCheckBox chkLoop = new JCheckBox(tr("Loop"));
+    private final JSpinner spFade;
     private final JComboBox<String> cbZone;
     private ClockZone clock;
     private final Timer timer;
@@ -98,9 +99,20 @@ public class PlaybackWindow extends JFrame {
         }
         cbSpeed.setSelectedIndex(2);
         timer = new Timer(delay(), e -> advance());
+        spFade = new JSpinner(new SpinnerNumberModel(settings.getPlaybackFade(), 0.0, 3.0, 0.1));
+        spFade.setToolTipText(tr("Each photo fades into the next (0 for a hard cut)"));
+        spFade.setEditor(new JSpinner.NumberEditor(spFade, "0.0"));
+        JFormattedTextField fadeField = ((JSpinner.DefaultEditor) spFade.getEditor()).getTextField();
+        fadeField.setColumns(3);
+        fadeField.setFocusable(false); // set with the arrows, keeping Space and Left/Right for the playback
+        spFade.addChangeListener(e -> {
+            settings.setPlaybackFade((Double) spFade.getValue());
+            applyFade();
+        });
         cbSpeed.addActionListener(e -> {
             timer.setDelay(delay());
             timer.setInitialDelay(delay());
+            applyFade();
         });
 
         JButton btnPrev = new JButton("⏮");
@@ -111,7 +123,7 @@ public class PlaybackWindow extends JFrame {
         btnPrev.addActionListener(e -> step(-1));
         btnNext.addActionListener(e -> step(1));
         btnPlay.addActionListener(e -> togglePlay());
-        for (JComponent c : new JComponent[]{btnPrev, btnPlay, btnNext, slider, cbSpeed, chkLoop, cbZone}) {
+        for (JComponent c : new JComponent[]{btnPrev, btnPlay, btnNext, slider, cbSpeed, spFade, chkLoop, cbZone}) {
             c.setFocusable(false); // keep the keyboard shortcuts working
         }
 
@@ -124,6 +136,8 @@ public class PlaybackWindow extends JFrame {
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         right.add(new JLabel(tr("Each photo:")));
         right.add(cbSpeed);
+        right.add(new JLabel("  " + tr("Cross-fade (s):")));
+        right.add(spFade);
         right.add(chkLoop);
         right.add(new JLabel("  " + tr("Times in:")));
         right.add(cbZone);
@@ -142,6 +156,7 @@ public class PlaybackWindow extends JFrame {
         content.add(controls, BorderLayout.SOUTH);
         setContentPane(content);
         installKeys(content);
+        applyFade();
 
         setSize(1280, 820);
         setLocationRelativeTo(owner);
@@ -163,21 +178,26 @@ public class PlaybackWindow extends JFrame {
         }
         JSpinner spSeconds = new JSpinner(new SpinnerNumberModel(
                 (double) SECONDS[Math.max(0, cbSpeed.getSelectedIndex())], 0.5, 60.0, 0.5));
-        JSpinner spFade = new JSpinner(new SpinnerNumberModel(0.5, 0.0, 5.0, 0.1));
-        spFade.setToolTipText(tr("Each photo fades into the next during its last moments (0 for a hard cut)"));
+        JSpinner spVideoFade = new JSpinner(new SpinnerNumberModel(((Double) spFade.getValue()).doubleValue(), 0.0, 5.0, 0.1));
+        spVideoFade.setToolTipText(tr("Each photo fades into the next during its last moments (0 for a hard cut)"));
         JPanel extra = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         extra.add(new JLabel(tr("Each photo (s):")));
         extra.add(spSeconds);
         extra.add(new JLabel("   " + tr("Cross-fade (s):")));
-        extra.add(spFade);
+        extra.add(spVideoFade);
         ClockZone videoClock = clock;
         VideoExportDialog dialog = new VideoExportDialog(this, settings,
                 TravelWindow.defaultVideoName(sequence.getPhotos(), "playback"), extra,
                 () -> sequence.size() * (Double) spSeconds.getValue(),
                 f -> new PlaybackFrames(sequence, videoClock, tileFactory, f.width(), f.height(), f.fps(),
-                        (Double) spSeconds.getValue(), (Double) spFade.getValue()));
+                        (Double) spSeconds.getValue(), (Double) spVideoFade.getValue()));
         spSeconds.addChangeListener(e -> dialog.refreshLength());
         dialog.showDialog();
+    }
+
+    /** The cross-fade, at most half of each photo's time so a photo is shown fully for a while. */
+    private void applyFade() {
+        view.setFade(Math.min((Double) spFade.getValue(), delay() / 2000.0));
     }
 
     private int delay() {

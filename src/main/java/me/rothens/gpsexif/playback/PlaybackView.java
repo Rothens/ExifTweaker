@@ -78,6 +78,14 @@ final class PlaybackView extends JLayeredPane {
         this.showFileInfo = show;
     }
 
+    /**
+     * Cross-fades from one photo to the next in {@code seconds} (0, the default, for a hard cut). Only for the
+     * screen: the video export fades its frames itself.
+     */
+    void setFade(double seconds) {
+        photoPanel.fadeMs = Math.max(0, (long) (seconds * 1000));
+    }
+
     void setPhoto(ImageFile photo, BufferedImage image, int index, int total) {
         photoPanel.set(photo, image, index, total);
     }
@@ -118,17 +126,77 @@ final class PlaybackView extends JLayeredPane {
     }
 
     private final class PhotoPanel extends JComponent {
+        /** How long the previous photo may stay while the next one loads, before fading anyway. */
+        private static final long MAX_WAIT_MS = 1500;
+
         private ImageFile photo;
         private BufferedImage image;
         private int index;
         private int total;
+        private long fadeMs;
+        /** What was on screen when the photo changed, fading out over the new one; {@code null} when not fading. */
+        private BufferedImage previous;
+        private long changedAt;
+        /** When the fade began: once the new photo was loaded; 0 while it's loading. */
+        private long fadeStart;
+        private final Timer animation = new Timer(15, e -> tick());
 
         void set(ImageFile photo, BufferedImage image, int index, int total) {
+            boolean changed = photo != this.photo;
+            if (changed && fadeMs > 0 && null != this.photo && getWidth() > 0 && getHeight() > 0) {
+                previous = snapshot(); // includes a fade in progress, so a quick skip doesn't jump
+                changedAt = System.currentTimeMillis();
+                fadeStart = 0;
+                animation.start();
+            } else if (changed) {
+                previous = null;
+            }
             this.photo = photo;
             this.image = image;
             this.index = index;
             this.total = total;
+            if (null != previous && 0 == fadeStart && (null != image || !changed)) {
+                fadeStart = System.currentTimeMillis(); // loaded (or failed to): fade in
+            }
             repaint();
+        }
+
+        private void tick() {
+            long now = System.currentTimeMillis();
+            if (null != previous && 0 == fadeStart && now - changedAt > MAX_WAIT_MS) {
+                fadeStart = now;
+            }
+            if (null == previous || (0 != fadeStart && now - fadeStart >= fadeMs)) {
+                previous = null;
+                animation.stop();
+            }
+            repaint();
+        }
+
+        /** How much of the previous photo still shows: 1 while the new one loads, down to 0. */
+        private float previousAlpha() {
+            if (null == previous) {
+                return 0;
+            }
+            if (0 == fadeStart) {
+                return 1;
+            }
+            double t = (double) (System.currentTimeMillis() - fadeStart) / Math.max(1, fadeMs);
+            return (float) Math.max(0, Math.min(1, 1 - t));
+        }
+
+        private BufferedImage snapshot() {
+            BufferedImage shot = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_RGB);
+            Graphics2D g = shot.createGraphics();
+            try {
+                g.setColor(PlaybackView.this.getBackground());
+                g.fillRect(0, 0, shot.getWidth(), shot.getHeight());
+                g.setFont(getFont());
+                paintComponent(g);
+            } finally {
+                g.dispose();
+            }
+            return shot;
         }
 
         @Override
@@ -138,24 +206,33 @@ final class PlaybackView extends JLayeredPane {
             }
             Graphics2D g2 = (Graphics2D) g.create();
             try {
-                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                if (null != image) {
-                    double scale = Math.min((double) getWidth() / image.getWidth(),
-                            (double) getHeight() / image.getHeight());
-                    int w = (int) (image.getWidth() * scale);
-                    int h = (int) (image.getHeight() * scale);
-                    g2.drawImage(image, (getWidth() - w) / 2, (getHeight() - h) / 2, w, h, null);
-                } else {
-                    g2.setColor(new Color(150, 150, 150));
-                    String text = tr("Loading {0}...", photo.getFile().getName());
-                    g2.drawString(text, (getWidth() - g2.getFontMetrics().stringWidth(text)) / 2, getHeight() / 2);
+                paintPhoto(g2);
+                float alpha = previousAlpha();
+                if (alpha > 0) {
+                    g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+                    g2.drawImage(previous, 0, 0, null);
                 }
-                paintTimestamp(g2);
             } finally {
                 g2.dispose();
             }
+        }
+
+        private void paintPhoto(Graphics2D g2) {
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            if (null != image) {
+                double scale = Math.min((double) getWidth() / image.getWidth(),
+                        (double) getHeight() / image.getHeight());
+                int w = (int) (image.getWidth() * scale);
+                int h = (int) (image.getHeight() * scale);
+                g2.drawImage(image, (getWidth() - w) / 2, (getHeight() - h) / 2, w, h, null);
+            } else {
+                g2.setColor(new Color(150, 150, 150));
+                String text = tr("Loading {0}...", photo.getFile().getName());
+                g2.drawString(text, (getWidth() - g2.getFontMetrics().stringWidth(text)) / 2, getHeight() / 2);
+            }
+            paintTimestamp(g2);
         }
 
         private void paintTimestamp(Graphics2D g2) {

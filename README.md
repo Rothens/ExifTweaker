@@ -125,7 +125,7 @@ left on home time during a trip.
 ### Play the trip back
 
 - **View → Play photos** (F5) shows the photos one by one in the order they were taken, with the time and a small
-  map following the route.
+  map following the route. Each photo cross-fades into the next (**Cross-fade**, 0 for a hard cut).
 - **View → Travel mode** (Shift+F5) plays the trip as a short film of the length you choose: a marker travels the
   route (along your GPX track, if you loaded one) and each photo fades in as the marker arrives. Nights and other
   long stops are skipped over quickly, and longer journeys play on a full-screen map - or, with **Full-screen map

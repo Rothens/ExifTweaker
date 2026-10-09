@@ -1696,3 +1696,6 @@ New Folder
 
 Refresh
 Frissítés
+
+Each photo fades into the next (0 for a hard cut)
+Minden fénykép áttűnik a következőbe (0: éles vágás)
