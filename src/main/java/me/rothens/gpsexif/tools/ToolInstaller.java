@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.tools;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -141,7 +142,7 @@ public class ToolInstaller {
         String checksums = text(URI.create(exifToolSite + "checksums.txt"));
         String expected = checksum(checksums, archive);
         if (null == expected) {
-            throw new IOException("exiftool.org doesn't list a checksum for " + archive + ", so it wasn't installed");
+            throw new IOException(tr("exiftool.org doesn't list a checksum for {0}, so it wasn't installed", archive));
         }
         Files.createDirectories(toolsDir);
         Path download = Files.createTempFile(toolsDir, "exiftool-", ".download");
@@ -163,7 +164,7 @@ public class ToolInstaller {
             Path target = toolsDir.resolve("exiftool");
             Path executable = target.resolve(windows ? "exiftool.exe" : "exiftool");
             if (!Files.exists(unpacked.resolve(executable.getFileName()))) {
-                throw new IOException("The ExifTool download doesn't contain " + executable.getFileName());
+                throw new IOException(tr("The ExifTool download doesn't contain {0}", executable.getFileName()));
             }
             beforeReplace.run();
             replace(unpacked, target);
@@ -177,12 +178,12 @@ public class ToolInstaller {
     /** Downloads, checks and unpacks FFmpeg (Windows only), replacing an earlier download; returns ffmpeg.exe. */
     public Path installFfmpeg(Progress progress) throws IOException {
         if (!windows) {
-            throw new IOException("FFmpeg is only downloaded on Windows; use your package manager");
+            throw new IOException(tr("FFmpeg is only downloaded on Windows; use your package manager"));
         }
         String sum = text(URI.create(ffmpegZip + ".sha256")).strip();
         Matcher m = Pattern.compile("^([0-9a-fA-F]{64})\\b").matcher(sum);
         if (!m.find()) {
-            throw new IOException("No checksum for the FFmpeg download, so it wasn't installed");
+            throw new IOException(tr("No checksum for the FFmpeg download, so it wasn't installed"));
         }
         Files.createDirectories(toolsDir);
         Path download = Files.createTempFile(toolsDir, "ffmpeg-", ".download");
@@ -194,7 +195,7 @@ public class ToolInstaller {
             Archives.unzip(download, unpacked, 1, name -> name.equals("bin/ffmpeg.exe"), progress::isCancelled);
             Path exe = unpacked.resolve("bin").resolve("ffmpeg.exe");
             if (!Files.exists(exe)) {
-                throw new IOException("The FFmpeg download doesn't contain bin/ffmpeg.exe");
+                throw new IOException(tr("The FFmpeg download doesn't contain bin/ffmpeg.exe"));
             }
             Path target = toolsDir.resolve("ffmpeg");
             replace(unpacked.resolve("bin"), target);
@@ -228,7 +229,7 @@ public class ToolInstaller {
             progress.update(what, 0, response.length());
             while ((n = in.read(buffer)) >= 0) {
                 if (progress.isCancelled()) {
-                    throw new IOException("Cancelled");
+                    throw new IOException(tr("Cancelled"));
                 }
                 out.write(buffer, 0, n);
                 done += n;
@@ -237,8 +238,7 @@ public class ToolInstaller {
         }
         String actual = HexFormat.of().formatHex(digest.digest());
         if (!actual.equalsIgnoreCase(sha256)) {
-            throw new IOException("The " + what + " download is damaged or not the published file (checksum "
-                    + "mismatch), so it wasn't installed");
+            throw new IOException(tr("The {0} download is damaged or not the published file (checksum mismatch), so it wasn't installed", what));
         }
     }
 
@@ -303,8 +303,7 @@ public class ToolInstaller {
                 if (null != e.getMessage() && e.getMessage().contains(" answered HTTP ")) {
                     throw e;
                 }
-                throw new IOException("Couldn't reach " + uri.getHost() + " (offline, or blocked by a firewall or "
-                        + "proxy). Please try again later, or install it yourself (see the download page).", e);
+                throw new IOException(tr("Couldn't reach {0} (offline, or blocked by a firewall or proxy). Please try again later, or install it yourself (see the download page).", uri.getHost()), e);
             }
         };
     }
@@ -324,7 +323,7 @@ public class ToolInstaller {
             try (ZipInputStream in = new ZipInputStream(new BufferedInputStream(Files.newInputStream(zip)))) {
                 for (ZipEntry e = in.getNextEntry(); null != e; e = in.getNextEntry()) {
                     if (cancelled.getAsBoolean()) {
-                        throw new IOException("Cancelled");
+                        throw new IOException(tr("Cancelled"));
                     }
                     String name = strip(e.getName(), strip);
                     if (null == name || !keep.test(name)) {
@@ -349,7 +348,7 @@ public class ToolInstaller {
                 String longName = null;
                 while (true) {
                     if (cancelled.getAsBoolean()) {
-                        throw new IOException("Cancelled");
+                        throw new IOException(tr("Cancelled"));
                     }
                     if (in.readNBytes(header, 0, 512) < 512 || isZero(header)) {
                         return;
@@ -410,7 +409,7 @@ public class ToolInstaller {
             while (left > 0) {
                 int n = in.read(buffer, 0, (int) Math.min(buffer.length, left));
                 if (n < 0) {
-                    throw new IOException("The archive is cut off");
+                    throw new IOException(tr("The archive is cut off"));
                 }
                 out.write(buffer, 0, n);
                 left -= n;
@@ -456,7 +455,7 @@ public class ToolInstaller {
             Path root = target.toAbsolutePath().normalize();
             Path out = root.resolve(name).normalize();
             if (!out.startsWith(root) || out.equals(root)) {
-                throw new IOException("The archive has a bad entry: " + name);
+                throw new IOException(tr("The archive has a bad entry: {0}", name));
             }
             return out;
         }

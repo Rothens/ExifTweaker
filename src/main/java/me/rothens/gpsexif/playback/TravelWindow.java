@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.playback;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.gpx.TrackReader;
 import me.rothens.gpsexif.gpx.Track;
 import me.rothens.gpsexif.gpx.TrackPoint;
@@ -63,14 +64,14 @@ public class TravelWindow extends JFrame {
     private final JSpinner spLength = new JSpinner(new SpinnerNumberModel(180, 10, 3600, 10));
     private final JSpinner spMinPhoto = new JSpinner(new SpinnerNumberModel(2.5, 0.5, 30.0, 0.5));
     private final JSpinner spFade = new JSpinner(new SpinnerNumberModel(0.6, 0.0, 3.0, 0.1));
-    private final JCheckBox chkSqueeze = new JCheckBox("Squeeze stops longer than", true);
+    private final JCheckBox chkSqueeze = new JCheckBox(tr("Squeeze stops longer than"), true);
     private final JSpinner spStayMinutes = new JSpinner(new SpinnerNumberModel(60, 5, 24 * 60, 5));
     private final JSpinner spStayKm = new JSpinner(new SpinnerNumberModel(2.0, 0.1, 100.0, 0.5));
-    private final JCheckBox chkJourney = new JCheckBox("Travel at most", true);
+    private final JCheckBox chkJourney = new JCheckBox(tr("Travel at most"), true);
     private final JSpinner spJourney = new JSpinner(new SpinnerNumberModel(8, 3, 120, 1));
-    private final JCheckBox chkFullMap = new JCheckBox("Full-screen map between photos");
-    private final JCheckBox chkFollow = new JCheckBox("Small map follows the marker");
-    private final JCheckBox chkTransfers = new JCheckBox("Show from → to");
+    private final JCheckBox chkFullMap = new JCheckBox(tr("Full-screen map between photos"));
+    private final JCheckBox chkFollow = new JCheckBox(tr("Small map follows the marker"));
+    private final JCheckBox chkTransfers = new JCheckBox(tr("Show from → to"));
     private final JLabel lblRoute = new JLabel();
     private final JLabel lblSummary = new JLabel(" ");
     private final JButton btnPlay = new JButton("▶");
@@ -87,7 +88,7 @@ public class TravelWindow extends JFrame {
      */
     public TravelWindow(Window owner, List<ImageFile> photos, Settings settings, List<Track> tracks,
                         TileFactoryInfo tileInfo, LocalCache tileCache, String userAgent) {
-        super("Travel mode");
+        super(tr("Travel mode"));
         this.photos = List.copyOf(photos);
         this.settings = settings;
         this.clock = new ClockZone(settings.getCameraZone(), settings.getDisplayZone());
@@ -147,20 +148,19 @@ public class TravelWindow extends JFrame {
     }
 
     private JPanel createSettingsPanel() {
-        JButton btnLoad = new JButton("Load track...");
-        btnLoad.setToolTipText("Let the marker follow the track you recorded instead of straight lines");
+        JButton btnLoad = new JButton(tr("Load track..."));
+        btnLoad.setToolTipText(tr("Let the marker follow the track you recorded instead of straight lines"));
         btnLoad.addActionListener(e -> loadGpx());
-        JButton btnStraight = new JButton("Straight lines");
-        btnStraight.setToolTipText("Forget the track");
+        JButton btnStraight = new JButton(tr("Straight lines"));
+        btnStraight.setToolTipText(tr("Forget the track"));
         btnStraight.addActionListener(e -> {
             tracks.clear();
             rebuild();
         });
-        spLength.setToolTipText("Length of the whole film, in seconds");
-        spMinPhoto.setToolTipText("Each shown photo stays at least this long; photos in between are skipped");
-        spStayKm.setToolTipText("A long gap where you moved less than this is a stop (e.g. a night) and is squeezed;"
-                + " otherwise it's travel and shown on the map");
-        String journeyTip = "Travel between places is shown at most this long; the time saved goes to the photos";
+        spLength.setToolTipText(tr("Length of the whole film, in seconds"));
+        spMinPhoto.setToolTipText(tr("Each shown photo stays at least this long; photos in between are skipped"));
+        spStayKm.setToolTipText(tr("A long gap where you moved less than this is a stop (e.g. a night) and is squeezed; otherwise it's travel and shown on the map"));
+        String journeyTip = tr("Travel between places is shown at most this long; the time saved goes to the photos");
         chkJourney.setToolTipText(journeyTip);
         spJourney.setToolTipText(journeyTip);
         for (JComponent c : new JComponent[]{spLength, spMinPhoto, spFade, spStayMinutes, spStayKm, spJourney}) {
@@ -169,22 +169,20 @@ public class TravelWindow extends JFrame {
         chkSqueeze.addActionListener(e -> rebuild());
         chkJourney.addActionListener(e -> rebuild());
         chkFullMap.setSelected(settings.isTravelFullMap());
-        chkFullMap.setToolTipText("Off: the last photo stays up while the marker travels on the small map");
+        chkFullMap.setToolTipText(tr("Off: the last photo stays up while the marker travels on the small map"));
         chkFullMap.addActionListener(e -> {
             settings.setTravelFullMap(chkFullMap.isSelected());
             rebuild();
         });
         chkTransfers.setSelected(settings.isTravelTransfers());
         view.setShowTransfers(chkTransfers.isSelected());
-        chkTransfers.setToolTipText("While travelling, show where from and where to, e.g. Osaka, Namba → Tokyo, Chiyoda"
-                + " (from the photos' place names)");
+        chkTransfers.setToolTipText(tr("While travelling, show where from and where to, e.g. Osaka, Namba → Tokyo, Chiyoda (from the photos' place names)"));
         chkTransfers.addActionListener(e -> {
             settings.setTravelTransfers(chkTransfers.isSelected());
             view.setShowTransfers(chkTransfers.isSelected());
         });
         chkFollow.setSelected(settings.isTravelFollow());
-        chkFollow.setToolTipText("<html>On: the small map stays at the zoom you choose with the mouse wheel and keeps"
-                + " the marker in the middle.<br>Off: it shows the whole route.</html>");
+        chkFollow.setToolTipText(tr("<html>On: the small map stays at the zoom you choose with the mouse wheel and keeps the marker in the middle.<br>Off: it shows the whole route.</html>"));
         chkFollow.addActionListener(e -> {
             settings.setTravelFollow(chkFollow.isSelected());
             view.setFollowMarker(chkFollow.isSelected(), settings.getTravelInsetZoom());
@@ -192,16 +190,16 @@ public class TravelWindow extends JFrame {
         });
 
         JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
-        row1.add(new JLabel("Film length (s):"));
+        row1.add(new JLabel(tr("Film length (s):")));
         row1.add(spLength);
-        row1.add(new JLabel("  Each photo at least (s):"));
+        row1.add(new JLabel("  " + tr("Each photo at least (s):")));
         row1.add(spMinPhoto);
-        row1.add(new JLabel("  Cross-fade (s):"));
+        row1.add(new JLabel("  " + tr("Cross-fade (s):")));
         row1.add(spFade);
         row1.add(new JLabel("   "));
         row1.add(chkSqueeze);
         row1.add(spStayMinutes);
-        row1.add(new JLabel("min within"));
+        row1.add(new JLabel(tr("min within")));
         row1.add(spStayKm);
         row1.add(new JLabel("km"));
         row1.add(new JLabel("   "));
@@ -226,7 +224,7 @@ public class TravelWindow extends JFrame {
     }
 
     private JPanel createControls() {
-        btnPlay.setToolTipText("Play / pause (Space)");
+        btnPlay.setToolTipText(tr("Play / pause (Space)"));
         btnPlay.addActionListener(e -> togglePlay());
         slider.addChangeListener(e -> {
             if (!updatingSlider && null != timeline) {
@@ -243,10 +241,10 @@ public class TravelWindow extends JFrame {
         controls.add(slider, BorderLayout.CENTER);
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         right.add(lblTime);
-        right.add(new JLabel("   Times in:"));
+        right.add(new JLabel("   " + tr("Times in:")));
         right.add(cbZone);
-        JButton btnExport = new JButton("Export video...");
-        btnExport.setToolTipText("Save the film as an MP4 video");
+        JButton btnExport = new JButton(tr("Export video..."));
+        btnExport.setToolTipText(tr("Save the film as an MP4 video"));
         btnExport.setFocusable(false);
         btnExport.addActionListener(e -> exportVideo());
         right.add(new JLabel("  "));
@@ -337,8 +335,8 @@ public class TravelWindow extends JFrame {
         spStayMinutes.setEnabled(chkSqueeze.isSelected());
         spStayKm.setEnabled(chkSqueeze.isSelected());
         spJourney.setEnabled(chkJourney.isSelected());
-        lblRoute.setText(timeline.usesTrack() ? "Route: recorded track (" + tracks.size()
-                + (tracks.size() == 1 ? " file)" : " files)") : "Route: straight lines between the photos");
+        lblRoute.setText(timeline.usesTrack() ? tr("Route: recorded track ({0})", tracks.size() == 1 ? tr("1 file")
+                : tr("{0} files", tracks.size())) : tr("Route: straight lines between the photos"));
         lblSummary.setText(timeline.summary());
 
         List<List<GeoPosition>> route = new ArrayList<>();

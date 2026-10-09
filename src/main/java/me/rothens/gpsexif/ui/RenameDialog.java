@@ -1,5 +1,7 @@
 package me.rothens.gpsexif.ui;
 
+import static me.rothens.gpsexif.i18n.I18n.photos;
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.metadata.ExifToolBackend;
 import me.rothens.gpsexif.metadata.TextTag;
 import me.rothens.gpsexif.model.ImageFile;
@@ -31,14 +33,14 @@ public class RenameDialog extends JDialog {
     private final Settings settings;
     private final JComboBox<String> cbPattern = new JComboBox<>(PRESETS.toArray(new String[0]));
     private final JLabel lblResult = new JLabel(" ");
-    private final JButton btnOk = new JButton("Rename");
+    private final JButton btnOk = new JButton(tr("Rename"));
     private final PreviewModel preview = new PreviewModel();
     private final Timer refresh = new Timer(200, e -> update());
     private RenamePlan plan;
     private boolean accepted;
 
     public RenameDialog(Frame owner, List<ImageFile> photos, Settings settings) {
-        super(owner, "Rename " + photos.size() + (photos.size() == 1 ? " photo" : " photos"), true);
+        super(owner, tr("Rename {0}", photos(photos.size())), true);
         this.photos = photos;
         this.settings = settings;
         for (ImageFile p : photos) {
@@ -52,10 +54,7 @@ public class RenameDialog extends JDialog {
 
         cbPattern.setEditable(true);
         cbPattern.setSelectedItem(settings.getRenamePattern());
-        cbPattern.setToolTipText("<html>{date} or e.g. {date:yyyy-MM-dd HH.mm}: the date taken<br>"
-                + "{place}: the city, {district}, {country}, {state}, {sublocation}: the place name<br>"
-                + "{name}: the current name, {camera}: the camera model<br>"
-                + "{n}: a number in date order, {n:000} with 3 digits</html>");
+        cbPattern.setToolTipText(tr("<html>{date} or e.g. {date:yyyy-MM-dd HH.mm}: the date taken<br>{place}: the city, {district}, {country}, {state}, {sublocation}: the place name<br>{name}: the current name, {camera}: the camera model<br>{n}: a number in date order, {n:000} with 3 digits</html>"));
         JTextComponent editor = (JTextComponent) cbPattern.getEditor().getEditorComponent();
         editor.getDocument().addDocumentListener(new DocumentListener() {
             @Override
@@ -76,9 +75,10 @@ public class RenameDialog extends JDialog {
         cbPattern.addActionListener(e -> refresh.restart());
 
         JPanel insert = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        insert.add(new JLabel("Add:"));
-        String[][] fields = {{"Date", "{date}"}, {"Time", "{date:HH.mm.ss}"}, {"Place", "{place}"},
-                {"Country", "{country}"}, {"Number", "{n:000}"}, {"Current name", "{name}"}, {"Camera", "{camera}"}};
+        insert.add(new JLabel(tr("Add:")));
+        String[][] fields = {{tr("Date"), "{date}"}, {tr("Time"), "{date:HH.mm.ss}"}, {tr("Place"), "{place}"},
+                {tr("Country"), "{country}"}, {tr("Number"), "{n:000}"}, {tr("Current name"), "{name}"},
+                {tr("Camera"), "{camera}"}};
         for (String[] field : fields) {
             JButton b = new JButton(field[0]);
             b.putClientProperty("JButton.buttonType", "toolBarButton");
@@ -101,7 +101,7 @@ public class RenameDialog extends JDialog {
         c.anchor = GridBagConstraints.WEST;
         c.gridx = 0;
         c.gridy = 0;
-        form.add(new JLabel("New names:"), c);
+        form.add(new JLabel(tr("New names:")), c);
         c.gridx = 1;
         c.weightx = 1;
         c.fill = GridBagConstraints.HORIZONTAL;
@@ -142,12 +142,12 @@ public class RenameDialog extends JDialog {
                 dispose();
             }
         });
-        JButton cancel = new JButton("Cancel");
+        JButton cancel = new JButton(tr("Cancel"));
         cancel.addActionListener(e -> dispose());
         getRootPane().setDefaultButton(btnOk);
         getRootPane().registerKeyboardAction(e -> dispose(), KeyStroke.getKeyStroke("ESCAPE"),
                 JComponent.WHEN_IN_FOCUSED_WINDOW);
-        JLabel note = new JLabel("Backups (.bak) and XMP sidecars are renamed along. Undo puts the old names back.");
+        JLabel note = new JLabel(tr("Backups (.bak) and XMP sidecars are renamed along. Undo puts the old names back."));
         note.putClientProperty("FlatLaf.styleClass", "small");
         note.setEnabled(false);
         JPanel buttons = new JPanel(new BorderLayout());
@@ -184,14 +184,14 @@ public class RenameDialog extends JDialog {
             long noPlace = photos.stream().filter(p -> null == p.getPlace()).count();
             String hint = "";
             if (text.matches(".*\\{(place|city|country|state|sublocation)}.*") && noPlace > 0) {
-                hint = "  " + noPlace + (noPlace == 1 ? " has" : " have") + " no place name"
-                        + (photos.stream().anyMatch(p -> null == p.getPlace() && p.hasExifGPS())
-                        ? " yet: Edit → Look up place names" : "");
+                boolean canLookUp = photos.stream().anyMatch(p -> null == p.getPlace() && p.hasExifGPS());
+                hint = "  " + (canLookUp ? tr("{0} without a place name yet: Edit → Look up place names", noPlace)
+                        : tr("{0} without a place name", noPlace));
             }
             lblResult.setForeground(UIManager.getColor("Label.foreground"));
-            lblResult.setText(changed == 0 ? "The photos are already named like this."
-                    : changed + (changed == 1 ? " photo gets" : " photos get") + " a new name"
-                    + (changed < photos.size() ? ", " + (photos.size() - changed) + " stay as they are." : ".")
+            lblResult.setText(changed == 0 ? tr("The photos are already named like this.")
+                    : (changed == 1 ? tr("1 photo gets a new name") : tr("{0} photos get a new name", changed))
+                    + (changed < photos.size() ? ", " + tr("{0} stay as they are.", photos.size() - changed) : ".")
                     + hint);
             btnOk.setEnabled(changed > 0);
         } catch (IllegalArgumentException e) {
@@ -208,8 +208,8 @@ public class RenameDialog extends JDialog {
         List<String> kinds = new ArrayList<>();
         for (RenamePlan.Move move : item.moves().subList(1, item.moves().size())) {
             String name = move.from().getFileName().toString().toLowerCase(java.util.Locale.ROOT);
-            String kind = name.endsWith(".xmp.bak") ? "sidecar backup" : name.endsWith(".xmp") ? "XMP sidecar"
-                    : "backup";
+            String kind = name.endsWith(".xmp.bak") ? tr("sidecar backup") : name.endsWith(".xmp") ? tr("XMP sidecar")
+                    : tr("backup");
             if (!kinds.contains(kind)) {
                 kinds.add(kind);
             }
@@ -231,9 +231,9 @@ public class RenameDialog extends JDialog {
         @Override
         public String getColumnName(int column) {
             return switch (column) {
-                case 0 -> "Now";
-                case 1 -> "New name";
-                default -> "Note";
+                case 0 -> tr("Now");
+                case 1 -> tr("New name");
+                default -> tr("Note");
             };
         }
 
@@ -245,7 +245,7 @@ public class RenameDialog extends JDialog {
                 case 0 -> photo.getFile().getName();
                 case 1 -> null == item ? "" : item.newName();
                 default -> null == item ? "" : null != item.warning() ? item.warning()
-                        : item.isChanged() ? alongWith(item) : "stays";
+                        : item.isChanged() ? alongWith(item) : tr("stays");
             };
         }
     }

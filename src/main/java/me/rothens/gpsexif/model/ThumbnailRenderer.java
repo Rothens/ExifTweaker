@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.model;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import com.formdev.flatlaf.FlatLaf;
 import me.rothens.gpsexif.util.ThumbnailCache;
 
@@ -18,9 +19,10 @@ public class ThumbnailRenderer extends JComponent implements ListCellRenderer<Im
     public static final int THUMBNAIL_SIZE = 96;
     public static final int CELL_WIDTH = THUMBNAIL_SIZE + 12;
 
-    private static final DateTimeFormatter SHORT_DATE = DateTimeFormatter.ofPattern("d MMM HH:mm", Locale.ENGLISH);
-    private static final DateTimeFormatter FULL_DATE = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy, HH:mm:ss",
-            Locale.ENGLISH);
+    private static final DateTimeFormatter SHORT_DATE = DateTimeFormatter.ofPattern(tr("d MMM HH:mm"),
+            me.rothens.gpsexif.i18n.I18n.locale());
+    private static final DateTimeFormatter FULL_DATE = DateTimeFormatter.ofPattern(tr("EEEE, d MMMM yyyy, HH:mm:ss"),
+            me.rothens.gpsexif.i18n.I18n.locale());
     private static final Color HAS_GPS = new Color(40, 160, 60);
     private static final Color NO_GPS = new Color(210, 40, 40);
 
@@ -55,13 +57,13 @@ public class ThumbnailRenderer extends JComponent implements ListCellRenderer<Im
         foreground = isSelected ? list.getSelectionForeground() : list.getForeground();
         dimForeground = isSelected ? list.getSelectionForeground() : UIManager.getColor("Label.disabledForeground");
         setFont(list.getFont());
-        String place = (value.hasExifGPS() ? null == value.getPlace() ? "has a location"
-                : escape(value.getPlace().label()) : "no location yet")
-                + (TripMark.PREFER == value.getTripMark() ? "<br>preferred in trips"
-                : TripMark.SKIP == value.getTripMark() ? "<br>skipped in trips" : "");
+        String place = (value.hasExifGPS() ? null == value.getPlace() ? tr("has a location")
+                : escape(value.getPlace().label()) : tr("no location yet"))
+                + (TripMark.PREFER == value.getTripMark() ? "<br>" + tr("preferred in trips")
+                : TripMark.SKIP == value.getTripMark() ? "<br>" + tr("skipped in trips") : "");
         setToolTipText("<html><b>" + escape(value.getFile().getName()) + "</b><br>"
-                + (null == value.getTaken() ? "no date" : FULL_DATE.format(value.getTaken())) + "<br>" + place
-                + (value.isWritable() ? "" : "<br>Read-only: this file type needs ExifTool") + "</html>");
+                + (null == value.getTaken() ? tr("no date") : FULL_DATE.format(value.getTaken())) + "<br>" + place
+                + (value.isWritable() ? "" : "<br>" + tr("Read-only: this file type needs ExifTool")) + "</html>");
         return this;
     }
 
@@ -106,7 +108,7 @@ public class ThumbnailRenderer extends JComponent implements ListCellRenderer<Im
                 if (thumbnails.hasFailed(photo)) {
                     g2.setColor(dimForeground);
                     g2.setFont(getFont().deriveFont(getFont().getSize2D() - 2f));
-                    String text = "no preview";
+                    String text = tr("no preview");
                     g2.drawString(text, bx + (box - g2.getFontMetrics().stringWidth(text)) / 2, by + box / 2 + 4);
                 }
             }
@@ -133,7 +135,7 @@ public class ThumbnailRenderer extends JComponent implements ListCellRenderer<Im
             FontMetrics sm = g2.getFontMetrics(small);
             g2.setFont(small);
             g2.setColor(dimForeground);
-            drawCentered(g2, sm, null == photo.getTaken() ? "no date" : SHORT_DATE.format(photo.getTaken()), w,
+            drawCentered(g2, sm, null == photo.getTaken() ? tr("no date") : SHORT_DATE.format(photo.getTaken()), w,
                     ty + fm.getDescent() + sm.getAscent() + 1);
         } finally {
             g2.dispose();

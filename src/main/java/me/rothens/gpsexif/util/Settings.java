@@ -27,6 +27,7 @@ public class Settings {
     private static final String TRAVEL_FULL_MAP = "TRAVEL_FULL_MAP";
     private static final String UPDATE_CHECK = "UPDATE_CHECK";
     private static final String TOOLS_OFFERED = "TOOLS_OFFERED";
+    private static final String LANGUAGE = "LANGUAGE";
     private static final String EXIFTOOL_CHECKED_AT = "EXIFTOOL_CHECKED_AT";
     private static final String UPDATE_CHECKED_AT = "UPDATE_CHECKED_AT";
     private static final String UPDATE_LATEST = "UPDATE_LATEST";
@@ -365,6 +366,15 @@ public class Settings {
 
     public void setShareQuality(int quality) {
         prefs.putInt(SHARE_QUALITY, Math.max(50, Math.min(100, quality)));
+    }
+
+    /** The language of the user interface ("hu", "en"); empty to follow the system. */
+    public String getLanguage() {
+        return prefs.get(LANGUAGE, "");
+    }
+
+    public void setLanguage(String language) {
+        prefs.put(LANGUAGE, null == language ? "" : language);
     }
 
     /** Whether downloading ExifTool / FFmpeg was offered already (once, after the first start's tour). */

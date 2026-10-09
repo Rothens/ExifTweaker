@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.history;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.util.FileUtil;
 
 import java.io.IOException;
@@ -138,7 +139,7 @@ public class EditHistory implements AutoCloseable {
         delete(edit);
         fireChanged();
         if (!failures.isEmpty()) {
-            throw new IOException("Couldn't restore " + failures.size() + " file(s):\n" + String.join("\n", failures));
+            throw new IOException(tr("Couldn't restore {0} file(s):", failures.size()) + "\n" + String.join("\n", failures));
         }
         return restored;
     }

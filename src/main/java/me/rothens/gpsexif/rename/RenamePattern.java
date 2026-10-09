@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.rename;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.metadata.Place;
 
 import java.time.LocalDateTime;
@@ -41,7 +42,7 @@ public final class RenamePattern {
     public RenamePattern(String pattern) {
         this.pattern = pattern;
         if (pattern.isBlank()) {
-            throw new IllegalArgumentException("Enter a pattern, e.g. {date} {place} {n:000}");
+            throw new IllegalArgumentException(tr("Enter a pattern, e.g. {date} {place} {n:000}"));
         }
         Matcher m = TOKEN.matcher(pattern);
         StringBuilder rest = new StringBuilder();
@@ -50,24 +51,24 @@ public final class RenamePattern {
             rest.append(pattern, last, m.start());
             last = m.end();
             if (!NAMES.contains(m.group(1))) {
-                throw new IllegalArgumentException("Unknown field {" + m.group(1) + "}. Use one of: {"
-                        + String.join("}, {", NAMES) + "}");
+                throw new IllegalArgumentException(tr("Unknown field {0}. Use one of: {1}", "{" + m.group(1) + "}",
+                        "{" + String.join("}, {", NAMES) + "}"));
             }
             if ("date".equals(m.group(1)) && null != m.group(2)) {
                 try {
                     DateTimeFormatter.ofPattern(m.group(2), Locale.ROOT).format(LocalDateTime.of(2026, 1, 1, 0, 0));
                 } catch (IllegalArgumentException | java.time.DateTimeException e) {
-                    throw new IllegalArgumentException("{date:" + m.group(2) + "} isn't a date format. Use e.g. "
-                            + "{date:yyyy-MM-dd HH.mm}");
+                    throw new IllegalArgumentException(tr("{0} isn't a date format. Use e.g. {date:yyyy-MM-dd HH.mm}",
+                            "{date:" + m.group(2) + "}"));
                 }
             }
             if ("n".equals(m.group(1)) && null != m.group(2) && !m.group(2).matches("0{1,9}")) {
-                throw new IllegalArgumentException("Write the number as {n} or with its digits, e.g. {n:000}");
+                throw new IllegalArgumentException(tr("Write the number as {n} or with its digits, e.g. {n:000}"));
             }
         }
         rest.append(pattern.substring(last));
         if (rest.indexOf("{") >= 0 || rest.indexOf("}") >= 0) {
-            throw new IllegalArgumentException("A { or } doesn't belong to a field. Fields look like {date} or {n:000}");
+            throw new IllegalArgumentException(tr("A { or } doesn't belong to a field. Fields look like {date} or {n:000}"));
         }
     }
 

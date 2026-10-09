@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.share;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.metadata.CommonsImagingBackend;
 import me.rothens.gpsexif.metadata.ExifTool;
 import me.rothens.gpsexif.metadata.ExifToolBackend;
@@ -58,7 +59,7 @@ public final class ShareExport {
 
         @Override
         public String toString() {
-            return label;
+            return tr(label);
         }
     }
 
@@ -116,7 +117,7 @@ public final class ShareExport {
 
     private ExifTool exifTool(Path source) throws IOException {
         if (null == exifTool) {
-            throw new IOException(extension(source).toUpperCase(Locale.ROOT) + " files need ExifTool for this");
+            throw new IOException(tr("{0} files need ExifTool for this", extension(source).toUpperCase(Locale.ROOT)));
         }
         return exifTool.getExifTool();
     }
@@ -146,7 +147,7 @@ public final class ShareExport {
         int size = options.maxSize() > 0 ? options.maxSize() : 100_000;
         BufferedImage picture = PhotoLoader.load(photo, size);
         if (null == picture) {
-            throw new IOException("Couldn't read the picture" + (null == exifTool ? " (this file type needs ExifTool)"
+            throw new IOException(tr("Couldn't read the picture") + (null == exifTool ? " " + tr("(this file type needs ExifTool)")
                     : ""));
         }
         if (Math.max(picture.getWidth(), picture.getHeight()) > size || picture.getType() != BufferedImage.TYPE_INT_RGB) {

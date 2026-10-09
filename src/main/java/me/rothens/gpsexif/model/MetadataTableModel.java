@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.model;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.metadata.MetadataChanges;
 import me.rothens.gpsexif.metadata.Place;
 import me.rothens.gpsexif.metadata.TextTag;
@@ -21,7 +22,7 @@ import java.util.function.Function;
  */
 public class MetadataTableModel extends AbstractTableModel {
 
-    public static final String MULTIPLE = "(multiple values)";
+    public static final String MULTIPLE = tr("(multiple values)");
     public static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ROOT);
 
     /** Receives validated edits; the table itself never writes files. */
@@ -35,14 +36,14 @@ public class MetadataTableModel extends AbstractTableModel {
 
     /** One editable field: how to show it, and how to turn user input into changes. */
     enum Editable {
-        TAKEN("Date taken", p -> null == p.getTaken() ? null : DATE_TIME.format(p.getTaken().withNano(0))),
+        TAKEN(tr("Date taken"), p -> null == p.getTaken() ? null : DATE_TIME.format(p.getTaken().withNano(0))),
         MAKE(TextTag.MAKE),
         MODEL(TextTag.MODEL),
         ARTIST(TextTag.ARTIST),
         COPYRIGHT(TextTag.COPYRIGHT),
         DESCRIPTION(TextTag.DESCRIPTION),
-        ALTITUDE("Altitude (m)", p -> null == p.getAltitude() ? null : number(p.getAltitude())),
-        DIRECTION("Direction (°)", p -> null == p.getDirection() ? null : number(p.getDirection())),
+        ALTITUDE(tr("Altitude (m)"), p -> null == p.getAltitude() ? null : number(p.getAltitude())),
+        DIRECTION(tr("Direction (°)"), p -> null == p.getDirection() ? null : number(p.getDirection())),
         LANDMARK(Place.Part.SUBLOCATION),
         CITY(Place.Part.CITY),
         DISTRICT(Place.Part.DISTRICT),
@@ -118,7 +119,7 @@ public class MetadataTableModel extends AbstractTableModel {
 
     @Override
     public String getColumnName(int column) {
-        return column == 0 ? "Field" : "Value";
+        return column == 0 ? tr("Field") : tr("Value");
     }
 
     @Override
@@ -175,17 +176,17 @@ public class MetadataTableModel extends AbstractTableModel {
         MetadataChanges changes = new MetadataChanges();
         if (null != field.textField) {
             if (text.length() > 2000) {
-                throw new IllegalArgumentException(field.label + " is too long (at most 2000 characters)");
+                throw new IllegalArgumentException(tr("{0} is too long (at most {1} characters)", field.label, 2000));
             }
             return changes.text(field.textField, text);
         }
         if (null != field.placePart) {
             if (text.length() > 200) {
-                throw new IllegalArgumentException(field.label + " is too long (at most 200 characters)");
+                throw new IllegalArgumentException(tr("{0} is too long (at most {1} characters)", field.label, 200));
             }
             if (field.placePart == Place.Part.COUNTRY_CODE) {
                 if (!text.isEmpty() && !text.matches("[A-Za-z]{2,3}")) {
-                    throw new IllegalArgumentException("The country code has 2 letters, e.g. HU or JP");
+                    throw new IllegalArgumentException(tr("The country code has 2 letters, e.g. HU or JP"));
                 }
                 text = text.toUpperCase(Locale.ROOT);
             }
@@ -194,12 +195,12 @@ public class MetadataTableModel extends AbstractTableModel {
         switch (field) {
             case TAKEN -> {
                 if (text.isEmpty()) {
-                    throw new IllegalArgumentException("The date taken can't be removed, only changed");
+                    throw new IllegalArgumentException(tr("The date taken can't be removed, only changed"));
                 }
                 changes.taken(parseDateTime(text));
             }
-            case ALTITUDE -> changes.altitude(text.isEmpty() ? null : parseNumber(text, "Altitude", -1000, 100_000));
-            case DIRECTION -> changes.direction(text.isEmpty() ? null : parseNumber(text, "Direction", -360, 360));
+            case ALTITUDE -> changes.altitude(text.isEmpty() ? null : parseNumber(text, tr("Altitude"), -1000, 100_000));
+            case DIRECTION -> changes.direction(text.isEmpty() ? null : parseNumber(text, tr("Direction"), -360, 360));
             default -> throw new IllegalStateException(field.name());
         }
         return changes;
@@ -207,13 +208,13 @@ public class MetadataTableModel extends AbstractTableModel {
 
     /** Parses an altitude in metres; blank gives {@code null}. */
     public static Double parseAltitude(String text) {
-        return text.isBlank() ? null : parseNumber(text.strip(), "Altitude", -1000, 100_000);
+        return text.isBlank() ? null : parseNumber(text.strip(), tr("Altitude"), -1000, 100_000);
     }
 
     /** Parses a direction in degrees (normalized to 0..360); blank gives {@code null}. */
     public static Double parseDirection(String text) {
         return text.isBlank() ? null
-                : MetadataChanges.normalizeDegrees(parseNumber(text.strip(), "Direction", -360, 360));
+                : MetadataChanges.normalizeDegrees(parseNumber(text.strip(), tr("Direction"), -360, 360));
     }
 
     /** "2026-09-30 14:05:00", "2026-09-30 14:05", or EXIF's own "2026:09:30 14:05:00". */
@@ -228,7 +229,7 @@ public class MetadataTableModel extends AbstractTableModel {
         try {
             return LocalDateTime.parse(t, DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm:ss", Locale.ROOT));
         } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException("\"" + text + "\" isn't a date and time. Use e.g. 2026-09-30 14:05:00");
+            throw new IllegalArgumentException(tr("\"{0}\" isn't a date and time. Use e.g. 2026-09-30 14:05:00", text));
         }
     }
 
@@ -237,10 +238,10 @@ public class MetadataTableModel extends AbstractTableModel {
         try {
             value = Double.parseDouble(text.replace(',', '.').replaceAll("\\s*(m|°|deg)$", ""));
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(name + " must be a number: " + text);
+            throw new IllegalArgumentException(tr("{0} must be a number: {1}", name, text));
         }
         if (value < min || value > max || Double.isNaN(value)) {
-            throw new IllegalArgumentException(name + " must be between " + number(min) + " and " + number(max));
+            throw new IllegalArgumentException(tr("{0} must be between {1} and {2}", name, number(min), number(max)));
         }
         return value;
     }

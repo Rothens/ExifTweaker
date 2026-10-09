@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.gpx;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.util.SafeXml;
 import org.jxmapviewer.viewer.GeoPosition;
 import org.w3c.dom.Document;
@@ -83,24 +84,24 @@ public final class TrackReader {
                 try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
                     track = single(name, GoogleTimeline.read(reader, keep));
                 } catch (IOException e) {
-                    throw new IOException(name + " isn't a location history this app knows: " + e.getMessage(), e);
+                    throw new IOException(tr("{0} isn't a location history this app knows: {1}", name, e.getMessage()), e);
                 }
             } else if (first == '<') {
                 track = xml(readAll(file), name, keep);
             } else {
-                throw new IOException(name + ": not a track file (GPX, KML, KMZ, TCX, FIT or Google location history)");
+                throw new IOException(tr("{0}: not a track file (GPX, KML, KMZ, TCX, FIT or Google location history)", name));
             }
         }
         if (track.pointCount() == 0) {
-            throw new IOException(name + ": no points with a time" + (keep.test(Instant.EPOCH) ? ""
-                    : " around the photos' dates"));
+            throw new IOException(keep.test(Instant.EPOCH) ? tr("{0}: no points with a time", name)
+                    : tr("{0}: no points with a time around the photos' dates", name));
         }
         return track;
     }
 
     private static byte[] readAll(Path file) throws IOException {
         if (Files.size(file) > MAX_IN_MEMORY) {
-            throw new IOException(file.getFileName() + " is too large");
+            throw new IOException(tr("{0} is too large", file.getFileName()));
         }
         return Files.readAllBytes(file);
     }
@@ -124,7 +125,7 @@ public final class TrackReader {
                 }
             }
         }
-        throw new IOException(name + ": no KML file inside");
+        throw new IOException(tr("{0}: no KML file inside", name));
     }
 
     private static Track xml(byte[] bytes, String name, Predicate<Instant> keep) throws IOException {
@@ -132,14 +133,14 @@ public final class TrackReader {
         try {
             doc = SafeXml.newDocumentBuilder(true).parse(new ByteArrayInputStream(bytes));
         } catch (ParserConfigurationException | SAXException e) {
-            throw new IOException(name + " isn't valid XML: " + e.getMessage(), e);
+            throw new IOException(tr("{0} isn't valid XML: {1}", name, e.getMessage()), e);
         }
         String root = localName(doc.getDocumentElement());
         return switch (root) {
             case "gpx" -> GpxParser.parse(new ByteArrayInputStream(bytes), name);
             case "kml" -> new Track(name, kml(doc, keep));
             case "TrainingCenterDatabase" -> new Track(name, tcx(doc, keep));
-            default -> throw new IOException(name + ": not a track file (root element <" + root + ">)");
+            default -> throw new IOException(tr("{0}: not a track file (root element <{1}>)", name, root));
         };
     }
 

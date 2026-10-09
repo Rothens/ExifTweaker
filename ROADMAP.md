@@ -192,13 +192,15 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 
 ---
 
-## 1.3 — More sources & reach
+## 1.3 — More sources & reach ✅
 
-- [ ] **More track formats** (#42): Google Maps Timeline, KML/KMZ, FIT and TCX.
-- [ ] **First-run download of ExifTool and FFmpeg** (#43): checkboxes on the first start, downloaded into the app's
-      own folder; the `.deb` depends on the distribution's packages instead.
-- [ ] **Hungarian translation** (#44), with all texts in resource bundles so more languages can be added.
-- [ ] **"New version available" check** (#45), at most once a day, can be turned off.
+- [x] **More track formats** (#42): Google Maps location history (Takeout's Records.json and the Timeline exports
+      from Android and iPhone), KML/KMZ, FIT and TCX, recognized by the content.
+- [x] **Download of ExifTool and FFmpeg** (#43): offered once after the first start's tour and from the tool
+      dialogs, checked against the published checksums, into the app's own folder; a downloaded ExifTool is checked
+      for updates. FFmpeg is downloaded on Windows; the `.deb` depends on the distribution's ExifTool.
+- [x] **Hungarian translation** (#44): all texts translatable, one text file per language; Settings → Language.
+- [x] **"New version available" check** (#45), at most once a day, can be turned off.
 
 ---
 
@@ -207,6 +209,6 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 - **Esri terms**: Esri World Imagery is free with attribution for non-commercial use; check the terms again
   before the 1.0 release, and keep OSM as the default layer.
 - ~~**ExifTool distribution**~~: decided in 0.8 - not bundled; the app points users to exiftool.org and lets
-  them pick the executable.
+  them pick the executable. Since 1.3 it can also download it for them.
 - ~~**Java version**~~: decided for 1.0 - the code stays on Java 17 (so the jar runs on 17+), and the installers
   bundle a trimmed Java 21 runtime.

@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.metadata;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import java.io.IOException;
 import java.nio.file.Path;
 
@@ -66,7 +67,7 @@ public class RoutingBackend implements MetadataBackend {
     public void write(Path photo, Path target, MetadataChanges changes) throws IOException {
         MetadataBackend backend = backendFor(photo);
         if (null == backend) {
-            throw new IOException(photo.getFileName() + " needs ExifTool to be written");
+            throw new IOException(tr("{0} needs ExifTool to be written", photo.getFileName()));
         }
         backend.write(photo, target, changes);
     }

@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.ui;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.gpx.TrackReader;
 import me.rothens.gpsexif.model.ImageFile;
 import me.rothens.gpsexif.util.Settings;
@@ -24,10 +25,10 @@ public final class GpxFileChooser {
      */
     public static List<File> choose(Component parent, List<ImageFile> photos, Settings settings) {
         JFileChooser chooser = new JFileChooser(startFolder(photos, settings));
-        chooser.setDialogTitle("Add track files");
+        chooser.setDialogTitle(tr("Add track files"));
         chooser.setMultiSelectionEnabled(true);
-        chooser.setFileFilter(new FileNameExtensionFilter("Tracks: GPX, KML, KMZ, TCX, FIT, Google location history "
-                + "(.json)", TrackReader.EXTENSIONS.toArray(new String[0])));
+        chooser.setFileFilter(new FileNameExtensionFilter(tr("Tracks: GPX, KML, KMZ, TCX, FIT, Google location history (.json)"),
+                TrackReader.EXTENSIONS.toArray(new String[0])));
         if (chooser.showOpenDialog(parent) != JFileChooser.APPROVE_OPTION) {
             return List.of();
         }

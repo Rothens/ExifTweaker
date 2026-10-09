@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.map;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.gpx.TrackMatcher;
 import me.rothens.gpsexif.metadata.Place;
 import me.rothens.gpsexif.util.MiniJson;
@@ -90,7 +91,7 @@ public class PlaceNames {
             place = parse(new String(in.readAllBytes(), StandardCharsets.UTF_8));
         } catch (IOException e) {
             failedAt = clock.getAsLong();
-            lastFailure = new IOException("Couldn't look up the place name: " + e.getMessage(), e);
+            lastFailure = new IOException(tr("Couldn't look up the place name: {0}", e.getMessage()), e);
             throw lastFailure;
         }
         remember(position, place);

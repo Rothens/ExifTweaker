@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.metadata;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -75,8 +76,9 @@ public record Place(String sublocation, String city, String state, String countr
             this.label = label;
         }
 
+        /** The part's name in the language in use. */
         public String label() {
-            return label;
+            return tr(label);
         }
     }
 

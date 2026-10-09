@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.map;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import org.jxmapviewer.JXMapViewer;
 import org.jxmapviewer.OSMTileFactoryInfo;
 import org.jxmapviewer.viewer.GeoPosition;
@@ -57,6 +58,6 @@ public enum MapLayer {
 
     @Override
     public String toString() {
-        return displayName;
+        return tr(displayName);
     }
 }

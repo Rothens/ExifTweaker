@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.history;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.model.ImageFile;
 import org.jxmapviewer.viewer.GeoPosition;
 
@@ -59,7 +60,7 @@ public class PhotoWriter {
 
     /** Writes a position into one photo; throws if it fails. */
     public void savePosition(ImageFile image, GeoPosition position) throws IOException {
-        Result result = apply("Set location of " + image.getFile().getName(), List.of(image),
+        Result result = apply(tr("Set {0} of {1}", tr("location"), image.getFile().getName()), List.of(image),
                 i -> i.savePosition(position), true, (done, total) -> { });
         if (!result.failures().isEmpty()) {
             throw new IOException(result.failures().values().iterator().next());

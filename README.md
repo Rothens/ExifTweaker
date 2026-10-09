@@ -223,6 +223,17 @@ On macOS use Cmd instead of Ctrl.
   the top then links to it; nothing is installed by itself; can be turned off in Settings, or checked any time with
   **Help → Check for updates**). Your photos never leave your computer.
 
+## Languages
+
+ExifTweaker speaks English and Hungarian (magyar). It follows the system's language; **Settings → Language** changes
+it (after a restart).
+
+Adding a language is one text file: copy
+[`hu.txt`](src/main/resources/me/rothens/gpsexif/i18n/hu.txt) to e.g. `de.txt` next to it, replace the second line
+of each pair with your translation (keep `{0}`, `{1}`, HTML tags and `\n` as they are; the date patterns are
+Java [DateTimeFormatter](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/time/format/DateTimeFormatter.html)
+patterns), and add the language to `I18n.LANGUAGES`. The tests check that every text has a translation.
+
 ## Building from source
 
 Requires Java 17+ and Maven.

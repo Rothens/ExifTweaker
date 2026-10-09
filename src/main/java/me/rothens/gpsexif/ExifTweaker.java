@@ -3,6 +3,8 @@ package me.rothens.gpsexif;
 import me.rothens.gpsexif.history.EditHistory;
 import me.rothens.gpsexif.history.PhotoWriter;
 import me.rothens.gpsexif.gpx.GpxWriter;
+import static me.rothens.gpsexif.i18n.I18n.photos;
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.gpx.Track;
 import me.rothens.gpsexif.gpx.TrackMatcher;
 import me.rothens.gpsexif.map.AttributionPainter;
@@ -88,7 +90,7 @@ public class ExifTweaker {
 
     private final JTextField tfFolder = new JTextField();
     private final JButton btnBrowse = new JButton("...");
-    private final JButton btnOpen = new JButton("Open");
+    private final JButton btnOpen = new JButton(tr("Open"));
     private final ImageListModel listModel = new ImageListModel();
     private final JList<ImageFile> lFiles = new JList<>(listModel);
     /** The same photos as a grid of thumbnails; shares the list's model and selection. */
@@ -99,11 +101,11 @@ public class ExifTweaker {
     private final TripMarkStore tripMarks = TripMarkStore.openDefault();
     /** Photos on the left, the rest on the right. */
     private JSplitPane centerSplit;
-    private final JCheckBox chkOnlyWithoutLocation = new JCheckBox("Only without location");
+    private final JCheckBox chkOnlyWithoutLocation = new JCheckBox(tr("Only without location"));
     private final JLabel lblStatus = new JLabel(" ");
-    private final JButton btnSave = new JButton("Save");
-    private final JButton btnUndo = new JButton("Undo");
-    private final JButton btnCancel = new JButton("Cancel");
+    private final JButton btnSave = new JButton(tr("Save"));
+    private final JButton btnUndo = new JButton(tr("Undo"));
+    private final JButton btnCancel = new JButton(tr("Cancel"));
     private final JProgressBar progress = new JProgressBar();
     private final JPanel mainPanel = new JPanel(new BorderLayout(4, 4));
     private final JXMapViewer mapViewer = new JXMapViewer();
@@ -125,9 +127,11 @@ public class ExifTweaker {
     private final ToolInstaller toolInstaller = new ToolInstaller(USER_AGENT);
     /** A newer version of the downloaded ExifTool, if one was found; shown in the update note. */
     private String exifToolUpdate;
+    /** Whether the update note is about ExifTweaker (else about ExifTool). */
+    private boolean showingAppUpdate;
     /** Photos of the running batch whose place name couldn't be looked up. */
     private final java.util.concurrent.atomic.AtomicInteger placesMissed = new java.util.concurrent.atomic.AtomicInteger();
-    private final JButton btnCoordinate = new JButton("Go!");
+    private final JButton btnCoordinate = new JButton(tr("Go!"));
     private final JFrame frame;
     private final Settings settings = new Settings(Preferences.userNodeForPackage(ExifTweaker.class));
     private final RoutingBackend backend = new RoutingBackend();
@@ -140,23 +144,23 @@ public class ExifTweaker {
     private final TileDiskCache tileCache = new TileDiskCache(Path.of(System.getProperty("user.home"), ".jxmapviewer2"),
             () -> settings.getTileCacheMaxMb() * 1024L * 1024L);
 
-    private final JMenuItem miUndo = new JMenuItem("Undo");
-    private final JMenuItem miSave = new JMenuItem("Save location");
-    private final JMenuItem miRemove = new JMenuItem("Remove location...");
-    private final JMenuItem miShiftTime = new JMenuItem("Shift date/time...");
-    private final JMenuItem miPlaces = new JMenuItem("Look up place names");
-    private final JMenuItem miRename = new JMenuItem("Rename photos...");
-    private final JMenuItem miCopy = new JMenuItem("Copy location");
-    private final JMenuItem miPaste = new JMenuItem("Paste location");
+    private final JMenuItem miUndo = new JMenuItem(tr("Undo"));
+    private final JMenuItem miSave = new JMenuItem(tr("Save location"));
+    private final JMenuItem miRemove = new JMenuItem(tr("Remove location..."));
+    private final JMenuItem miShiftTime = new JMenuItem(tr("Shift date/time..."));
+    private final JMenuItem miPlaces = new JMenuItem(tr("Look up place names"));
+    private final JMenuItem miRename = new JMenuItem(tr("Rename photos..."));
+    private final JMenuItem miCopy = new JMenuItem(tr("Copy location"));
+    private final JMenuItem miPaste = new JMenuItem(tr("Paste location"));
     private final Map<Theme, JRadioButtonMenuItem> themeItems = new EnumMap<>(Theme.class);
     private final Map<MapLayer, JRadioButtonMenuItem> mapLayerItems = new EnumMap<>(MapLayer.class);
     private boolean updatingMapLayer;
 
-    private final JMenuItem miGeotag = new JMenuItem("Geotag from GPX...");
-    private final JMenuItem miExportGpx = new JMenuItem("Export photos as GPX...");
-    private final JMenuItem miShare = new JMenuItem("Export copies for sharing...");
-    private final JMenuItem miPlayback = new JMenuItem("Play photos...");
-    private final JMenuItem miTravel = new JMenuItem("Travel mode...");
+    private final JMenuItem miGeotag = new JMenuItem(tr("Geotag from GPX..."));
+    private final JMenuItem miExportGpx = new JMenuItem(tr("Export photos as GPX..."));
+    private final JMenuItem miShare = new JMenuItem(tr("Export copies for sharing..."));
+    private final JMenuItem miPlayback = new JMenuItem(tr("Play photos..."));
+    private final JMenuItem miTravel = new JMenuItem(tr("Travel mode..."));
     /** GPX tracks last loaded in the Geotag dialog; travel mode follows them. */
     private List<Track> lastTracks = List.of();
     private JMenu file;
@@ -165,7 +169,7 @@ public class ExifTweaker {
     /** Counts saves and undos, so a tutorial step can tell that the user saved. */
     private final java.util.concurrent.atomic.AtomicInteger historyChanges = new java.util.concurrent.atomic.AtomicInteger();
     private final TrackPainter trackPainter = new TrackPainter();
-    private final JCheckBoxMenuItem miShowMarkers = new JCheckBoxMenuItem("Show photos on map");
+    private final JCheckBoxMenuItem miShowMarkers = new JCheckBoxMenuItem(tr("Show photos on map"));
     private PhotoMarkerLayer markerLayer;
     private GeotagDialog geotagDialog;
 
@@ -216,7 +220,7 @@ public class ExifTweaker {
         btnCoordinate.addActionListener(e -> goToCoordinate());
         tfCoordinate.addActionListener(e -> goToCoordinate());
         tfSearch.addActionListener(e -> searchPlace());
-        tfSearch.putClientProperty("JTextField.placeholderText", "Search for a place and press Enter");
+        tfSearch.putClientProperty("JTextField.placeholderText", tr("Search for a place and press Enter"));
         tfSearch.putClientProperty("JTextField.showClearButton", true);
         cbMapType.addActionListener(e -> setMapLayer((MapLayer) cbMapType.getSelectedItem()));
 
@@ -235,10 +239,9 @@ public class ExifTweaker {
         checkForUpdates(false);
 
         tfFolder.setText(settings.getLastDirectory());
-        tfCoordinate.setToolTipText("Latitude;Longitude in decimal degrees, or e.g. 47°29'52\"N 19°2'24\"E");
-        tfAltitude.setToolTipText("Metres above sea level (negative below); written with Save. Empty removes it.");
-        tfDirection.setToolTipText("Degrees clockwise from north the camera pointed; written with Save. "
-                + "You can also drag the handle on the map. Empty removes it.");
+        tfCoordinate.setToolTipText(tr("Latitude;Longitude in decimal degrees, or e.g. 47°29'52\"N 19°2'24\"E"));
+        tfAltitude.setToolTipText(tr("Metres above sea level (negative below); written with Save. Empty removes it."));
+        tfDirection.setToolTipText(tr("Degrees clockwise from north the camera pointed; written with Save. You can also drag the handle on the map. Empty removes it."));
         tfAltitude.getDocument().addDocumentListener(onEdit(() -> altitudeEdited = true));
         tfDirection.getDocument().addDocumentListener(onEdit(() -> {
             directionEdited = true;
@@ -314,11 +317,10 @@ public class ExifTweaker {
 
     /** Thin banner shown while ExifTool isn't available; clicking it opens the ExifTool dialog. */
     private JPanel createExifToolBanner() {
-        JLabel text = new JLabel("HEIC, PNG, TIFF, WebP and RAW files need ExifTool, which wasn't found. "
-                + "Click here to set it up...");
+        JLabel text = new JLabel(tr("HEIC, PNG, TIFF, WebP and RAW files need ExifTool, which wasn't found. Click here to set it up..."));
         text.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         JButton close = new JButton("\u00d7");
-        close.setToolTipText("Hide until the next start");
+        close.setToolTipText(tr("Hide until the next start"));
         close.putClientProperty("JButton.buttonType", "toolBarButton");
         close.addActionListener(e -> {
             bannerDismissed = true;
@@ -359,10 +361,10 @@ public class ExifTweaker {
     private JPanel createUpdateBanner() {
         updateText.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         JButton close = new JButton("\u00d7");
-        close.setToolTipText("Don't remind me of this version");
+        close.setToolTipText(tr("Don't remind me of this version"));
         close.putClientProperty("JButton.buttonType", "toolBarButton");
         close.addActionListener(e -> {
-            if (updateText.getText().startsWith("ExifTool ")) {
+            if (!showingAppUpdate) {
                 exifToolUpdate = null; // asked again tomorrow
             } else {
                 settings.setDismissedVersion(settings.getLatestVersion());
@@ -377,7 +379,7 @@ public class ExifTweaker {
         java.awt.event.MouseAdapter open = new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
-                if (updateText.getText().startsWith("ExifTool ")) {
+                if (!showingAppUpdate) {
                     String installed = downloadExifTool(frame);
                     if (null != installed) {
                         useDownloadedExifTool(installed);
@@ -430,13 +432,13 @@ public class ExifTweaker {
                     showUpdateNote();
                     if (manual && !newer) {
                         JOptionPane.showMessageDialog(frame, null == current
-                                        ? "The latest release is " + latest.version() + ". (This is a development build.)"
-                                        : "You have the latest version (" + current + ").",
-                                "Check for updates", JOptionPane.INFORMATION_MESSAGE);
+                                        ? tr("The latest release is {0}. (This is a development build.)", latest.version())
+                                        : tr("You have the latest version ({0}).", current),
+                                tr("Check for updates"), JOptionPane.INFORMATION_MESSAGE);
                     }
                 } catch (InterruptedException | ExecutionException e) {
                     if (manual) {
-                        showError("Couldn't check for updates:\n"
+                        showError(tr("Couldn't check for updates:") + "\n"
                                 + (null == e.getCause() ? e.getMessage() : e.getCause().getMessage()));
                     }
                 }
@@ -453,12 +455,13 @@ public class ExifTweaker {
         boolean app = settings.isUpdateCheck() && UpdateCheck.isNewer(latest, currentVersion())
                 && !latest.equals(settings.getDismissedVersion());
         if (app) {
-            updateText.setText("ExifTweaker " + latest + " is out (you have " + currentVersion()
-                    + "). Click here to see what's new and download it.");
+            updateText.setText(tr("ExifTweaker {0} is out (you have {1}). Click here to see what's new and download it.",
+                    latest, currentVersion()));
         } else if (null != exifToolUpdate) {
-            updateText.setText("ExifTool " + exifToolUpdate + " is out (you have " + activeExifToolVersion
-                    + "). Click here to update it.");
+            updateText.setText(tr("ExifTool {0} is out (you have {1}). Click here to update it.", exifToolUpdate,
+                    activeExifToolVersion));
         }
+        showingAppUpdate = app;
         updateBanner.setVisible(app || null != exifToolUpdate);
     }
 
@@ -468,7 +471,7 @@ public class ExifTweaker {
         try {
             Desktop.getDesktop().browse(java.net.URI.create(url));
         } catch (IOException | RuntimeException e) {
-            showError("Couldn't open the browser. The new version is at:\n" + url);
+            showError(tr("Couldn't open the browser. The new version is at:") + "\n" + url);
         }
     }
 
@@ -512,7 +515,7 @@ public class ExifTweaker {
         }
         settings.setToolsOffered(true);
         ToolInstallDialog.Result result = new ToolInstallDialog(frame, toolInstaller,
-                needExifTool ? "not installed yet" : null, needFfmpeg ? "not installed yet" : null, true,
+                needExifTool ? tr("not installed yet") : null, needFfmpeg ? tr("not installed yet") : null, true,
                 this::stopExifTool).showDialog();
         if (null != result.ffmpeg()) {
             settings.setFfmpegPath(result.ffmpeg());
@@ -532,8 +535,8 @@ public class ExifTweaker {
 
     /** Downloads ExifTool from the ExifTool dialog; returns the executable, or {@code null}. */
     private String downloadExifTool(Window owner) {
-        String offer = null == activeExifTool ? "not installed yet"
-                : "the latest version (you have " + activeExifToolVersion + ")";
+        String offer = null == activeExifTool ? tr("not installed yet")
+                : tr("the latest version (you have {0})", activeExifToolVersion);
         return new ToolInstallDialog(owner, toolInstaller, offer, null, false, this::stopExifTool).showDialog()
                 .exifTool();
     }
@@ -544,7 +547,7 @@ public class ExifTweaker {
         activateExifTool(ExifTool.locate(executable));
         exifToolUpdate = null;
         showUpdateNote();
-        lblStatus.setText("ExifTool " + activeExifToolVersion + " is installed");
+        lblStatus.setText(tr("ExifTool {0} is installed", activeExifToolVersion));
     }
 
     /** Once a day, if ExifTool was downloaded by ExifTweaker: is there a newer one? (Shown in the update note.) */
@@ -618,7 +621,7 @@ public class ExifTweaker {
     }
 
     private String exifToolStatus() {
-        return null == activeExifTool ? "Not found - HEIC, PNG, TIFF, WebP and RAW files are read-only"
+        return null == activeExifTool ? tr("Not found - HEIC, PNG, TIFF, WebP and RAW files are read-only")
                 : "ExifTool " + activeExifToolVersion + " (" + activeExifTool + ")";
     }
 
@@ -632,7 +635,7 @@ public class ExifTweaker {
             String executable = ExifTool.locate(path);
             activateExifTool(executable);
             if (null == executable) {
-                showError("ExifTool still wasn't found. HEIC, PNG, TIFF, WebP and RAW files stay read-only.");
+                showError(tr("ExifTool still wasn't found. HEIC, PNG, TIFF, WebP and RAW files stay read-only."));
             }
         }
         return exifToolStatus();
@@ -658,7 +661,7 @@ public class ExifTweaker {
                 String text = null == value ? "" : value.toString();
                 boolean cut = column == 1 && getFontMetrics(getFont()).stringWidth(text)
                         > table.getColumnModel().getColumn(1).getWidth() - 4;
-                setToolTipText(cut ? text : editableRow && column == 1 ? "Double-click to edit" : null);
+                setToolTipText(cut ? text : editableRow && column == 1 ? tr("Double-click to edit") : null);
                 return this;
             }
         });
@@ -668,12 +671,12 @@ public class ExifTweaker {
                 if (busy) {
                     return;
                 }
-                String what = photos.size() == 1 ? photos.get(0).getFile().getName() : photos.size() + " photos";
-                if (photos.size() > 1 && !confirm((value.isEmpty() ? "Remove " + field + " from "
-                        : "Set " + field + " to \"" + value + "\" for ") + photos.size() + " photos?", field)) {
+                String what = photos.size() == 1 ? photos.get(0).getFile().getName() : photos(photos.size());
+                if (photos.size() > 1 && !confirm(value.isEmpty() ? tr("Remove {0} from {1} photos?", field, photos.size())
+                        : tr("Set {0} to \"{1}\" for {2} photos?", field, value, photos.size()), field)) {
                     return;
                 }
-                runBatch((value.isEmpty() ? "Remove " + field + " from " : "Set " + field + " of ") + what,
+                runBatch(value.isEmpty() ? tr("Remove {0} from {1}", field, what) : tr("Set {0} of {1}", field, what),
                         List.copyOf(photos), image -> image.apply(changes));
             }
 
@@ -686,20 +689,20 @@ public class ExifTweaker {
 
     private JPopupMenu createListPopup() {
         JPopupMenu popup = new JPopupMenu();
-        popup.add(menuItem("Copy location", null, e -> copyLocation()));
-        popup.add(menuItem("Paste location", null, e -> pasteLocation()));
+        popup.add(menuItem(tr("Copy location"), null, e -> copyLocation()));
+        popup.add(menuItem(tr("Paste location"), null, e -> pasteLocation()));
         popup.addSeparator();
-        popup.add(menuItem("Remove location...", null, e -> removeLocation()));
-        popup.add(menuItem("Look up place names", null, e -> lookUpPlaces()));
-        popup.add(menuItem("Rename...", null, e -> renamePhotos()));
+        popup.add(menuItem(tr("Remove location..."), null, e -> removeLocation()));
+        popup.add(menuItem(tr("Look up place names"), null, e -> lookUpPlaces()));
+        popup.add(menuItem(tr("Rename..."), null, e -> renamePhotos()));
         popup.addSeparator();
-        JCheckBoxMenuItem prefer = new JCheckBoxMenuItem("Prefer in trips");
+        JCheckBoxMenuItem prefer = new JCheckBoxMenuItem(tr("Prefer in trips"));
         prefer.setIcon(new TripMarkIcon(TripMark.PREFER, 14));
-        prefer.setToolTipText("Travel mode shows these first when it can't show every photo of a stretch");
+        prefer.setToolTipText(tr("Travel mode shows these first when it can't show every photo of a stretch"));
         prefer.addActionListener(e -> setTripMark(prefer.isSelected() ? TripMark.PREFER : TripMark.NORMAL));
-        JCheckBoxMenuItem skip = new JCheckBoxMenuItem("Skip in trips");
+        JCheckBoxMenuItem skip = new JCheckBoxMenuItem(tr("Skip in trips"));
         skip.setIcon(new TripMarkIcon(TripMark.SKIP, 14));
-        skip.setToolTipText("Leave these out of Play photos, Travel mode and the videos");
+        skip.setToolTipText(tr("Leave these out of Play photos, Travel mode and the videos"));
         skip.addActionListener(e -> setTripMark(skip.isSelected() ? TripMark.SKIP : TripMark.NORMAL));
         popup.add(prefer);
         popup.add(skip);
@@ -740,24 +743,24 @@ public class ExifTweaker {
         }
         lFiles.repaint();
         lThumbs.repaint();
-        String photos = selection.size() == 1 ? "1 photo" : selection.size() + " photos";
+        String photos = photos(selection.size());
         lblStatus.setText(switch (mark) {
-            case PREFER -> photos + " preferred in trips";
-            case SKIP -> photos + " skipped in trips";
-            case NORMAL -> photos + " shown as usual in trips";
+            case PREFER -> tr("{0} preferred in trips", photos);
+            case SKIP -> tr("{0} skipped in trips", photos);
+            case NORMAL -> tr("{0} shown as usual in trips", photos);
         });
         if (null != error) {
-            showError("Couldn't remember this for the next time:\n" + error);
+            showError(tr("Couldn't remember this for the next time:") + "\n" + error);
         }
     }
 
     private JMenuBar createMenuBar() {
         int menuKey = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
 
-        file = new JMenu("File");
+        file = new JMenu(tr("File"));
         file.setMnemonic('F');
-        file.add(menuItem("Open folder...", KeyStroke.getKeyStroke('O', menuKey), e -> browse()));
-        JMenu recent = new JMenu("Recent folders");
+        file.add(menuItem(tr("Open folder..."), KeyStroke.getKeyStroke('O', menuKey), e -> browse()));
+        JMenu recent = new JMenu(tr("Recent folders"));
         recent.addMenuListener(new javax.swing.event.MenuListener() {
             @Override
             public void menuSelected(javax.swing.event.MenuEvent e) {
@@ -781,15 +784,15 @@ public class ExifTweaker {
         miExportGpx.addActionListener(e -> exportGpx());
         file.add(miExportGpx);
         miShare.setAccelerator(KeyStroke.getKeyStroke('E', menuKey | java.awt.event.InputEvent.SHIFT_DOWN_MASK));
-        miShare.setToolTipText("Copies of the selected photos (or all), without location or metadata, smaller");
+        miShare.setToolTipText(tr("Copies of the selected photos (or all), without location or metadata, smaller"));
         miShare.addActionListener(e -> exportCopies());
         file.add(miShare);
         if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.APP_QUIT_HANDLER)) {
             file.addSeparator();
-            file.add(menuItem("Exit", KeyStroke.getKeyStroke('Q', menuKey), e -> exit()));
+            file.add(menuItem(tr("Exit"), KeyStroke.getKeyStroke('Q', menuKey), e -> exit()));
         }
 
-        JMenu edit = new JMenu("Edit");
+        JMenu edit = new JMenu(tr("Edit"));
         edit.setMnemonic('E');
         miUndo.setAccelerator(KeyStroke.getKeyStroke('Z', menuKey));
         miUndo.addActionListener(e -> undo());
@@ -809,29 +812,28 @@ public class ExifTweaker {
         miRemove.addActionListener(e -> removeLocation());
         edit.add(miRemove);
         miRename.setAccelerator(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F2, 0));
-        miRename.setToolTipText("Renames the selected photos (or all) by date, place, ...");
+        miRename.setToolTipText(tr("Renames the selected photos (or all) by date, place, ..."));
         miRename.addActionListener(e -> renamePhotos());
         edit.add(miRename);
-        miPlaces.setToolTipText("<html>Writes the city, state and country of the selected photos' locations;<br>"
-                + "with none selected, of every photo that has a location but no place name yet</html>");
+        miPlaces.setToolTipText(tr("<html>Writes the city, state and country of the selected photos' locations;<br>with none selected, of every photo that has a location but no place name yet</html>"));
         miPlaces.addActionListener(e -> lookUpPlaces());
         edit.add(miPlaces);
         miShiftTime.setAccelerator(KeyStroke.getKeyStroke('T', menuKey));
         miShiftTime.addActionListener(e -> shiftTime());
         edit.add(miShiftTime);
-        edit.add(menuItem("Select all photos", KeyStroke.getKeyStroke('A', menuKey | shift), e -> {
+        edit.add(menuItem(tr("Select all photos"), KeyStroke.getKeyStroke('A', menuKey | shift), e -> {
             if (listModel.getSize() > 0) {
                 lFiles.setSelectionInterval(0, listModel.getSize() - 1);
             }
         }));
         if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.APP_PREFERENCES)) {
             edit.addSeparator();
-            edit.add(menuItem("Settings...", KeyStroke.getKeyStroke(',', menuKey), e -> showSettings()));
+            edit.add(menuItem(tr("Settings..."), KeyStroke.getKeyStroke(',', menuKey), e -> showSettings()));
         }
 
-        view = new JMenu("View");
+        view = new JMenu(tr("View"));
         view.setMnemonic('V');
-        JMenu themeMenu = new JMenu("Theme");
+        JMenu themeMenu = new JMenu(tr("Theme"));
         ButtonGroup themeGroup = new ButtonGroup();
         for (Theme theme : Theme.values()) {
             JRadioButtonMenuItem item = new JRadioButtonMenuItem(theme.toString());
@@ -842,7 +844,7 @@ public class ExifTweaker {
         }
         themeItems.get(settings.getTheme()).setSelected(true);
         view.add(themeMenu);
-        JMenu layerMenu = new JMenu("Map layer");
+        JMenu layerMenu = new JMenu(tr("Map layer"));
         ButtonGroup layerGroup = new ButtonGroup();
         for (MapLayer layer : MapLayer.values()) {
             JRadioButtonMenuItem item = new JRadioButtonMenuItem(layer.toString());
@@ -854,7 +856,7 @@ public class ExifTweaker {
         view.add(layerMenu);
         view.addSeparator();
         miShowMarkers.setSelected(settings.isShowPhotoMarkers());
-        miShowMarkers.setToolTipText("Show the opened photos that have a location on the map (nearby photos are grouped)");
+        miShowMarkers.setToolTipText(tr("Show the opened photos that have a location on the map (nearby photos are grouped)"));
         miShowMarkers.addActionListener(e -> {
             settings.setShowPhotoMarkers(miShowMarkers.isSelected());
             markerLayer.setEnabled(miShowMarkers.isSelected());
@@ -862,12 +864,12 @@ public class ExifTweaker {
         view.add(miShowMarkers);
         view.addSeparator();
         miPlayback.setAccelerator(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F5, 0));
-        miPlayback.setToolTipText("Play the selected photos (or all) in the order they were taken, with a map");
+        miPlayback.setToolTipText(tr("Play the selected photos (or all) in the order they were taken, with a map"));
         miPlayback.addActionListener(e -> openPlayback());
         view.add(miPlayback);
         miTravel.setAccelerator(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F5,
                 java.awt.event.InputEvent.SHIFT_DOWN_MASK));
-        miTravel.setToolTipText("Play the trip as a short film: a marker travels the route, photos fade in on arrival");
+        miTravel.setToolTipText(tr("Play the trip as a short film: a marker travels the route, photos fade in on arrival"));
         miTravel.addActionListener(e -> openTravel());
         view.add(miTravel);
 
@@ -875,12 +877,12 @@ public class ExifTweaker {
         bar.add(file);
         bar.add(edit);
         bar.add(view);
-        JMenu help = new JMenu("Help");
+        JMenu help = new JMenu(tr("Help"));
         help.setMnemonic('H');
-        help.add(menuItem("Show tutorial", null, e -> startTutorial()));
-        help.add(menuItem("Check for updates...", null, e -> checkForUpdates(true)));
+        help.add(menuItem(tr("Show tutorial"), null, e -> startTutorial()));
+        help.add(menuItem(tr("Check for updates..."), null, e -> checkForUpdates(true)));
         if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.APP_ABOUT)) {
-            help.add(menuItem("About " + APP_NAME, null, e -> showAbout()));
+            help.add(menuItem(tr("About {0}", APP_NAME), null, e -> showAbout()));
         }
         bar.add(help);
         return bar;
@@ -953,7 +955,7 @@ public class ExifTweaker {
         lThumbs.getActionMap().put(TransferHandler.getPasteAction().getValue(Action.NAME), action(this::pasteLocation));
         lThumbs.setComponentPopupMenu(createListPopup());
         photoTabs.setSelectedIndex(settings.isThumbnailView() ? 1 : 0);
-        photoTabs.setToolTipTextAt(1, "The photos as small pictures");
+        photoTabs.setToolTipTextAt(1, tr("The photos as small pictures"));
         photoTabs.addChangeListener(e -> {
             settings.setThumbnailView(photoTabs.getSelectedIndex() == 1);
             if (photoTabs.getSelectedIndex() == 1) {
@@ -988,7 +990,7 @@ public class ExifTweaker {
         menu.removeAll();
         List<String> folders = settings.getRecentFolders();
         if (folders.isEmpty()) {
-            JMenuItem none = new JMenuItem("No recent folders");
+            JMenuItem none = new JMenuItem(tr("No recent folders"));
             none.setEnabled(false);
             menu.add(none);
             return;
@@ -1009,7 +1011,7 @@ public class ExifTweaker {
             menu.add(item);
         }
         menu.addSeparator();
-        menu.add(menuItem("Clear recent folders", null, e -> settings.clearRecentFolders()));
+        menu.add(menuItem(tr("Clear recent folders"), null, e -> settings.clearRecentFolders()));
     }
 
     /** "/home/me/…/Photos/Balaton 2026": keeps the start and the end of a long path. */
@@ -1035,74 +1037,55 @@ public class ExifTweaker {
         int[] changesAt = new int[1];
         String ctrl = isMac() ? "Cmd" : "Ctrl";
         List<Tutorial.Step> steps = new ArrayList<>();
-        steps.add(new Tutorial.Step(null, "Welcome to " + APP_NAME + "!",
-                "This short tour shows how to put your photos on the map. It takes about two minutes, and you can "
-                        + "leave it any time with <b>Skip tour</b> or Esc.<br><br>"
-                        + "Try it on a few <b>sample photos</b> (a weekend at Lake Balaton) - your own photos stay "
-                        + "untouched - or follow along with your own.",
+        steps.add(new Tutorial.Step(null, tr("Welcome to {0}!", APP_NAME),
+                tr("This short tour shows how to put your photos on the map. It takes about two minutes, and you can leave it any time with <b>Skip tour</b> or Esc.<br><br>Try it on a few <b>sample photos</b> (a weekend at Lake Balaton) - your own photos stay untouched - or follow along with your own."),
                 null, null, List.of(
-                new Tutorial.Choice("Use sample photos", () -> {
+                new Tutorial.Choice(tr("Use sample photos"), () -> {
                     if (openSamplePhotos()) {
                         samples[0] = true;
                         tutorial.next();
                     }
                 }),
-                new Tutorial.Choice("Use my own photos", () -> tutorial.next()),
-                new Tutorial.Choice("Skip tour", () -> tutorial.close()))));
-        steps.add(Tutorial.Step.action(() -> tfFolder.getParent(), "Open a folder",
-                "Type the path of a folder of photos here and press <b>Open</b>, or click <b>...</b> to pick it "
-                        + "(File → Open folder, " + ctrl + "+O).<br><br>With the sample photos, it's already open.",
+                new Tutorial.Choice(tr("Use my own photos"), () -> tutorial.next()),
+                new Tutorial.Choice(tr("Skip tour"), () -> tutorial.close()))));
+        steps.add(Tutorial.Step.action(() -> tfFolder.getParent(), tr("Open a folder"),
+                tr("Type the path of a folder of photos here and press <b>Open</b>, or click <b>...</b> to pick it (File → Open folder, {0}+O).<br><br>With the sample photos, it's already open.", ctrl),
                 null, () -> !samples[0] && listModel.getSize() > 0 && !busy));
-        steps.add(Tutorial.Step.explain(this::photoView, "Your photos",
-                "These are the photos in the folder. <font color='#2a9d3a'><b>Green</b></font> ones already have a "
-                        + "location, <font color='#d33'><b>red</b></font> ones don't yet.<br><br>"
-                        + "Tick <b>Only without location</b> above to see just the red ones."));
-        steps.add(Tutorial.Step.action(this::photoView, "Select a photo",
-                "Click a red photo to select it. With the sample photos, try <b>IMG_4515.jpg</b>: the abbey in "
-                        + "Tihany.",
+        steps.add(Tutorial.Step.explain(this::photoView, tr("Your photos"),
+                tr("These are the photos in the folder. <font color='#2a9d3a'><b>Green</b></font> ones already have a location, <font color='#d33'><b>red</b></font> ones don't yet.<br><br>Tick <b>Only without location</b> above to see just the red ones.")));
+        steps.add(Tutorial.Step.action(this::photoView, tr("Select a photo"),
+                tr("Click a red photo to select it. With the sample photos, try <b>IMG_4515.jpg</b>: the abbey in Tihany."),
                 null, () -> !selection.isEmpty()));
-        steps.add(Tutorial.Step.explain(() -> pnThumbnail.getParent(), "The photo and its details",
-                "Here's the photo and its metadata. Double-click a value to change it: the date taken, camera, "
-                        + "artist, description, altitude and more - for one photo or for all selected ones."));
-        steps.add(Tutorial.Step.action(() -> tfSearch, "Find the place",
-                "Type a place here and press Enter, e.g. <b>Tihany Abbey</b>. You can also drag the map and zoom "
-                        + "with the mouse wheel.",
+        steps.add(Tutorial.Step.explain(() -> pnThumbnail.getParent(), tr("The photo and its details"),
+                tr("Here's the photo and its metadata. Double-click a value to change it: the date taken, camera, artist, description, altitude and more - for one photo or for all selected ones.")));
+        steps.add(Tutorial.Step.action(() -> tfSearch, tr("Find the place"),
+                tr("Type a place here and press Enter, e.g. <b>Tihany Abbey</b>. You can also drag the map and zoom with the mouse wheel."),
                 () -> {
                     mapAt[0] = mapViewer.getCenterPosition();
                     zoomAt[0] = mapViewer.getZoom();
                 },
                 () -> mapViewer.getZoom() != zoomAt[0] || TrackMatcher.distanceMetres(mapAt[0],
                         mapViewer.getCenterPosition()) > 50));
-        steps.add(Tutorial.Step.action(() -> mapViewer, "Mark the spot",
-                "<b>Right-click</b> the exact spot where the photo was taken. A pin shows the new location.<br><br>"
-                        + "You can also type a coordinate in the field below the map and press <b>Go!</b>",
+        steps.add(Tutorial.Step.action(() -> mapViewer, tr("Mark the spot"),
+                tr("<b>Right-click</b> the exact spot where the photo was taken. A pin shows the new location.<br><br>You can also type a coordinate in the field below the map and press <b>Go!</b>"),
                 () -> coordinateAt[0] = tfCoordinate.getText(),
                 () -> !tfCoordinate.getText().isBlank() && !tfCoordinate.getText().equals(coordinateAt[0])));
-        steps.add(Tutorial.Step.action(() -> btnSave, "Save it",
-                "Press <b>Save</b> (" + ctrl + "+S) to write the location into the photo.",
+        steps.add(Tutorial.Step.action(() -> btnSave, tr("Save it"),
+                tr("Press <b>Save</b> ({0}+S) to write the location into the photo.", ctrl),
                 () -> changesAt[0] = historyChanges.get(),
                 () -> historyChanges.get() != changesAt[0] && !busy));
-        steps.add(Tutorial.Step.explain(() -> btnUndo, "Changed your mind?",
-                "The photo is green now. <b>Undo</b> (" + ctrl + "+Z) puts photos back exactly as they were - a "
-                        + "whole batch at once.<br><br>Before a photo is changed for the first time, a copy of the "
-                        + "original is also kept next to it as <i>name.bak</i>."));
-        steps.add(Tutorial.Step.explain(this::photoView, "Many photos at once",
-                "Select several photos with Shift- or " + ctrl + "-click: the location you set goes to all of "
-                        + "them when you save.<br><br>"
-                        + ctrl + "+C and " + ctrl + "+V on this list copy one photo's location to others."));
-        steps.add(Tutorial.Step.explain(() -> file, "Tag a whole trip from a GPS track",
-                "Recorded where you went with a phone, watch or GPS logger? <b>File → Geotag from GPX</b> ("
-                        + ctrl + "+G) places all photos at once from the track's times."
-                        + "<br><br>The sample folder has one to try: <b>balaton.gpx</b> - <i>Add track files</i> opens "
-                        + "right in the photos' folder."));
-        steps.add(Tutorial.Step.explain(() -> view, "Relive the trip",
-                "<b>View → Play photos</b> (F5) shows the photos in order with a map, and <b>Travel mode</b> "
-                        + "(Shift+F5) plays the trip as a short film. Both can be saved as a video.<br><br>"
-                        + "<b>Show photos on map</b> puts all photos of the folder on the map."));
-        steps.add(Tutorial.Step.explain(null, "That's it!",
-                "You can see this tour again any time under <b>Help → Show tutorial</b>."
-                        + (isMac() ? "" : " Settings (" + ctrl + "+,) has the theme, map layer and backups.")
-                        + "<br><br>Have fun putting your photos on the map!"));
+        steps.add(Tutorial.Step.explain(() -> btnUndo, tr("Changed your mind?"),
+                tr("The photo is green now. <b>Undo</b> ({0}+Z) puts photos back exactly as they were - a whole batch at once.<br><br>Before a photo is changed for the first time, a copy of the original is also kept next to it as <i>name.bak</i>.", ctrl)));
+        steps.add(Tutorial.Step.explain(this::photoView, tr("Many photos at once"),
+                tr("Select several photos with Shift- or {0}-click: the location you set goes to all of them when you save.<br><br>{0}+C and {0}+V on this list copy one photo's location to others.", ctrl)));
+        steps.add(Tutorial.Step.explain(() -> file, tr("Tag a whole trip from a GPS track"),
+                tr("Recorded where you went with a phone, watch or GPS logger? <b>File → Geotag from GPX</b> ({0}+G) places all photos at once from the track's times.<br><br>The sample folder has one to try: <b>balaton.gpx</b> - <i>Add track files</i> opens right in the photos' folder.", ctrl)));
+        steps.add(Tutorial.Step.explain(() -> view, tr("Relive the trip"),
+                tr("<b>View → Play photos</b> (F5) shows the photos in order with a map, and <b>Travel mode</b> (Shift+F5) plays the trip as a short film. Both can be saved as a video.<br><br><b>Show photos on map</b> puts all photos of the folder on the map.")));
+        steps.add(Tutorial.Step.explain(null, tr("That's it!"),
+                tr("You can see this tour again any time under <b>Help → Show tutorial</b>.")
+                        + (isMac() ? "" : " " + tr("Settings ({0}+,) has the theme, map layer and backups.", ctrl))
+                        + "<br><br>" + tr("Have fun putting your photos on the map!")));
         tutorial = new Tutorial(frame, steps, () -> {
             tutorial = null;
             SwingUtilities.invokeLater(this::offerTools); // after the first start's tour
@@ -1118,7 +1101,7 @@ public class ExifTweaker {
             openFolder(false);
             return true;
         } catch (IOException e) {
-            showError("Couldn't copy the sample photos:\n" + e.getMessage());
+            showError(tr("Couldn't copy the sample photos:") + "\n" + e.getMessage());
             return false;
         }
     }
@@ -1129,14 +1112,14 @@ public class ExifTweaker {
 
     private void showAbout() {
         String version = Optional.ofNullable(ExifTweaker.class.getPackage().getImplementationVersion())
-                .orElse("development build");
+                .orElse(tr("development build"));
         JOptionPane.showMessageDialog(frame,
                 "<html><b>" + APP_NAME + "</b> " + version + "<br><br>"
-                        + "Sets the GPS position in the EXIF data of photos.<br>"
+                        + tr("Puts your photos on the map: sets their location, place names and other metadata.") + "<br>"
                         + "https://github.com/rothens/ExifTweaker<br><br>"
-                        + "Map data &copy; OpenStreetMap contributors (ODbL).<br>"
-                        + "Satellite imagery: Esri, Maxar, Earthstar Geographics, and the GIS User Community.</html>",
-                "About " + APP_NAME, JOptionPane.INFORMATION_MESSAGE);
+                        + tr("Map data &copy; OpenStreetMap contributors (ODbL).") + "<br>"
+                        + tr("Satellite imagery: Esri, Maxar, Earthstar Geographics, and the GIS User Community.") + "</html>",
+                tr("About {0}", APP_NAME), JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void setTheme(Theme theme) {
@@ -1169,18 +1152,17 @@ public class ExifTweaker {
         chkOnlyWithoutLocation.setEnabled(!busy);
         jtExif.setEnabled(!busy);
         btnSave.setToolTipText(selection.size() > 1
-                ? "Write the location to the " + selection.size() + " selected photos" : null);
+                ? tr("Write the location to the {0} selected photos", selection.size()) : null);
         updateUndo();
 
         int total = listModel.getAll().size();
         int shown = listModel.getSize();
-        StringBuilder status = new StringBuilder();
-        status.append(shown).append(shown == 1 ? " photo" : " photos");
+        StringBuilder status = new StringBuilder(photos(shown));
         if (shown != total) {
-            status.append(" (").append(total - shown).append(" hidden)");
+            status.append(" ").append(tr("({0} hidden)", total - shown));
         }
         if (selection.size() > 1) {
-            status.append(", ").append(selection.size()).append(" selected");
+            status.append(", ").append(tr("{0} selected", selection.size()));
         }
         lblStatus.setText(total == 0 ? " " : status.toString());
     }
@@ -1209,8 +1191,8 @@ public class ExifTweaker {
 
         JPanel filePanel = new JPanel(new BorderLayout(0, 2));
         filePanel.add(chkOnlyWithoutLocation, BorderLayout.NORTH);
-        photoTabs.addTab("List", new JScrollPane(lFiles));
-        photoTabs.addTab("Thumbnails", new JScrollPane(lThumbs));
+        photoTabs.addTab(tr("List"), new JScrollPane(lFiles));
+        photoTabs.addTab(tr("Thumbnails"), new JScrollPane(lThumbs));
         filePanel.add(photoTabs, BorderLayout.CENTER);
         filePanel.add(lblStatus, BorderLayout.SOUTH);
         filePanel.setPreferredSize(new Dimension(220, 0));
@@ -1235,9 +1217,9 @@ public class ExifTweaker {
         coordinatePanel.add(tfCoordinate, BorderLayout.CENTER);
         JPanel coordinateExtras = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
         coordinateExtras.add(btnCoordinate);
-        coordinateExtras.add(new JLabel("  Altitude:"));
+        coordinateExtras.add(new JLabel("  " + tr("Altitude:")));
         coordinateExtras.add(tfAltitude);
-        coordinateExtras.add(new JLabel("m   Direction:"));
+        coordinateExtras.add(new JLabel("m   " + tr("Direction:")));
         coordinateExtras.add(tfDirection);
         coordinateExtras.add(new JLabel("°"));
         coordinatePanel.add(coordinateExtras, BorderLayout.EAST);
@@ -1282,7 +1264,7 @@ public class ExifTweaker {
         String dir = tfFolder.getText();
         File[] files = new File(dir).listFiles(f -> f.isFile() && backend.canRead(f.toPath()));
         if (files == null) {
-            showError("Couldn't open folder:\n" + dir);
+            showError(tr("Couldn't open folder:") + "\n" + dir);
             return;
         }
         Arrays.sort(files);
@@ -1323,7 +1305,7 @@ public class ExifTweaker {
                     }
                     markerLayer.setPhotos(listModel.getAll());
                 } catch (InterruptedException | ExecutionException e) {
-                    showError("Error while opening folder:\n" + e.getMessage());
+                    showError(tr("Error while opening folder:") + "\n" + e.getMessage());
                 }
                 setBusy(false);
             }
@@ -1375,28 +1357,28 @@ public class ExifTweaker {
         }
         GeoPosition position = changes.getPosition();
         if (null == position && !altitudeEdited && !directionEdited) {
-            showError("Nothing to save yet: right-click on the map, enter a coordinate or paste a location, "
-                    + "or change the altitude or direction.");
+            showError(tr("Nothing to save yet: right-click on the map, enter a coordinate or paste a location, or change the altitude or direction."));
             return;
         }
         long withLocation = targets.stream().filter(ImageFile::hasExifGPS).count();
-        if (null != position && targets.size() > 1 && withLocation > 0 && !confirm(withLocation + " of the "
-                + targets.size() + " selected photos already " + (withLocation == 1 ? "has" : "have")
-                + " a location.\nReplace " + (withLocation == 1 ? "it" : "them") + "?", "Replace locations")) {
+        if (null != position && targets.size() > 1 && withLocation > 0 && !confirm(withLocation == 1
+                ? tr("1 of the {0} selected photos already has a location.\nReplace it?", targets.size())
+                : tr("{0} of the {1} selected photos already have a location.\nReplace them?", withLocation, targets.size()),
+                tr("Replace locations"))) {
             return;
         }
         List<String> parts = new ArrayList<>();
         if (null != position) {
-            parts.add("location");
+            parts.add(tr("location"));
         }
         if (altitudeEdited) {
-            parts.add("altitude");
+            parts.add(tr("altitude"));
         }
         if (directionEdited) {
-            parts.add("direction");
+            parts.add(tr("direction"));
         }
-        String what = targets.size() == 1 ? targets.get(0).getFile().getName() : targets.size() + " photos";
-        runBatch("Set " + String.join(", ", parts) + " of " + what, targets, image -> {
+        String what = targets.size() == 1 ? targets.get(0).getFile().getName() : photos(targets.size());
+        runBatch(tr("Set {0} of {1}", String.join(", ", parts), what), targets, image -> {
             if (null != position) {
                 changes.place(placeFor(position)); // looked up once, then cached
             }
@@ -1411,11 +1393,11 @@ public class ExifTweaker {
         if (busy || targets.isEmpty()) {
             return;
         }
-        String what = targets.size() == 1 ? targets.get(0).getFile().getName() : targets.size() + " photos";
-        if (!confirm("Remove the location from " + what + "?", "Remove location")) {
+        String what = targets.size() == 1 ? targets.get(0).getFile().getName() : photos(targets.size());
+        if (!confirm(tr("Remove the location from {0}?", what), tr("Remove location"))) {
             return;
         }
-        runBatch("Remove location from " + what, targets, ImageFile::removePosition);
+        runBatch(tr("Remove location from {0}", what), targets, ImageFile::removePosition);
     }
 
     /**
@@ -1488,36 +1470,35 @@ public class ExifTweaker {
                 try {
                     exported = get();
                 } catch (InterruptedException | ExecutionException e) {
-                    showError("Export failed:\n" + e.getMessage());
+                    showError(tr("Export failed:") + "\n" + e.getMessage());
                     return;
                 }
-                String what = exported == 1 ? "1 copy" : exported + " copies";
-                lblStatus.setText((cancelBatch.get() ? "Cancelled: " : "") + what + " saved to " + folder.getFileName());
-                StringBuilder message = new StringBuilder(what + " saved to\n" + folder);
+                String what = exported == 1 ? tr("1 copy") : tr("{0} copies", exported);
+                lblStatus.setText((cancelBatch.get() ? tr("Cancelled:") + " " : "") + tr("{0} saved to {1}", what, folder.getFileName()));
+                StringBuilder message = new StringBuilder(tr("{0} saved to", what) + "\n" + folder);
                 if (cancelBatch.get()) {
-                    message.append("\n\nCancelled after ").append(exported + failures.size()).append(" of ")
-                            .append(targets.size()).append(" photos.");
+                    message.append("\n\n").append(tr("Cancelled after {0} of {1} photos.", exported + failures.size(),
+                            targets.size()));
                 }
                 if (!failures.isEmpty()) {
-                    message.append("\n\n").append(failures.size()).append(failures.size() == 1 ? " photo" : " photos")
-                            .append(" couldn't be exported:\n");
+                    message.append("\n\n").append(tr("{0} couldn't be exported:", photos(failures.size()))).append("\n");
                     failures.entrySet().stream().limit(10).forEach(f -> message.append(f.getKey().getFile().getName())
                             .append(": ").append(f.getValue()).append('\n'));
                     if (failures.size() > 10) {
-                        message.append("... and ").append(failures.size() - 10).append(" more");
+                        message.append(tr("... and {0} more", failures.size() - 10));
                     }
                 }
                 boolean canOpen = exported > 0 && Desktop.isDesktopSupported()
                         && Desktop.getDesktop().isSupported(Desktop.Action.OPEN);
-                Object[] buttons = canOpen ? new Object[]{"Open folder", "Close"} : new Object[]{"Close"};
-                int choice = JOptionPane.showOptionDialog(frame, message.toString(), "Export copies for sharing",
+                Object[] buttons = canOpen ? new Object[]{tr("Open folder"), tr("Close")} : new Object[]{tr("Close")};
+                int choice = JOptionPane.showOptionDialog(frame, message.toString(), tr("Export copies for sharing"),
                         JOptionPane.DEFAULT_OPTION, failures.isEmpty() ? JOptionPane.INFORMATION_MESSAGE
                                 : JOptionPane.WARNING_MESSAGE, null, buttons, buttons[0]);
                 if (canOpen && choice == 0) {
                     try {
                         Desktop.getDesktop().open(folder.toFile());
                     } catch (IOException | RuntimeException e) {
-                        showError("Couldn't open the folder:\n" + e.getMessage());
+                        showError(tr("Couldn't open the folder:") + "\n" + e.getMessage());
                     }
                 }
             }
@@ -1544,14 +1525,14 @@ public class ExifTweaker {
         }
         movePhotos(moves);
         long count = plan.changedCount();
-        String what = count == 1 ? "1 photo" : count + " photos";
-        history.record("Rename " + what, () -> {
+        String what = photos((int) count);
+        history.record(tr("Rename {0}", what), () -> {
             List<RenamePlan.Move> back = RenamePlan.reverse(moves);
             RenamePlan.execute(back);
             movePhotos(back);
             return List.of();
         });
-        lblStatus.setText("Renamed " + what);
+        lblStatus.setText(tr("Renamed {0}", what));
     }
 
     /** Points the opened photos (and their trip marks) to their new files, and sorts the list by name again. */
@@ -1590,19 +1571,17 @@ public class ExifTweaker {
                 ? listModel.getAll().stream().filter(p -> p.hasExifGPS() && null == p.getPlace()).toList()
                 : selection.stream().filter(ImageFile::hasExifGPS).toList();
         if (targets.isEmpty()) {
-            lblStatus.setText(selection.isEmpty() ? "Every photo with a location already has a place name"
-                    : "None of the selected photos has a location");
+            lblStatus.setText(selection.isEmpty() ? tr("Every photo with a location already has a place name")
+                    : tr("None of the selected photos has a location"));
             return;
         }
         int online = placesToLookUp(targets);
-        if (online > 30 && !confirm("About " + online + " places have to be looked up online. OpenStreetMap allows one"
-                + " a second, so this takes about " + PhotoTime.describe(java.time.Duration.ofSeconds(online))
-                + ".\nPlaces looked up once are remembered, and Cancel stops it at any time.\n\nContinue?",
-                "Look up place names")) {
+        if (online > 30 && !confirm(tr("About {0} places have to be looked up online. OpenStreetMap allows one a second, so this takes about {1}.\nPlaces looked up once are remembered, and Cancel stops it at any time.\n\nContinue?",
+                online, PhotoTime.describe(java.time.Duration.ofSeconds(online))), tr("Look up place names"))) {
             return;
         }
-        String what = targets.size() == 1 ? targets.get(0).getFile().getName() : targets.size() + " photos";
-        runBatch("Look up place names of " + what, targets, image -> {
+        String what = targets.size() == 1 ? targets.get(0).getFile().getName() : photos(targets.size());
+        runBatch(tr("Look up place names of {0}", what), targets, image -> {
             Place place;
             try {
                 place = placeNames.lookup(image.getGp());
@@ -1639,8 +1618,8 @@ public class ExifTweaker {
         if (null == shift || targets.isEmpty()) {
             return;
         }
-        String what = targets.size() == 1 ? targets.get(0).getFile().getName() : targets.size() + " photos";
-        runBatch("Shift date/time of " + what + " by " + PhotoTime.formatOffset(shift), targets,
+        String what = targets.size() == 1 ? targets.get(0).getFile().getName() : photos(targets.size());
+        runBatch(tr("Shift date/time of {0} by {1}", what, PhotoTime.formatOffset(shift)), targets,
                 image -> image.apply(new MetadataChanges().shiftTime(shift)));
     }
 
@@ -1654,17 +1633,17 @@ public class ExifTweaker {
         List<ImageFile> targets = requested.stream().filter(ImageFile::isWritable).toList();
         int readOnly = requested.size() - targets.size();
         if (targets.isEmpty()) {
-            showError("The selected files are read-only: their file type needs ExifTool (see the banner at the top).");
+            showError(tr("The selected files are read-only: their file type needs ExifTool (see the banner at the top)."));
             return;
         }
         boolean undoable = writer.canUndo(targets);
         if (!undoable) {
             String backups = settings.isBackupsEnabled()
-                    ? "Backups (.bak) of the originals are still kept."
-                    : "Backups are turned off in Settings, so the originals won't be kept!";
-            if (!confirm("These " + targets.size() + " photos are too large to be undone (undo keeps up to "
-                    + EditHistory.DEFAULT_MAX_BYTES / (1024 * 1024 * 1024) + " GB of copies).\n"
-                    + backups + "\n\nContinue without undo?", description)) {
+                    ? tr("Backups (.bak) of the originals are still kept.")
+                    : tr("Backups are turned off in Settings, so the originals won't be kept!");
+            if (!confirm(tr("These {0} photos are too large to be undone (undo keeps up to {1} GB of copies).", targets.size(),
+                    EditHistory.DEFAULT_MAX_BYTES / (1024 * 1024 * 1024)) + "\n" + backups + "\n\n"
+                    + tr("Continue without undo?"), description)) {
                 return;
             }
         }
@@ -1703,19 +1682,18 @@ public class ExifTweaker {
                     PhotoWriter.Result result = get();
                     reportFailures(result);
                     if (readOnly > 0) {
-                        lblStatus.setText(readOnly + (readOnly == 1 ? " file was" : " files were")
-                                + " skipped: needs ExifTool");
+                        lblStatus.setText(readOnly == 1 ? tr("1 file was skipped: needs ExifTool")
+                                : tr("{0} files were skipped: needs ExifTool", readOnly));
                     }
                     if (placesMissed.get() > 0) {
-                        lblStatus.setText("Saved without the place name (offline?): Edit → Look up place names "
-                                + "tries again");
+                        lblStatus.setText(tr("Saved without the place name (offline?): Edit → Look up place names tries again"));
                     }
                     if (result.skipped() > 0) {
-                        lblStatus.setText("Cancelled after " + (targets.size() - result.skipped()) + " of "
-                                + targets.size() + " photos");
+                        lblStatus.setText(tr("Cancelled after {0} of {1} photos", targets.size() - result.skipped(),
+                                targets.size()));
                     }
                 } catch (InterruptedException | ExecutionException e) {
-                    showError(description + " failed:\n" + e.getMessage());
+                    showError(tr("{0} failed:", description) + "\n" + e.getMessage());
                 }
             }
         };
@@ -1727,12 +1705,12 @@ public class ExifTweaker {
             return;
         }
         StringBuilder sb = new StringBuilder();
-        sb.append(result.failures().size()).append(" of ")
-                .append(result.changed().size() + result.failures().size()).append(" photos couldn't be written:\n\n");
+        sb.append(tr("{0} of {1} photos couldn't be written:", result.failures().size(),
+                result.changed().size() + result.failures().size())).append("\n\n");
         int shown = 0;
         for (Map.Entry<ImageFile, String> failure : result.failures().entrySet()) {
             if (++shown > 10) {
-                sb.append("... and ").append(result.failures().size() - 10).append(" more");
+                sb.append(tr("... and {0} more", result.failures().size() - 10));
                 break;
             }
             sb.append(failure.getKey().getFile().getName()).append(": ").append(failure.getValue()).append('\n');
@@ -1746,13 +1724,13 @@ public class ExifTweaker {
             position = selected.getGp();
         }
         if (null == position) {
-            lblStatus.setText("No location to copy");
+            lblStatus.setText(tr("No location to copy"));
             return;
         }
         String text = PositionUtil.getPositionString(position);
         Toolkit.getDefaultToolkit().getSystemClipboard()
                 .setContents(new java.awt.datatransfer.StringSelection(text), null);
-        lblStatus.setText("Copied " + text);
+        lblStatus.setText(tr("Copied {0}", text));
     }
 
     private void pasteLocation() {
@@ -1761,18 +1739,18 @@ public class ExifTweaker {
             text = (String) Toolkit.getDefaultToolkit().getSystemClipboard()
                     .getData(java.awt.datatransfer.DataFlavor.stringFlavor);
         } catch (java.awt.datatransfer.UnsupportedFlavorException | IOException | IllegalStateException e) {
-            lblStatus.setText("The clipboard doesn't contain a location");
+            lblStatus.setText(tr("The clipboard doesn't contain a location"));
             return;
         }
         try {
             GeoPosition position = PositionUtil.parse(text);
             selectPosition(position);
             mapViewer.setAddressLocation(position);
-            lblStatus.setText(selection.isEmpty() ? "Location pasted"
-                    : "Location pasted - Save writes it to " + (selection.size() == 1 ? "the photo"
-                    : "the " + selection.size() + " photos"));
+            lblStatus.setText(selection.isEmpty() ? tr("Location pasted")
+                    : selection.size() == 1 ? tr("Location pasted - Save writes it to the photo")
+                    : tr("Location pasted - Save writes it to the {0} photos", selection.size()));
         } catch (IllegalArgumentException e) {
-            lblStatus.setText("The clipboard doesn't contain a location");
+            lblStatus.setText(tr("The clipboard doesn't contain a location"));
         }
     }
 
@@ -1823,9 +1801,9 @@ public class ExifTweaker {
     private void updateUndo() {
         boolean canUndo = !busy && history.canUndo();
         btnUndo.setEnabled(canUndo);
-        btnUndo.setToolTipText(canUndo ? "Undo: " + history.getUndoDescription() : null);
+        btnUndo.setToolTipText(canUndo ? tr("Undo: {0}", history.getUndoDescription()) : null);
         miUndo.setEnabled(canUndo);
-        miUndo.setText(canUndo ? "Undo " + history.getUndoDescription() : "Undo");
+        miUndo.setText(canUndo ? tr("Undo {0}", history.getUndoDescription()) : tr("Undo"));
     }
 
     /** A photo marker was clicked: select that photo in the list, un-hiding it if the filter hides it. */
@@ -1863,13 +1841,13 @@ public class ExifTweaker {
             }
         }
         if (waypoints.isEmpty()) {
-            showError("None of the " + all.size() + " photos has both a location and a date.");
+            showError(tr("None of the {0} photos has both a location and a date.", all.size()));
             return;
         }
         File folder = new File(tfFolder.getText());
         JFileChooser chooser = new JFileChooser(folder);
-        chooser.setDialogTitle("Export photos as GPX");
-        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("GPX files (*.gpx)", "gpx"));
+        chooser.setDialogTitle(tr("Export photos as GPX"));
+        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(tr("GPX files (*.gpx)"), "gpx"));
         chooser.setSelectedFile(new File(folder, folder.getName() + ".gpx"));
         if (chooser.showSaveDialog(frame) != JFileChooser.APPROVE_OPTION) {
             return;
@@ -1878,31 +1856,29 @@ public class ExifTweaker {
         if (!target.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".gpx")) {
             target = new File(target.getParentFile(), target.getName() + ".gpx");
         }
-        if (target.exists() && !confirm(target.getName() + " already exists. Replace it?", "Export photos as GPX")) {
+        if (target.exists() && !confirm(tr("{0} already exists. Replace it?", target.getName()), tr("Export photos as GPX"))) {
             return;
         }
         try {
             GpxWriter.write(target.toPath(), waypoints, USER_AGENT);
         } catch (IOException e) {
-            showError("Couldn't write " + target.getName() + ":\n" + e.getMessage());
+            showError(tr("Couldn't write {0}:", target.getName()) + "\n" + e.getMessage());
             return;
         }
-        StringBuilder msg = new StringBuilder("Exported " + waypoints.size()
-                + (waypoints.size() == 1 ? " photo" : " photos") + " to " + target.getName() + ".");
+        StringBuilder msg = new StringBuilder(tr("Exported {0} to {1}.", photos(waypoints.size()), target.getName()));
         if (noLocation + noDate > 0) {
-            msg.append("\nSkipped: ");
+            msg.append("\n").append(tr("Skipped:")).append(" ");
             List<String> skipped = new ArrayList<>();
             if (noLocation > 0) {
-                skipped.add(noLocation + " without location");
+                skipped.add(tr("{0} without location", noLocation));
             }
             if (noDate > 0) {
-                skipped.add(noDate + " without date");
+                skipped.add(tr("{0} without date", noDate));
             }
             msg.append(String.join(", ", skipped)).append('.');
         }
-        msg.append("\n\nCamera times were converted to UTC from ").append(zone.getId())
-                .append(" (the camera time zone of the Geotag dialog), unless a photo recorded its own.");
-        JOptionPane.showMessageDialog(frame, msg.toString(), "Export photos as GPX", JOptionPane.INFORMATION_MESSAGE);
+        msg.append("\n\n").append(tr("Camera times were converted to UTC from {0} (the camera time zone of the Geotag dialog), unless a photo recorded its own.", zone.getId()));
+        JOptionPane.showMessageDialog(frame, msg.toString(), tr("Export photos as GPX"), JOptionPane.INFORMATION_MESSAGE);
     }
 
     /** Plays the selected photos (or all opened ones if at most one is selected) in a separate window. */
@@ -1911,22 +1887,21 @@ public class ExifTweaker {
         PlaybackSequence sequence = new PlaybackSequence(photos);
         if (sequence.isEmpty()) {
             showError(sequence.getSkipped() > 0
-                    ? "Nothing to play: these photos are skipped in trips or have no date.\n"
-                    + "Right-click a photo and untick Skip in trips to show it again."
-                    : "None of these photos has a date, so they can't be played back in order.");
+                    ? tr("Nothing to play: these photos are skipped in trips or have no date.\nRight-click a photo and untick Skip in trips to show it again.")
+                    : tr("None of these photos has a date, so they can't be played back in order."));
             return;
         }
         PlaybackWindow window = new PlaybackWindow(frame, sequence, settings.getMapLayer().createInfo(), tileCache,
                 USER_AGENT, settings);
         List<String> leftOut = new ArrayList<>();
         if (sequence.getWithoutDate() > 0) {
-            leftOut.add(sequence.getWithoutDate() + " without a date");
+            leftOut.add(tr("{0} without a date", sequence.getWithoutDate()));
         }
         if (sequence.getSkipped() > 0) {
-            leftOut.add(sequence.getSkipped() + " skipped");
+            leftOut.add(tr("{0} skipped", sequence.getSkipped()));
         }
         if (!leftOut.isEmpty()) {
-            lblStatus.setText("Left out: " + String.join(", ", leftOut));
+            lblStatus.setText(tr("Left out: {0}", String.join(", ", leftOut)));
         }
         window.setVisible(true);
     }
@@ -1935,12 +1910,11 @@ public class ExifTweaker {
     private void openTravel() {
         List<ImageFile> photos = selection.size() > 1 ? selection : listModel.getAll();
         if (photos.stream().noneMatch(p -> null != p.getTaken())) {
-            showError("None of these photos has a date, so the trip can't be played back.");
+            showError(tr("None of these photos has a date, so the trip can't be played back."));
             return;
         }
         if (photos.stream().noneMatch(p -> null != p.getTaken() && TripMark.SKIP != p.getTripMark())) {
-            showError("All of these photos are skipped in trips.\n"
-                    + "Right-click a photo and untick Skip in trips to show it again.");
+            showError(tr("All of these photos are skipped in trips.\nRight-click a photo and untick Skip in trips to show it again."));
             return;
         }
         new TravelWindow(frame, photos, settings, lastTracks, settings.getMapLayer().createInfo(),
@@ -1988,7 +1962,7 @@ public class ExifTweaker {
             @Override
             public void apply(Map<ImageFile, TrackMatcher.Match> matches, boolean writeAltitude) {
                 List<ImageFile> targets = List.copyOf(matches.keySet());
-                runBatch("Geotag " + targets.size() + (targets.size() == 1 ? " photo" : " photos") + " from GPX",
+                runBatch(tr("Geotag {0} from a track", photos(targets.size())),
                         targets, image -> {
                             TrackMatcher.Match match = matches.get(image);
                             MetadataChanges changes = new MetadataChanges().position(match.position())
@@ -2009,7 +1983,7 @@ public class ExifTweaker {
             public List<ImageFile> readFolder(File folder) throws IOException {
                 File[] files = folder.listFiles(f -> f.isFile() && backend.canRead(f.toPath()));
                 if (null == files) {
-                    throw new IOException("Can't read the folder");
+                    throw new IOException(tr("Can't read the folder"));
                 }
                 List<ImageFile> photos = new ArrayList<>();
                 for (File f : files) {
@@ -2028,7 +2002,7 @@ public class ExifTweaker {
             return;
         }
         tfSearch.setEnabled(false);
-        lblStatus.setText("Searching...");
+        lblStatus.setText(tr("Searching..."));
         new SwingWorker<List<PlaceSearch.Place>, Void>() {
             @Override
             protected List<PlaceSearch.Place> doInBackground() throws Exception {
@@ -2044,12 +2018,11 @@ public class ExifTweaker {
                     places = get();
                 } catch (InterruptedException | ExecutionException e) {
                     Throwable cause = null != e.getCause() ? e.getCause() : e;
-                    showError("Couldn't search for places (nominatim.openstreetmap.org).\n"
-                            + "Check your internet connection.\n\nDetails: " + cause.getMessage());
+                    showError(tr("Couldn't search for places (nominatim.openstreetmap.org).\nCheck your internet connection.\n\nDetails: {0}", cause.getMessage()));
                     return;
                 }
                 if (places.isEmpty()) {
-                    lblStatus.setText("No place found for \"" + query.trim() + "\"");
+                    lblStatus.setText(tr("No place found for \"{0}\"", query.trim()));
                 } else if (places.size() == 1) {
                     showPlace(places.get(0));
                 } else {
@@ -2075,7 +2048,7 @@ public class ExifTweaker {
         } else {
             mapViewer.setAddressLocation(place.position());
         }
-        lblStatus.setText(place.name().split(",")[0] + " - right-click to pick the exact spot");
+        lblStatus.setText(tr("{0} - right-click to pick the exact spot", place.name().split(",")[0]));
     }
 
     private void goToCoordinate() {
@@ -2121,9 +2094,12 @@ public class ExifTweaker {
         System.setProperty("apple.awt.application.appearance", "system");
         System.setProperty("apple.laf.useScreenMenuBar", "true");
         System.setProperty("apple.awt.application.name", APP_NAME);
-        Theme theme = new Settings(Preferences.userNodeForPackage(ExifTweaker.class)).getTheme();
+        Settings startSettings = new Settings(Preferences.userNodeForPackage(ExifTweaker.class));
+        Theme theme = startSettings.getTheme();
+        me.rothens.gpsexif.i18n.I18n.use(startSettings.getLanguage());
         SwingUtilities.invokeLater(() -> {
             theme.install();
+            me.rothens.gpsexif.i18n.I18n.installSwingTexts();
             JFrame frame = new JFrame(APP_NAME);
             frame.setIconImages(appIcons());
             ExifTweaker app = new ExifTweaker(frame);
@@ -2221,10 +2197,10 @@ public class ExifTweaker {
                         pnThumbnail.setImage(thumbnail);
                     } else {
                         pnThumbnail.setMessage(backend.needsExifTool(image.getPath())
-                                ? "No preview - needs ExifTool" : "No preview for this file type");
+                                ? tr("No preview - needs ExifTool") : tr("No preview for this file type"));
                     }
                 } catch (InterruptedException | ExecutionException e) {
-                    pnThumbnail.setMessage("No preview");
+                    pnThumbnail.setMessage(tr("No preview"));
                 }
             }
         };
@@ -2237,8 +2213,8 @@ public class ExifTweaker {
             reselect(photos);
         }
         selectPosition(position);
-        lblStatus.setText((photos.size() == 1 ? "1 photo" : photos.size() + " photos") + " placed - Save to keep");
-        lblStatus.setToolTipText("The location is written to the photos when you press Save");
+        lblStatus.setText(tr("{0} placed - Save to keep", photos(photos.size())));
+        lblStatus.setToolTipText(tr("The location is written to the photos when you press Save"));
     }
 
     private void selectPosition(GeoPosition position) {

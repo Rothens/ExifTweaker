@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.ui;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.model.ImageFile;
 import me.rothens.gpsexif.share.ShareExport;
 import me.rothens.gpsexif.util.Settings;
@@ -14,14 +15,14 @@ import java.util.List;
 public class ShareDialog extends JDialog {
 
     private static final int[] SIZES = {0, 3840, 2048, 1600, 1024};
-    private static final String[] SIZE_LABELS = {"Original size", "3840 px (4K)", "2048 px", "1600 px", "1024 px"};
+    private static final String[] SIZE_LABELS = {tr("Original size"), "3840 px (4K)", "2048 px", "1600 px", "1024 px"};
 
     private final List<ImageFile> photos;
     private final Settings settings;
     private final JTextField tfFolder = new JTextField(30);
-    private final JRadioButton rbAll = new JRadioButton("All metadata");
-    private final JRadioButton rbNoLocation = new JRadioButton("Without location");
-    private final JRadioButton rbNone = new JRadioButton("Without any metadata");
+    private final JRadioButton rbAll = new JRadioButton(tr("All metadata"));
+    private final JRadioButton rbNoLocation = new JRadioButton(tr("Without location"));
+    private final JRadioButton rbNone = new JRadioButton(tr("Without any metadata"));
     private final JComboBox<String> cbSize = new JComboBox<>(SIZE_LABELS);
     private final JSlider slQuality = new JSlider(50, 100, 85);
     private final JLabel lblQuality = new JLabel();
@@ -29,7 +30,7 @@ public class ShareDialog extends JDialog {
     private boolean accepted;
 
     public ShareDialog(Frame owner, List<ImageFile> photos, Settings settings) {
-        super(owner, "Export " + photos.size() + (photos.size() == 1 ? " copy" : " copies") + " for sharing", true);
+        super(owner, photos.size() == 1 ? tr("Export 1 copy for sharing") : tr("Export {0} copies for sharing", photos.size()), true);
         this.photos = photos;
         this.settings = settings;
 
@@ -65,7 +66,7 @@ public class ShareDialog extends JDialog {
         c.anchor = GridBagConstraints.WEST;
         c.gridx = 0;
         c.gridy = 0;
-        form.add(new JLabel("Save to:"), c);
+        form.add(new JLabel(tr("Save to:")), c);
         c.gridx = 1;
         c.weightx = 1;
         c.fill = GridBagConstraints.HORIZONTAL;
@@ -79,27 +80,26 @@ public class ShareDialog extends JDialog {
         c.gridy = 1;
         c.anchor = GridBagConstraints.NORTHWEST;
         c.insets = new Insets(10, 4, 4, 4);
-        form.add(new JLabel("Keep:"), c);
+        form.add(new JLabel(tr("Keep:")), c);
         c.gridx = 1;
         c.gridwidth = 2;
         JPanel privacy = new JPanel(new GridLayout(0, 1, 0, 2));
-        privacy.add(option(rbNoLocation, "No GPS position and place name; the date, camera and the rest stay."));
-        privacy.add(option(rbNone, "Only the picture: no date, camera, location or anything else. It still shows "
-                + "the right way up."));
-        privacy.add(option(rbAll, "An exact copy, location included."));
+        privacy.add(option(rbNoLocation, tr("No GPS position and place name; the date, camera and the rest stay.")));
+        privacy.add(option(rbNone, tr("Only the picture: no date, camera, location or anything else. It still shows the right way up.")));
+        privacy.add(option(rbAll, tr("An exact copy, location included.")));
         form.add(privacy, c);
 
         c.gridx = 0;
         c.gridy = 2;
         c.gridwidth = 1;
         c.anchor = GridBagConstraints.WEST;
-        form.add(new JLabel("Size:"), c);
+        form.add(new JLabel(tr("Size:")), c);
         c.gridx = 1;
         form.add(cbSize, c);
         c.gridx = 0;
         c.gridy = 3;
         c.insets = new Insets(4, 4, 4, 4);
-        form.add(new JLabel("JPEG quality:"), c);
+        form.add(new JLabel(tr("JPEG quality:")), c);
         c.gridx = 1;
         JPanel quality = new JPanel(new BorderLayout(8, 0));
         quality.add(slQuality, BorderLayout.CENTER);
@@ -108,8 +108,7 @@ public class ShareDialog extends JDialog {
         c.gridx = 0;
         c.gridy = 4;
         c.gridwidth = 3;
-        JLabel note = new JLabel("<html>The originals aren't changed. Smaller copies are saved as JPEG, turned "
-                + "upright; so are RAW files.</html>");
+        JLabel note = new JLabel(tr("<html>The originals aren't changed. Smaller copies are saved as JPEG, turned upright; so are RAW files.</html>"));
         note.putClientProperty("FlatLaf.styleClass", "small");
         note.setEnabled(false);
         form.add(note, c);
@@ -117,9 +116,9 @@ public class ShareDialog extends JDialog {
         lblError.setForeground(UIManager.getColor("Component.error.focusedBorderColor"));
         form.add(lblError, c);
 
-        JButton ok = new JButton("Export");
+        JButton ok = new JButton(tr("Export"));
         ok.addActionListener(e -> accept());
-        JButton cancel = new JButton("Cancel");
+        JButton cancel = new JButton(tr("Cancel"));
         cancel.addActionListener(e -> dispose());
         getRootPane().setDefaultButton(ok);
         getRootPane().registerKeyboardAction(e -> dispose(), KeyStroke.getKeyStroke("ESCAPE"),
@@ -155,15 +154,14 @@ public class ShareDialog extends JDialog {
         boolean anyEncoded = cbSize.getSelectedIndex() > 0
                 || photos.stream().anyMatch(p -> me.rothens.gpsexif.metadata.ExifToolBackend.isRaw(p.getPath()));
         slQuality.setEnabled(anyEncoded);
-        slQuality.setToolTipText(anyEncoded ? null : "Only used for smaller copies and RAW files; "
-                + "the others keep the original picture");
+        slQuality.setToolTipText(anyEncoded ? null : tr("Only used for smaller copies and RAW files; the others keep the original picture"));
     }
 
     private void browse() {
         JFileChooser chooser = new JFileChooser(tfFolder.getText());
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        chooser.setDialogTitle("Save the copies to");
-        if (chooser.showDialog(this, "Choose") == JFileChooser.APPROVE_OPTION) {
+        chooser.setDialogTitle(tr("Save the copies to"));
+        if (chooser.showDialog(this, tr("Choose")) == JFileChooser.APPROVE_OPTION) {
             tfFolder.setText(chooser.getSelectedFile().getPath());
         }
     }
@@ -171,16 +169,16 @@ public class ShareDialog extends JDialog {
     private void accept() {
         String text = tfFolder.getText().strip();
         if (text.isEmpty()) {
-            lblError.setText("Choose a folder for the copies.");
+            lblError.setText(tr("Choose a folder for the copies."));
             return;
         }
         File folder = new File(text).getAbsoluteFile();
         if (photos.stream().anyMatch(p -> p.getFile().getAbsoluteFile().getParentFile().equals(folder))) {
-            lblError.setText("Choose another folder than the photos' own, so copies and originals don't mix.");
+            lblError.setText(tr("Choose another folder than the photos' own, so copies and originals don't mix."));
             return;
         }
         if (folder.exists() && !folder.isDirectory()) {
-            lblError.setText(folder.getName() + " is a file, not a folder.");
+            lblError.setText(tr("{0} is a file, not a folder.", folder.getName()));
             return;
         }
         settings.setShareDirectory(folder.getPath());

@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.playback;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.map.AttributionPainter;
 import me.rothens.gpsexif.model.ImageFile;
 import org.jxmapviewer.JXMapViewer;
@@ -31,7 +32,8 @@ import java.util.function.Function;
  */
 final class TravelView extends JLayeredPane {
 
-    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH);
+    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern(tr("EEE, d MMM yyyy"),
+            me.rothens.gpsexif.i18n.I18n.locale());
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT);
 
     private final JXMapViewer fullMap = new JXMapViewer();
@@ -232,7 +234,7 @@ final class TravelView extends JLayeredPane {
 
         InsetGrip(java.util.function.DoubleConsumer onResized) {
             setCursor(Cursor.getPredefinedCursor(Cursor.NW_RESIZE_CURSOR));
-            setToolTipText("Drag to resize the map");
+            setToolTipText(tr("Drag to resize the map"));
             java.awt.event.MouseAdapter drag = new java.awt.event.MouseAdapter() {
                 @Override
                 public void mouseDragged(java.awt.event.MouseEvent e) {
@@ -342,7 +344,7 @@ final class TravelView extends JLayeredPane {
                 g.fillRect(0, 0, getWidth(), getHeight());
                 if (null != timeline && timeline.isEmpty()) {
                     g.setColor(Color.LIGHT_GRAY);
-                    g.drawString("None of these photos has a date.", 20, 30);
+                    g.drawString(tr("None of these photos has a date."), 20, 30);
                 }
                 return;
             }

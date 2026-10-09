@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.ui;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.tools.ToolInstaller;
 
 import javax.swing.*;
@@ -24,7 +25,7 @@ public class ToolInstallDialog extends JDialog {
     private final JCheckBox chkFfmpeg = new JCheckBox();
     private final JProgressBar progress = new JProgressBar();
     private final JLabel lblStatus = new JLabel(" ");
-    private final JButton btnInstall = new JButton("Download and install");
+    private final JButton btnInstall = new JButton(tr("Download and install"));
     private final JButton btnClose;
     private final AtomicBoolean cancelled = new AtomicBoolean();
     private SwingWorker<Result, Object[]> worker;
@@ -35,46 +36,47 @@ public class ToolInstallDialog extends JDialog {
      * @param exifToolOffer what the ExifTool row says (e.g. "not found", "13.11 is available"), or {@code null} to
      *                      leave ExifTool out
      * @param ffmpegOffer   the same for FFmpeg
-     * @param firstStart    whether this is the offer on the first start ("Not now" instead of "Cancel")
+     * @param firstStart    whether this is the offer on the first start ("Not now" instead of tr("Cancel"))
      * @param stopExifTool  stops the ExifTool in use before a downloaded one is replaced
      */
     public ToolInstallDialog(Window owner, ToolInstaller installer, String exifToolOffer, String ffmpegOffer,
                              boolean firstStart, Runnable stopExifTool) {
-        super(owner, firstStart ? "Set up ExifTweaker" : "Download tools", ModalityType.APPLICATION_MODAL);
+        super(owner, firstStart ? tr("Set up ExifTweaker") : tr("Download tools"), ModalityType.APPLICATION_MODAL);
         this.installer = installer;
         this.stopExifTool = stopExifTool;
-        btnClose = new JButton(firstStart ? "Not now" : "Cancel");
+        btnClose = new JButton(firstStart ? tr("Not now") : tr("Cancel"));
 
         JPanel rows = new JPanel();
         rows.setLayout(new BoxLayout(rows, BoxLayout.Y_AXIS));
         JLabel intro = new JLabel("<html><body style='width:440px'>" + (firstStart
-                ? "JPEG photos work right away. Two free programs make ExifTweaker do more; they aren't part of it, "
-                + "but it can download them for you:" : "ExifTweaker can download these for you:") + "</body></html>");
+                ? tr("JPEG photos work right away. Two free programs make ExifTweaker do more; they aren't part of it, but it can download them for you:")
+                : tr("ExifTweaker can download these for you:")) + "</body></html>");
         rows.add(left(intro));
         rows.add(Box.createVerticalStrut(8));
         if (null != exifToolOffer) {
             chkExifTool.setSelected(true);
-            rows.add(left(option(chkExifTool, "<b>ExifTool</b> by Phil Harvey (about 10 MB) - " + exifToolOffer,
-                    "Reads and writes HEIC (iPhone), PNG, TIFF, WebP and RAW files.")));
+            rows.add(left(option(chkExifTool, tr("<b>ExifTool</b> by Phil Harvey (about 10 MB) - {0}", exifToolOffer),
+                    tr("Reads and writes HEIC (iPhone), PNG, TIFF, WebP and RAW files."))));
         }
         if (null != ffmpegOffer) {
             if (installer.canInstallFfmpeg()) {
                 chkFfmpeg.setSelected(true);
-                rows.add(left(option(chkFfmpeg, "<b>FFmpeg</b> (about 90 MB) - " + ffmpegOffer,
-                        "Makes the video export many times faster, with smaller files.")));
+                rows.add(left(option(chkFfmpeg, tr("<b>FFmpeg</b> (about 90 MB) - {0}", ffmpegOffer),
+                        tr("Makes the video export many times faster, with smaller files."))));
             } else {
-                JLabel hint = new JLabel("<html><body style='width:440px'><b>FFmpeg</b> makes the video export many "
-                        + "times faster. " + (ToolDialog.isMac() ? "Install it with <i>brew install ffmpeg</i>."
-                        : "Install your distribution's <i>ffmpeg</i> package.") + " It's found automatically.</body></html>");
+                JLabel hint = new JLabel("<html><body style='width:440px'>" + (ToolDialog.isMac()
+                        ? tr("<b>FFmpeg</b> makes the video export many times faster. Install it with <i>brew install ffmpeg</i>. It's found automatically.")
+                        : tr("<b>FFmpeg</b> makes the video export many times faster. Install your distribution's <i>ffmpeg</i> package. It's found automatically."))
+                        + "</body></html>");
                 rows.add(left(hint));
             }
         }
         rows.add(Box.createVerticalStrut(8));
-        JLabel source = new JLabel("<html><body style='width:440px'>Downloaded from exiftool.org"
-                + (installer.canInstallFfmpeg() && null != ffmpegOffer ? " and gyan.dev (the FFmpeg builds ffmpeg.org "
-                + "links to)" : "") + ", checked against their published checksums, into "
-                + escape(installer.getToolsDir().toString()) + ". You can change or remove them any time in "
-                + "Settings.</body></html>");
+        String folder = escape(installer.getToolsDir().toString());
+        JLabel source = new JLabel("<html><body style='width:440px'>" + (installer.canInstallFfmpeg() && null != ffmpegOffer
+                ? tr("Downloaded from exiftool.org and gyan.dev (the FFmpeg builds ffmpeg.org links to), checked against their published checksums, into {0}. You can change or remove them any time in Settings.", folder)
+                : tr("Downloaded from exiftool.org, checked against its published checksum, into {0}. You can change or remove it any time in Settings.", folder))
+                + "</body></html>");
         source.putClientProperty("FlatLaf.styleClass", "small");
         source.setEnabled(false);
         rows.add(left(source));
@@ -153,7 +155,7 @@ public class ToolInstallDialog extends JDialog {
     private void close() {
         if (null != worker && !worker.isDone()) {
             cancelled.set(true);
-            lblStatus.setText("Cancelling...");
+            lblStatus.setText(tr("Cancelling..."));
             return;
         }
         dispose();
@@ -168,7 +170,7 @@ public class ToolInstallDialog extends JDialog {
         btnInstall.setEnabled(false);
         chkExifTool.setEnabled(false);
         chkFfmpeg.setEnabled(false);
-        btnClose.setText("Cancel");
+        btnClose.setText(tr("Cancel"));
         cancelled.set(false);
         lblStatus.setText(" ");
         ToolInstaller.Progress listener = new ToolInstaller.Progress() {
@@ -209,7 +211,7 @@ public class ToolInstallDialog extends JDialog {
             protected void done() {
                 chkExifTool.setEnabled(true);
                 chkFfmpeg.setEnabled(true);
-                btnClose.setText("Close");
+                btnClose.setText(tr("Close"));
                 try {
                     get();
                     dispose();
@@ -218,9 +220,9 @@ public class ToolInstallDialog extends JDialog {
                     progress.setValue(0);
                     progress.setString("");
                     lblStatus.setForeground(UIManager.getColor("Component.error.focusedBorderColor"));
-                    lblStatus.setText("<html><body style='width:440px'>" + (cancelled.get() ? "Cancelled."
-                            : escape(String.valueOf(cause.getMessage()))) + (null != exifTool ? " (ExifTool was "
-                            + "installed.)" : "") + "</body></html>");
+                    lblStatus.setText("<html><body style='width:440px'>" + (cancelled.get() ? tr("Cancelled.")
+                            : escape(String.valueOf(cause.getMessage()))) + (null != exifTool ? " "
+                            + tr("(ExifTool was installed.)") : "") + "</body></html>");
                     btnInstall.setEnabled(true);
                     worker = null;
                     pack();
@@ -240,7 +242,7 @@ public class ToolInstallDialog extends JDialog {
             progress.setIndeterminate(false);
             progress.setMaximum(1000);
             progress.setValue((int) (1000 * done / total));
-            progress.setString(what + ": " + done / (1024 * 1024) + " of " + Math.max(1, total / (1024 * 1024)) + " MB");
+            progress.setString(tr("{0}: {1} of {2} MB", what, done / (1024 * 1024), Math.max(1, total / (1024 * 1024))));
         } else {
             progress.setIndeterminate(true);
             progress.setString(what + ": " + done / (1024 * 1024) + " MB");
