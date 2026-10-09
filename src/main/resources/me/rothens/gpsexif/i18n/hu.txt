@@ -7,7 +7,7 @@ Open
 Megnyitás
 
 Only without location
-Csak a hely nélküliek
+Csak a helyadat nélküliek
 
 Save
 Mentés
@@ -61,13 +61,13 @@ Show photos on map
 Fényképek a térképen
 
 Latitude;Longitude in decimal degrees, or e.g. 47°29'52"N 19°2'24"E
-Szélesség;Hosszúság tizedes fokban, vagy pl. 47°29'52"N 19°2'24"E
+Szélesség; hosszúság tizedes fokban, vagy például 47°29'52"N 19°2'24"E
 
 Metres above sea level (negative below); written with Save. Empty removes it.
-Tengerszint feletti magasság méterben (alatta negatív); a Mentés írja be. Üresen törli.
+Tengerszint feletti magasság méterben (tengerszint alatt negatív). A Mentés gombbal rögzítheted; a mezőt üresen hagyva törölheted.
 
 Degrees clockwise from north the camera pointed; written with Save. You can also drag the handle on the map. Empty removes it.
-Hány fokra északtól (az óramutató járása szerint) nézett a fényképezőgép; a Mentés írja be. A térképen a fogantyú húzásával is megadható. Üresen törli.
+A fényképezőgép tájolása fokban, északtól az óramutató járásával megegyező irányban mérve. A térképen lévő fogantyúval is beállíthatod. A Mentés gombbal rögzítheted; a mezőt üresen hagyva törölheted.
 
 HEIC, PNG, TIFF, WebP and RAW files need ExifTool, which wasn't found. Click here to set it up...
 A HEIC, PNG, TIFF, WebP és RAW fájlokhoz ExifTool kell, de nem található. Kattints ide a beállításához...
@@ -76,13 +76,13 @@ Hide until the next start
 Elrejtés a következő indításig
 
 Don't remind me of this version
-Erre a verzióra ne emlékeztessen
+Erről a verzióról ne értesítsen újra
 
 The latest release is {0}. (This is a development build.)
 A legújabb kiadás: {0}. (Ez egy fejlesztői változat.)
 
 You have the latest version ({0}).
-A legújabb verzió van meg ({0}).
+Már a legújabb verziót használod ({0}).
 
 Check for updates
 Frissítések keresése
@@ -91,10 +91,10 @@ Couldn't check for updates:
 Nem sikerült frissítést keresni:
 
 ExifTweaker {0} is out (you have {1}). Click here to see what's new and download it.
-Megjelent az ExifTweaker {0} (neked {1} van). Kattints ide az újdonságokért és a letöltéshez.
+Megjelent az ExifTweaker {0}-s verziója (jelenleg a(z) {1}-es verziót használod). Kattints ide az újdonságok megtekintéséhez és a letöltéshez.
 
 ExifTool {0} is out (you have {1}). Click here to update it.
-Megjelent az ExifTool {0} (neked {1} van). Kattints ide a frissítéshez.
+Megjelent az ExifTool {0}-s verziója (jelenleg a(z) {1}-es verziót használod). Kattints ide a frissítéshez.
 
 Couldn't open the browser. The new version is at:
 Nem sikerült megnyitni a böngészőt. Az új verzió itt érhető el:
@@ -106,7 +106,7 @@ the latest version (you have {0})
 a legújabb verzió (neked {0} van)
 
 ExifTool {0} is installed
-Az ExifTool {0} telepítve
+Telepített ExifTool-verzió: {0}
 
 Not found - HEIC, PNG, TIFF, WebP and RAW files are read-only
 Nem található – a HEIC, PNG, TIFF, WebP és RAW fájlok csak olvashatók
@@ -118,10 +118,10 @@ Double-click to edit
 Dupla kattintás a szerkesztéshez
 
 Remove {0} from {1} photos?
-Törlöd ezt: {0}, {1} fényképről?
+Eltávolítod a(z) {0} mezőt {1} fényképről?
 
 Set {0} to "{1}" for {2} photos?
-Beállítod ezt: {0} = „{1}”, {2} fényképnél?
+Beállítod a(z) {0} mező értékét „{1}”-re {2} fényképnél?
 
 Remove {0} from {1}
 {0} törlése: {1}
@@ -133,10 +133,10 @@ Rename...
 Átnevezés...
 
 Prefer in trips
-Előnyben az utazásokban
+Előnyben részesítés az utazásoknál
 
 Travel mode shows these first when it can't show every photo of a stretch
-Az Utazás mód ezeket mutatja, ha egy szakasz összes képére nem jut idő
+Ha egy útszakasz összes fényképe nem fér bele a lejátszásba, az Utazás mód ezeket részesíti előnyben.
 
 Skip in trips
 Kihagyás az utazásokból
@@ -145,13 +145,13 @@ Leave these out of Play photos, Travel mode and the videos
 Ezek kimaradnak a lejátszásból, az Utazás módból és a videókból
 
 {0} preferred in trips
-{0} előnyben az utazásokban
+{0} előnyben részesítve az utazásoknál
 
 {0} skipped in trips
 {0} kihagyva az utazásokból
 
 {0} shown as usual in trips
-{0} a szokásos módon az utazásokban
+{0} ismét a szokásos módon jelenik meg az utazásoknál
 
 Couldn't remember this for the next time:
 Nem sikerült ezt megjegyezni a következő alkalomra:
@@ -166,7 +166,7 @@ Recent folders
 Legutóbbi mappák
 
 Copies of the selected photos (or all), without location or metadata, smaller
-A kijelölt (vagy az összes) fénykép másolata, hely vagy metaadatok nélkül, kisebb méretben
+A kijelölt (vagy az összes) fénykép kisebb méretű másolatainak exportálása, helyadatok vagy metaadatok nélkül
 
 Exit
 Kilépés
@@ -229,13 +229,13 @@ Welcome to {0}!
 Üdv az {0} programban!
 
 This short tour shows how to put your photos on the map. It takes about two minutes, and you can leave it any time with <b>Skip tour</b> or Esc.<br><br>Try it on a few <b>sample photos</b> (a weekend at Lake Balaton) - your own photos stay untouched - or follow along with your own.
-Ez a rövid bemutató megmutatja, hogyan teheted fel a fényképeidet a térképre. Körülbelül két perc, és bármikor kiléphetsz belőle a <b>Bemutató kihagyása</b> gombbal vagy Esc-pel.<br><br>Kipróbálhatod néhány <b>mintaképen</b> (egy hétvége a Balatonnál) – a saját fényképeidhez nem nyúl –, vagy követheted a sajátjaiddal.
+Ebben a nagyjából kétperces bemutatóban megtudhatod, hogyan helyezheted el a fényképeidet a térképen. Bármikor kiléphetsz a <b>Bemutató kihagyása</b> gombbal vagy az Esc billentyűvel.<br><br>Kipróbálhatod néhány <b>mintaképen</b> (egy balatoni hétvége képein), így a saját fényképeid érintetlenek maradnak. Ha szeretnéd, a saját képeiddel is végigkövetheted a lépéseket.
 
 Use sample photos
 Mintaképek használata
 
 Use my own photos
-A saját képeimmel
+Saját fényképek használata
 
 Skip tour
 Bemutató kihagyása
@@ -250,7 +250,7 @@ Your photos
 A fényképeid
 
 These are the photos in the folder. <font color='#2a9d3a'><b>Green</b></font> ones already have a location, <font color='#d33'><b>red</b></font> ones don't yet.<br><br>Tick <b>Only without location</b> above to see just the red ones.
-Ezek a mappa fényképei. A <font color='#2a9d3a'><b>zöldeknek</b></font> már van helyük, a <font color='#d33'><b>pirosaknak</b></font> még nincs.<br><br>Pipáld be fent a <b>Csak a hely nélküliek</b> négyzetet, hogy csak a pirosakat lásd.
+Ezek a mappában található fényképek. A <font color='#2a9d3a'><b>zölddel</b></font> jelöltek már rendelkeznek helyadattal, a <font color='#d33'><b>pirossal</b></font> jelöltek még nem.<br><br>Ha csak az utóbbiakat szeretnéd látni, jelöld be fent a <b>Csak a helyadat nélküliek</b> lehetőséget.
 
 Select a photo
 Válassz egy fényképet
@@ -262,13 +262,13 @@ The photo and its details
 A fénykép és az adatai
 
 Here's the photo and its metadata. Double-click a value to change it: the date taken, camera, artist, description, altitude and more - for one photo or for all selected ones.
-Itt a fénykép és a metaadatai. Egy értéket dupla kattintással módosíthatsz: a készítés idejét, a fényképezőgépet, a szerzőt, a leírást, a magasságot és még sok mást – egy fényképnél vagy az összes kijelöltnél.
+Itt láthatod a fényképet és a metaadatait. Egy értékre duplán kattintva módosíthatod például a készítés időpontját, a fényképezőgép adatait, a szerzőt, a leírást vagy a tengerszint feletti magasságot. A módosítást egyetlen fényképre vagy az összes kijelöltre is alkalmazhatod.
 
 Find the place
 Keresd meg a helyet
 
 Type a place here and press Enter, e.g. <b>Tihany Abbey</b>. You can also drag the map and zoom with the mouse wheel.
-Írj ide egy helyet, és nyomj Entert, pl. <b>Tihanyi apátság</b>. A térképet húzhatod is, és az egérgörgővel nagyíthatsz.
+Írj be egy helynevet (például <b>Tihanyi apátság</b>), majd nyomd meg az Entert. A térképet egérrel mozgathatod, az egérgörgővel pedig nagyíthatod és kicsinyítheted.
 
 Mark the spot
 Jelöld meg a pontot
@@ -286,13 +286,13 @@ Changed your mind?
 Meggondoltad magad?
 
 The photo is green now. <b>Undo</b> ({0}+Z) puts photos back exactly as they were - a whole batch at once.<br><br>Before a photo is changed for the first time, a copy of the original is also kept next to it as <i>name.bak</i>.
-A fénykép most már zöld. A <b>Visszavonás</b> ({0}+Z) pontosan olyanná teszi a fényképeket, amilyenek voltak – egy egész köteget egyszerre.<br><br>Mielőtt egy fénykép először megváltozik, az eredetijéről egy másolat is marad mellette <i>név.bak</i> néven.
+A fénykép most már zöld jelölést kapott. A <b>Visszavonás</b> ({0}+Z) az eredeti állapotot állítja vissza, akár több fényképnél egyszerre.<br><br>Az első módosítás előtt az eredeti fájlról biztonsági másolat készül ugyanabba a mappába, <i>név.bak</i> néven.
 
 Many photos at once
 Sok fénykép egyszerre
 
 Select several photos with Shift- or {0}-click: the location you set goes to all of them when you save.<br><br>{0}+C and {0}+V on this list copy one photo's location to others.
-Több fényképet Shift- vagy {0}-kattintással jelölhetsz ki: mentéskor a megadott hely mindegyikre rákerül.<br><br>Ebben a listában a {0}+C és a {0}+V egy fénykép helyét másolja át másokra.
+Több fényképet a Shift vagy a {0} billentyűt nyomva tartva, kattintással jelölhetsz ki. Mentéskor mindegyik megkapja a beállított helyadatot.<br><br>A listában a {0}+C és a {0}+V billentyűkombinációval átmásolhatod egy fénykép helyadatát más képekre.
 
 Tag a whole trip from a GPS track
 Egy egész utazás helyei GPS-nyomvonalból
@@ -316,7 +316,7 @@ Settings ({0}+,) has the theme, map layer and backups.
 A Beállításokban ({0}+,) választhatsz témát, térképréteget, és ott vannak a biztonsági másolatok is.
 
 Have fun putting your photos on the map!
-Jó szórakozást a fényképek térképre tételéhez!
+Jó szórakozást a fényképeid térképre helyezéséhez!
 
 Couldn't copy the sample photos:
 Nem sikerült a mintaképeket átmásolni:
@@ -364,10 +364,10 @@ Nothing to save yet: right-click on the map, enter a coordinate or paste a locat
 Még nincs mit menteni: kattints jobb gombbal a térképre, írj be koordinátát vagy illessz be egy helyet, vagy módosítsd a magasságot vagy az irányt.
 
 1 of the {0} selected photos already has a location.\nReplace it?
-A {0} kijelölt fénykép közül egynek már van helye.\nLecseréled?
+A(z) {0} kijelölt fénykép közül egynek már van helyadata.\nFelülírod?
 
 {0} of the {1} selected photos already have a location.\nReplace them?
-A {1} kijelölt fénykép közül {0} darabnak már van helye.\nLecseréled őket?
+A(z) {1} kijelölt fénykép közül {0} már rendelkezik helyadattal.\nFelülírod ezeket?
 
 Replace locations
 Helyek cseréje
@@ -382,7 +382,7 @@ direction
 irány
 
 Remove the location from {0}?
-Törlöd a helyet innen: {0}?
+Eltávolítod a helyadatot innen: {0}?
 
 Remove location
 Hely törlése
@@ -409,7 +409,7 @@ Megszakítva:
 {0} mentve ide:
 
 Cancelled after {0} of {1} photos.
-Megszakítva {1} fényképből {0} után.
+A művelet megszakadt {0} fénykép feldolgozása után (összesen {1}).
 
 {0} couldn't be exported:
 {0} exportálása nem sikerült:
@@ -442,7 +442,7 @@ None of the selected photos has a location
 A kijelölt fényképek egyikének sincs helye
 
 About {0} places have to be looked up online. OpenStreetMap allows one a second, so this takes about {1}.\nPlaces looked up once are remembered, and Cancel stops it at any time.\n\nContinue?
-Kb. {0} helyet kell az interneten megkeresni. Az OpenStreetMap másodpercenként egyet enged, így ez kb. {1}.\nAz egyszer megkeresett helyeket megjegyzi, és a Mégse bármikor leállítja.\n\nFolytatod?
+Körülbelül {0} helyet kell online megkeresni. Az OpenStreetMap másodpercenként egy lekérdezést engedélyez, ezért a művelet várhatóan {1} ideig tart.\nA korábban megtalált helyeket a program megjegyzi. A Mégse gombbal bármikor megszakíthatod a folyamatot.\n\nFolytatod?
 
 Look up place names of {0}
 Helynevek keresése: {0}
@@ -460,28 +460,28 @@ Backups are turned off in Settings, so the originals won't be kept!
 A biztonsági másolatok ki vannak kapcsolva a Beállításokban, így az eredetik nem maradnak meg!
 
 These {0} photos are too large to be undone (undo keeps up to {1} GB of copies).
-Ez a(z) {0} fénykép túl nagy a visszavonáshoz (a visszavonás legfeljebb {1} GB másolatot tart meg).
+Ennél a(z) {0} fényképnél a módosítás nem vonható vissza, mert a visszavonáshoz tárolt másolatok mérete legfeljebb {1} GB lehet.
 
 Continue without undo?
 Folytatod visszavonási lehetőség nélkül?
 
 1 file was skipped: needs ExifTool
-1 fájl kimaradt: ExifTool kell hozzá
+1 fájl kimaradt, mert ExifTool szükséges hozzá
 
 {0} files were skipped: needs ExifTool
-{0} fájl kimaradt: ExifTool kell hozzájuk
+{0} fájl kimaradt, mert ExifTool szükséges hozzájuk
 
 Saved without the place name (offline?): Edit → Look up place names tries again
-Helynév nélkül mentve (nincs internet?): a Szerkesztés → Helynevek keresése újrapróbálja
+Helynév nélkül mentve (lehet, hogy nincs internetkapcsolat). A Szerkesztés → Helynevek keresése menüponttal újrapróbálhatod.
 
 Cancelled after {0} of {1} photos
-Megszakítva {1} fényképből {0} után
+A művelet megszakadt {0} fénykép után (összesen {1})
 
 {0} failed:
 Nem sikerült: {0}
 
 {0} of {1} photos couldn't be written:
-{1} fényképből {0} nem írható:
+A(z) {1} fényképből {0} módosítása nem sikerült:
 
 No location to copy
 Nincs másolható hely
@@ -508,7 +508,7 @@ Undo {0}
 Visszavonás: {0}
 
 None of the {0} photos has both a location and a date.
-A {0} fénykép egyikének sincs helye és dátuma is.
+A(z) {0} fénykép közül egyik sem rendelkezik egyszerre dátummal és helyadattal.
 
 Export photos as GPX
 Fényképek exportálása GPX-be
@@ -535,13 +535,13 @@ Kimaradt:
 {0} dátum nélkül
 
 Camera times were converted to UTC from {0} (the camera time zone of the Geotag dialog), unless a photo recorded its own.
-A fényképezőgép idejét {0} időzónából (a helymeghatározó ablak időzónája) számolta át UTC-re, kivéve ahol a fénykép a sajátját rögzítette.
+A fényképezőgép által rögzített időpontokat a program a helymeghatározási ablakban megadott időzónából ({0}) UTC-re alakította, kivéve, ha a fénykép saját időzónaadatot tartalmazott.
 
 Nothing to play: these photos are skipped in trips or have no date.\nRight-click a photo and untick Skip in trips to show it again.
 Nincs mit lejátszani: ezek a fényképek ki vannak hagyva az utazásokból, vagy nincs dátumuk.\nKattints jobb gombbal egy fényképre, és vedd ki a pipát a Kihagyás az utazásokból elől, hogy újra látszódjon.
 
 None of these photos has a date, so they can't be played back in order.
-Ezeknek a fényképeknek nincs dátumuk, így nem játszhatók le sorrendben.
+Egyik fényképnél sincs rögzítve a készítés dátuma, ezért nem játszhatók le időrendben.
 
 {0} without a date
 {0} dátum nélkül
@@ -553,7 +553,7 @@ Left out: {0}
 Kimaradt: {0}
 
 None of these photos has a date, so the trip can't be played back.
-Ezeknek a fényképeknek nincs dátumuk, így az utazás nem játszható le.
+Egyik fényképnél sincs rögzítve a készítés dátuma, ezért az utazás nem játszható le.
 
 All of these photos are skipped in trips.\nRight-click a photo and untick Skip in trips to show it again.
 Ezek a fényképek mind ki vannak hagyva az utazásokból.\nKattints jobb gombbal egy fényképre, és vedd ki a pipát a Kihagyás az utazásokból elől, hogy újra látszódjon.
@@ -655,7 +655,7 @@ Value
 {0}: túl hosszú (legfeljebb {1} karakter)
 
 The country code has 2 letters, e.g. HU or JP
-Az országkód 2 betű, pl. HU vagy JP
+Az országkód két betűből áll, például HU vagy JP
 
 The date taken can't be removed, only changed
 A készítés ideje nem törölhető, csak módosítható
@@ -667,13 +667,13 @@ Direction
 Irány
 
 "{0}" isn't a date and time. Use e.g. 2026-09-30 14:05:00
-„{0}” nem dátum és idő. Használd pl. így: 2026-09-30 14:05:00
+„{0}” nem érvényes dátum és időpont. Példa a helyes formátumra: 2026-09-30 14:05:00
 
 {0} must be a number: {1}
-{0}: számnak kell lennie: {1}
+A(z) {0} mezőben számot kell megadni: {1}
 
 {0} must be between {1} and {2}
-{0}: {1} és {2} között kell lennie
+A(z) {0} értékének {1} és {2} közé kell esnie
 
 {0} can't be written ({1} files need ExifTool)
 {0} nem írható (a {1} fájlokhoz ExifTool kell)
@@ -691,7 +691,7 @@ Not now
 Most nem
 
 JPEG photos work right away. Two free programs make ExifTweaker do more; they aren't part of it, but it can download them for you:
-A JPEG fényképekkel azonnal működik. Két ingyenes program többre teszi képessé az ExifTweakert; nem részei, de le tudja tölteni őket:
+A JPEG-fényképeket az ExifTweaker azonnal kezeli. Két ingyenes, különálló programmal további funkciókat is használhatsz. Ezeket az ExifTweaker le tudja tölteni neked:
 
 ExifTweaker can download these for you:
 Az ExifTweaker letöltheti neked ezeket:
@@ -706,7 +706,7 @@ Olvassa és írja a HEIC (iPhone), PNG, TIFF, WebP és RAW fájlokat.
 <b>FFmpeg</b> (kb. 90 MB) – {0}
 
 Makes the video export many times faster, with smaller files.
-Sokszor gyorsabb videóexportálás, kisebb fájlokkal.
+Jelentősen felgyorsítja a videók exportálását, és kisebb fájlokat eredményez.
 
 <b>FFmpeg</b> makes the video export many times faster. Install it with <i>brew install ffmpeg</i>. It's found automatically.
 Az <b>FFmpeg</b> sokszor gyorsabbá teszi a videóexportálást. Telepítsd a <i>brew install ffmpeg</i> paranccsal. Magától megtalálja.
@@ -733,7 +733,7 @@ Megszakítva.
 {0}: {1} / {2} MB
 
 Keep a backup of each photo before it's first changed
-Biztonsági másolat minden fényképről az első módosítás előtt
+Biztonsági másolat készítése minden fényképről az első módosítás előtt
 
 Clear map cache
 Térkép-gyorsítótár törlése
@@ -742,16 +742,16 @@ Add the place name when saving a location
 Helynév hozzáadása a hely mentésekor
 
 Tell me when a new version is out (checked once a day)
-Szóljon, ha új verzió jelenik meg (naponta egyszer ellenőrzi)
+Értesítés az új verziókról (napi egy ellenőrzéssel)
 
 Show the guided tour again on the next start
-A bemutató újra a következő indításkor
+A bemutató újbóli megjelenítése a következő indításkor
 
 Settings
 Beállítások
 
 Backups are saved next to the photo as <name>.bak and are never overwritten.
-A biztonsági másolat a fénykép mellé kerül <név>.bak néven, és soha nem íródik felül.
+A biztonsági másolatok a fényképek mellé, <name>.bak néven kerülnek, és a program soha nem írja felül őket.
 
 Theme:
 Téma:
@@ -763,7 +763,7 @@ Térképréteg:
 <html>Beírja a települést, a megyét és az országot (IPTC/XMP), az OpenStreetMap Nominatim alapján.<br>A Szerkesztés → Helynevek keresése a már hellyel rendelkező fényképeknél is megteszi.</html>
 
 Map cache limit (MB):
-Térkép-gyorsítótár korlátja (MB):
+Térkép-gyorsítótár méretkorlátja (MB):
 
 Downloaded map tiles are kept for 30 days; the oldest are removed above the limit.
 A letöltött térképcsempék 30 napig maradnak meg; a korlát felett a legrégebbiek törlődnek.
@@ -772,7 +772,7 @@ Max. photo markers:
 Fényképjelölők legfeljebb:
 
 View > Show photos on map: nearby photos are grouped; more markers than this ask you to zoom in.
-Nézet > Fényképek a térképen: a közeli fényképek csoportosítva; ennél több jelölőnél nagyítani kell.
+Nézet > Fényképek a térképen: a közeli fényképek csoportosítva jelennek meg. Ha túl sok a jelölő, nagyíts rá a térképre.
 
 To take the tour right now: Help → Show tutorial.
 A bemutató most rögtön: Súgó → Bemutató.
@@ -838,7 +838,7 @@ Encoder: FFmpeg {0} ({1})
 Kódoló: FFmpeg {0} ({1})
 
 <html>FFmpeg wasn't found, so the built-in encoder is used:<br>slower (this video takes {0}) and larger files.</html>
-<html>Az FFmpeg nem található, ezért a beépített kódoló készíti:<br>lassabb (ez a videó {0}) és nagyobb fájlok.</html>
+<html>Az FFmpeg nem található, ezért a program a beépített kódolót használja.<br>Az exportálás lassabb (ennél a videónál {0}), és a fájlméret is nagyobb lesz.</html>
 
 The video can't be made:
 A videó nem készíthető el:
@@ -892,7 +892,7 @@ The time zone the camera's clock was set to. Photos that record their own UTC of
 Az időzóna, amelyre a fényképezőgép órája be volt állítva. A saját UTC-eltolásukat rögzítő fényképek azt használják.
 
 Photos taken further than this from any track point stay unmatched
-Az ennél távolabbi időpontban készült fényképek nem kapnak helyet
+Azok a fényképek nem kapnak helyadatot, amelyek készítési időpontja ennél nagyobb eltéréssel esik a nyomvonal legközelebbi időpontjától
 
 How far the camera's clock was AHEAD of the real time (negative if behind), e.g. +3:12, -1:00:00 or 2h 5m
 Mennyivel járt ELŐRE a fényképezőgép órája a valós időhöz képest (ha késett, negatív), pl. +3:12, -1:00:00 vagy 2h 5m
@@ -907,7 +907,7 @@ Use photos with a location...
 Hellyel rendelkező fényképek használata...
 
 <html>Taken with a phone as well? Its photos know where they were taken:<br>use them as the track to place the photos of a camera without GPS.</html>
-<html>Telefonnal is fényképeztél? Annak a képei tudják, hol készültek:<br>nyomvonalként elhelyezik a GPS nélküli fényképezőgép képeit.</html>
+<html>Telefonnal is készítettél képeket? Azok általában tartalmaznak helyadatokat.<br>Felhasználhatod őket nyomvonalként, hogy a GPS nélküli fényképezőgéppel készült képeket is elhelyezd a térképen.</html>
 
 Remove tracks
 Nyomvonalak eltávolítása
@@ -997,7 +997,7 @@ Select a photo with a date in the table first - ideally one showing a clock or a
 Előbb válassz ki a táblázatban egy dátummal rendelkező fényképet – ideális esetben egy órát vagy telefonképernyőt mutatót.
 
 What time does the clock in {0} show? (HH:mm:ss)\nThe camera recorded {1}.
-Mennyit mutat az óra a(z) {0} képen? (ÓÓ:pp:mm)\nA fényképezőgép ezt rögzítette: {1}.
+Mennyi időt mutat az óra ezen a fényképen: {0}? (óó:pp:mm)\nA fényképezőgép által rögzített időpont: {1}.
 
 "{0}" isn't a time. Use e.g. 14:05:30.
 „{0}” nem időpont. Használd pl. így: 14:05:30.
@@ -1012,7 +1012,7 @@ The nearest track point is {0} m from the spot you picked, recorded at {1}.\nTha
 A legközelebbi nyomvonalpont {0} m-re van a kijelölt helytől, és ekkor rögzült: {1}.\nEszerint a fényképezőgép órája {2} sietett.\n\nEzt az eltérést használod?
 
 Use
-Használ
+Használat
 
 Photo
 Fénykép
@@ -1078,10 +1078,10 @@ A(z) {0} programfájl kiválasztása
 A(z) {0} nem található a PATH-on.
 
 That doesn't run as {0}.
-Ez nem fut {0}-ként.
+A kiválasztott fájl nem futtatható {0} programként.
 
 That doesn't run as {0} (but {1} on the PATH would be used).
-Ez nem fut {0}-ként (de a PATH-on lévő {1} használható lenne).
+A kiválasztott fájl nem futtatható {0} programként (helyette a PATH-on található {1} használható).
 
 Works: {0} {1} ({2})
 Működik: {0} {1} ({2})
@@ -1138,7 +1138,7 @@ A fényképeknek már ez a nevük.
 {0} fénykép új nevet kap
 
 {0} stay as they are.
-{0} marad, ahogy van.
+{0} változatlan marad.
 
 sidecar backup
 kísérőfájl-másolat
@@ -1228,13 +1228,13 @@ Save to:
 Mentés ide:
 
 Keep:
-Megtartja:
+Megőrzendő adatok:
 
 No GPS position and place name; the date, camera and the rest stay.
-GPS-hely és helynév nélkül; a dátum, a fényképezőgép és a többi marad.
+A GPS-koordináták és a helynevek törlődnek, de a dátum, a fényképezőgép adatai és a többi metaadat megmarad.
 
 Only the picture: no date, camera, location or anything else. It still shows the right way up.
-Csak a kép: dátum, fényképezőgép, hely és minden más nélkül. Továbbra is helyes állásban jelenik meg.
+Csak a képtartalom marad meg: a dátum, a fényképezőgép adatai, a helyadatok és minden egyéb metaadat törlődik. A kép tájolása továbbra is helyes lesz.
 
 An exact copy, location included.
 Pontos másolat, hellyel együtt.
@@ -1243,7 +1243,7 @@ JPEG quality:
 JPEG-minőség:
 
 <html>The originals aren't changed. Smaller copies are saved as JPEG, turned upright; so are RAW files.</html>
-<html>Az eredetik nem változnak. A kisebb másolatok JPEG-ként, álló helyzetbe forgatva készülnek; a RAW fájlok is.</html>
+<html>Az eredeti fájlok nem módosulnak. A kisebb másolatokat a program JPEG-formátumban, helyes tájolással menti; a RAW-képekből is így készül másolat.</html>
 
 Export
 Exportálás
@@ -1306,10 +1306,10 @@ Next
 Tovább
 
 Squeeze stops longer than
-Összenyomja a megállókat, ha hosszabbak, mint
+Hosszú megállók rövidítése, ha meghaladják ezt:
 
 Travel at most
-Utazás legfeljebb
+Utazási szakasz hossza legfeljebb
 
 Full-screen map between photos
 Teljes képernyős térkép a képek között
@@ -1342,10 +1342,10 @@ Each shown photo stays at least this long; photos in between are skipped
 Minden megjelenő fénykép legalább ennyi ideig látszik; a közbülsők kimaradnak
 
 A long gap where you moved less than this is a stop (e.g. a night) and is squeezed; otherwise it's travel and shown on the map
-Egy hosszú szünet, amely alatt ennél kevesebbet mozdultál, megálló (pl. egy éjszaka), és összenyomódik; különben utazás, és a térképen látszik
+Ha két időpont között alig mozdultál el, a program megállásnak tekinti az időszakot (például egy éjszakát), és lerövidíti. Egyébként utazásként jeleníti meg a térképen.
 
 Travel between places is shown at most this long; the time saved goes to the photos
-A helyek közötti utazás legfeljebb ennyi ideig látszik; a megspórolt idő a fényképeké
+A helyszínek közötti utazás legfeljebb ennyi ideig látszik. A felszabaduló időt a fényképek megjelenítésére fordítja a program.
 
 Off: the last photo stays up while the marker travels on the small map
 Kikapcsolva: az utolsó fénykép látszik, amíg a jelölő a kis térképen halad
@@ -1405,7 +1405,7 @@ Camera clock
 A fényképezőgép órája
 
 <html>Show the times as the camera's clock recorded them ({0}, {1})<br>or in another time zone, e.g. the local time of the trip.</html>
-<html>Az időpontok úgy, ahogy a fényképezőgép órája rögzítette ({0}, {1}),<br>vagy egy másik időzónában, pl. az utazás helyi idejében.</html>
+<html>Az időpontok megjelenítése a fényképezőgép által rögzített idő szerint ({0}, {1}),<br>vagy egy másik időzónában, például az utazás helyi ideje szerint.</html>
 
 No photos with a date.
 Nincsenek dátummal rendelkező fényképek.
@@ -1417,13 +1417,13 @@ Shows {0} of {1} photos
 ({0} kihagyva)
 
 1 s of video = {0} of travel
-1 mp videó = {0} utazás
+1 mp videó = {0} utazási idő
 
 1 long stop squeezed
-1 hosszú megálló összenyomva
+1 hosszú megálló lerövidítve
 
 {0} long stops squeezed
-{0} hosszú megálló összenyomva
+{0} hosszú megálló lerövidítve
 
 1 journey shortened
 1 út lerövidítve
@@ -1456,7 +1456,7 @@ Save the playback as an MP4 video
 A lejátszás mentése MP4-videóként
 
 Each photo fades into the next during its last moments (0 for a hard cut)
-Minden fénykép az utolsó pillanataiban áttűnik a következőbe (0: éles vágás)
+A fényképek a megjelenítésük végén áttűnéssel váltják egymást (0 esetén nincs áttűnés).
 
 Each photo (s):
 Képenként (mp):
@@ -1480,13 +1480,13 @@ Write the number as {n} or with its digits, e.g. {n:000}
 A sorszámot {n} vagy a jegyeivel együtt írd, pl. {n:000}
 
 A { or } doesn't belong to a field. Fields look like {date} or {n:000}
-Egy { vagy } nem tartozik mezőhöz. A mezők így néznek ki: {date} vagy {n:000}
+A { vagy } karakter nem tartozik érvényes mezőhöz. A mezők formátuma például {date} vagy {n:000}.
 
 no date taken
 nincs készítési dátum
 
 nothing to name it after: stays
-nincs miről elnevezni: marad
+Nincs adat az átnevezéshez, ezért a név változatlan marad
 
 Couldn't rename: {0}. Nothing was renamed.
 Nem sikerült átnevezni: {0}. Semmi sem lett átnevezve.
@@ -1516,7 +1516,7 @@ Couldn't reach {0} (offline, or blocked by a firewall or proxy). Please try agai
 Nem érhető el: {0} (nincs internet, vagy tűzfal, proxy tiltja). Próbáld újra később, vagy telepítsd magad (lásd a letöltési oldalt).
 
 The archive is cut off
-Az archívum csonka
+A tömörített fájl hiányos
 
 The archive has a bad entry: {0}
 Az archívumban hibás bejegyzés van: {0}
@@ -1546,7 +1546,7 @@ Invalid time offset: {0} (use e.g. +3:12, -1:00:00 or 1d 2h 5m)
 {0} nap
 
 {0} isn't a location history this app knows: {1}
-{0} nem olyan helyelőzmény, amit ez a program ismer: {1}
+A(z) {0} fájl helyelőzmény-formátumát a program nem ismeri fel: {1}
 
 {0}: not a track file (GPX, KML, KMZ, TCX, FIT or Google location history)
 {0}: nem nyomvonalfájl (GPX, KML, KMZ, TCX, FIT vagy Google-helyelőzmények)
@@ -1632,7 +1632,7 @@ No
 Nem
 
 Select an Option
-Válassz
+Válassz egy lehetőséget
 
 Message
 Üzenet
@@ -1698,4 +1698,4 @@ Refresh
 Frissítés
 
 Each photo fades into the next (0 for a hard cut)
-Minden fénykép áttűnik a következőbe (0: éles vágás)
+A fényképek áttűnéssel váltják egymást (0 esetén nincs áttűnés).
