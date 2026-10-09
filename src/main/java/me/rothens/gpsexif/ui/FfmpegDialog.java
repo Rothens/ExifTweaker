@@ -18,7 +18,15 @@ public class FfmpegDialog extends ToolDialog {
      * @param active     the executable in use, or {@code null} if FFmpeg wasn't found
      */
     public FfmpegDialog(Window owner, String configured, String active) {
-        super(owner, FFMPEG, configured, active);
+        this(owner, configured, active, new me.rothens.gpsexif.tools.ToolInstaller(
+                me.rothens.gpsexif.tools.ToolInstaller.USER_AGENT));
+    }
+
+    private FfmpegDialog(Window owner, String configured, String active,
+                         me.rothens.gpsexif.tools.ToolInstaller installer) {
+        // Downloadable on Windows; elsewhere the install hint says which package to install
+        super(owner, FFMPEG, configured, active, !installer.canInstallFfmpeg() ? null : () -> new ToolInstallDialog(
+                owner, installer, null, "not installed yet", false, () -> { }).showDialog().ffmpeg());
     }
 
     private static String installHint() {

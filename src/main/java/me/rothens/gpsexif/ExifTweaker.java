@@ -32,6 +32,8 @@ import me.rothens.gpsexif.ui.GeotagDialog;
 import me.rothens.gpsexif.ui.PhotoDrag;
 import me.rothens.gpsexif.ui.RenameDialog;
 import me.rothens.gpsexif.ui.ShareDialog;
+import me.rothens.gpsexif.ui.ToolInstallDialog;
+import me.rothens.gpsexif.tools.ToolInstaller;
 import me.rothens.gpsexif.share.ShareExport;
 import me.rothens.gpsexif.ui.SettingsDialog;
 import me.rothens.gpsexif.ui.ShiftTimeDialog;
@@ -120,6 +122,9 @@ public class ExifTweaker {
     private final JTextField tfSearch = new JTextField();
     private final PlaceSearch placeSearch = new PlaceSearch(USER_AGENT);
     private final PlaceNames placeNames = new PlaceNames(USER_AGENT, PlaceNames.defaultCacheFile());
+    private final ToolInstaller toolInstaller = new ToolInstaller(USER_AGENT);
+    /** A newer version of the downloaded ExifTool, if one was found; shown in the update note. */
+    private String exifToolUpdate;
     /** Photos of the running batch whose place name couldn't be looked up. */
     private final java.util.concurrent.atomic.AtomicInteger placesMissed = new java.util.concurrent.atomic.AtomicInteger();
     private final JButton btnCoordinate = new JButton("Go!");
@@ -357,7 +362,11 @@ public class ExifTweaker {
         close.setToolTipText("Don't remind me of this version");
         close.putClientProperty("JButton.buttonType", "toolBarButton");
         close.addActionListener(e -> {
-            settings.setDismissedVersion(settings.getLatestVersion());
+            if (updateText.getText().startsWith("ExifTool ")) {
+                exifToolUpdate = null; // asked again tomorrow
+            } else {
+                settings.setDismissedVersion(settings.getLatestVersion());
+            }
             updateBanner.setVisible(false);
         });
         updateBanner.add(updateText, BorderLayout.CENTER);
@@ -368,7 +377,14 @@ public class ExifTweaker {
         java.awt.event.MouseAdapter open = new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
-                openReleasePage();
+                if (updateText.getText().startsWith("ExifTool ")) {
+                    String installed = downloadExifTool(frame);
+                    if (null != installed) {
+                        useDownloadedExifTool(installed);
+                    }
+                } else {
+                    openReleasePage();
+                }
             }
         };
         updateBanner.addMouseListener(open);
@@ -428,16 +444,22 @@ public class ExifTweaker {
         }.execute();
     }
 
-    /** Shows the note if the latest known release is newer than this build and wasn't dismissed. */
+    /**
+     * Shows the note if the latest known release is newer than this build and wasn't dismissed; otherwise, if the
+     * downloaded ExifTool has a newer version, that one.
+     */
     private void showUpdateNote() {
         String latest = settings.getLatestVersion();
-        boolean show = settings.isUpdateCheck() && UpdateCheck.isNewer(latest, currentVersion())
+        boolean app = settings.isUpdateCheck() && UpdateCheck.isNewer(latest, currentVersion())
                 && !latest.equals(settings.getDismissedVersion());
-        if (show) {
+        if (app) {
             updateText.setText("ExifTweaker " + latest + " is out (you have " + currentVersion()
                     + "). Click here to see what's new and download it.");
+        } else if (null != exifToolUpdate) {
+            updateText.setText("ExifTool " + exifToolUpdate + " is out (you have " + activeExifToolVersion
+                    + "). Click here to update it.");
         }
-        updateBanner.setVisible(show);
+        updateBanner.setVisible(app || null != exifToolUpdate);
     }
 
     private void openReleasePage() {
@@ -465,6 +487,90 @@ public class ExifTweaker {
                     activateExifTool(get());
                 } catch (InterruptedException | ExecutionException e) {
                     activateExifTool(null);
+                }
+                // Not on top of the first start's tour: that offers it when it ends
+                if (settings.isTutorialShown() && (null == tutorial || !tutorial.isRunning())) {
+                    offerTools();
+                }
+                checkExifToolUpdate();
+            }
+        }.execute();
+    }
+
+    /**
+     * Once: offers to download what's missing, ExifTool and (on Windows) FFmpeg. Later, the ExifTool banner,
+     * Settings and the video export dialog offer it.
+     */
+    private void offerTools() {
+        if (settings.isToolsOffered()) {
+            return;
+        }
+        boolean needExifTool = null == activeExifTool;
+        boolean needFfmpeg = null == me.rothens.gpsexif.video.Ffmpeg.locate(settings.getFfmpegPath());
+        if (!needExifTool && !(needFfmpeg && toolInstaller.canInstallFfmpeg())) {
+            return; // nothing to download here (FFmpeg on macOS/Linux comes from the package manager)
+        }
+        settings.setToolsOffered(true);
+        ToolInstallDialog.Result result = new ToolInstallDialog(frame, toolInstaller,
+                needExifTool ? "not installed yet" : null, needFfmpeg ? "not installed yet" : null, true,
+                this::stopExifTool).showDialog();
+        if (null != result.ffmpeg()) {
+            settings.setFfmpegPath(result.ffmpeg());
+        }
+        if (null != result.exifTool()) {
+            useDownloadedExifTool(result.exifTool());
+        }
+    }
+
+    /** Stops the running ExifTool process, e.g. before a downloaded copy of it is replaced; it restarts on use. */
+    private void stopExifTool() {
+        ExifToolBackend current = backend.getExifTool();
+        if (null != current) {
+            current.getExifTool().close();
+        }
+    }
+
+    /** Downloads ExifTool from the ExifTool dialog; returns the executable, or {@code null}. */
+    private String downloadExifTool(Window owner) {
+        String offer = null == activeExifTool ? "not installed yet"
+                : "the latest version (you have " + activeExifToolVersion + ")";
+        return new ToolInstallDialog(owner, toolInstaller, offer, null, false, this::stopExifTool).showDialog()
+                .exifTool();
+    }
+
+    private void useDownloadedExifTool(String executable) {
+        settings.setExifToolPath(executable);
+        activeExifTool = null; // the same path may now be a newer version
+        activateExifTool(ExifTool.locate(executable));
+        exifToolUpdate = null;
+        showUpdateNote();
+        lblStatus.setText("ExifTool " + activeExifToolVersion + " is installed");
+    }
+
+    /** Once a day, if ExifTool was downloaded by ExifTweaker: is there a newer one? (Shown in the update note.) */
+    private void checkExifToolUpdate() {
+        String current = activeExifToolVersion;
+        boolean due = System.currentTimeMillis() - settings.getExifToolCheckedAt() >= UpdateCheck.INTERVAL.toMillis();
+        if (!settings.isUpdateCheck() || !due || null == current || !toolInstaller.isDownloaded(activeExifTool)) {
+            return;
+        }
+        new SwingWorker<String, Void>() {
+            @Override
+            protected String doInBackground() throws Exception {
+                return toolInstaller.latestExifToolVersion();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    String latest = get();
+                    settings.setExifToolCheckedAt(System.currentTimeMillis());
+                    if (UpdateCheck.isNewer(latest, current)) {
+                        exifToolUpdate = latest;
+                        showUpdateNote();
+                    }
+                } catch (InterruptedException | ExecutionException ignored) {
+                    // offline: try again next time
                 }
             }
         }.execute();
@@ -518,9 +624,11 @@ public class ExifTweaker {
 
     /** Opens the ExifTool dialog and applies the chosen executable; returns the new status text. */
     private String showExifToolDialog(Window owner) {
-        String path = new ExifToolDialog(owner, settings.getExifToolPath(), activeExifTool).showDialog();
+        String path = new ExifToolDialog(owner, settings.getExifToolPath(), activeExifTool,
+                () -> downloadExifTool(owner)).showDialog();
         if (null != path) {
             settings.setExifToolPath(path);
+            activeExifTool = null; // a download may have put a newer version at the same path
             String executable = ExifTool.locate(path);
             activateExifTool(executable);
             if (null == executable) {
@@ -995,7 +1103,10 @@ public class ExifTweaker {
                 "You can see this tour again any time under <b>Help → Show tutorial</b>."
                         + (isMac() ? "" : " Settings (" + ctrl + "+,) has the theme, map layer and backups.")
                         + "<br><br>Have fun putting your photos on the map!"));
-        tutorial = new Tutorial(frame, steps, () -> tutorial = null);
+        tutorial = new Tutorial(frame, steps, () -> {
+            tutorial = null;
+            SwingUtilities.invokeLater(this::offerTools); // after the first start's tour
+        });
         tutorial.start();
     }
 

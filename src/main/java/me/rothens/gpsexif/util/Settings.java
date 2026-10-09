@@ -26,6 +26,8 @@ public class Settings {
     private static final String SHARE_DIRECTORY = "SHARE_DIRECTORY";
     private static final String TRAVEL_FULL_MAP = "TRAVEL_FULL_MAP";
     private static final String UPDATE_CHECK = "UPDATE_CHECK";
+    private static final String TOOLS_OFFERED = "TOOLS_OFFERED";
+    private static final String EXIFTOOL_CHECKED_AT = "EXIFTOOL_CHECKED_AT";
     private static final String UPDATE_CHECKED_AT = "UPDATE_CHECKED_AT";
     private static final String UPDATE_LATEST = "UPDATE_LATEST";
     private static final String UPDATE_LATEST_URL = "UPDATE_LATEST_URL";
@@ -363,6 +365,24 @@ public class Settings {
 
     public void setShareQuality(int quality) {
         prefs.putInt(SHARE_QUALITY, Math.max(50, Math.min(100, quality)));
+    }
+
+    /** Whether downloading ExifTool / FFmpeg was offered already (once, after the first start's tour). */
+    public boolean isToolsOffered() {
+        return prefs.getBoolean(TOOLS_OFFERED, false);
+    }
+
+    public void setToolsOffered(boolean offered) {
+        prefs.putBoolean(TOOLS_OFFERED, offered);
+    }
+
+    /** When a downloaded ExifTool was last checked for a newer version (epoch millis), 0 if never. */
+    public long getExifToolCheckedAt() {
+        return prefs.getLong(EXIFTOOL_CHECKED_AT, 0);
+    }
+
+    public void setExifToolCheckedAt(long millis) {
+        prefs.putLong(EXIFTOOL_CHECKED_AT, millis);
     }
 
     /** Whether to look for a new version once a day. On by default. */

@@ -48,6 +48,12 @@ case "$(uname -s)" in
     platform=(--type "${type:-deb}" --icon "$here/ExifTweaker.png"
       --linux-package-name exiftweaker --linux-shortcut
       --linux-menu-group Graphics --linux-app-category graphics)
+    # ExifTool comes from the distribution; FFmpeg is optional (the video export has a built-in encoder)
+    if [ "${type:-deb}" = rpm ]; then
+      platform+=(--linux-package-deps perl-Image-ExifTool)
+    else
+      platform+=(--linux-package-deps libimage-exiftool-perl)
+    fi
     ;;
   Darwin)
     platform=(--type "${type:-dmg}" --icon "$here/ExifTweaker.icns"

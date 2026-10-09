@@ -23,6 +23,11 @@ public class ExifToolDialog extends ToolDialog {
         super(owner, EXIFTOOL, configured, active);
     }
 
+    /** With a "Download and install" button; {@code download} returns the installed executable or {@code null}. */
+    public ExifToolDialog(Window owner, String configured, String active, java.util.function.Supplier<String> download) {
+        super(owner, EXIFTOOL, configured, active, download);
+    }
+
     private static String installHint() {
         if (isWindows()) {
             return "Windows: download the Windows executable, unzip it, and rename <i>exiftool(-k).exe</i> to "

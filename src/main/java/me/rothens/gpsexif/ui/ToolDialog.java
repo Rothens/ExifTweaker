@@ -35,6 +35,15 @@ public class ToolDialog extends JDialog {
      * @param active     the executable in use, or {@code null} if it wasn't found
      */
     public ToolDialog(Window owner, Tool tool, String configured, String active) {
+        this(owner, tool, configured, active, null);
+    }
+
+    /**
+     * @param download downloads and installs the tool, returning its executable or {@code null}; {@code null} if it
+     *                 can't be downloaded on this system
+     */
+    public ToolDialog(Window owner, Tool tool, String configured, String active,
+                      java.util.function.Supplier<String> download) {
         super(owner, tool.name(), ModalityType.APPLICATION_MODAL);
         this.tool = tool;
         tfPath.setText(configured);
@@ -50,8 +59,19 @@ public class ToolDialog extends JDialog {
         link.setToolTipText("Open the " + tool.name() + " download page in your browser");
         link.addActionListener(e -> openDownloadPage());
 
-        JLabel howTo = new JLabel("<html><body style='width:430px'>" + tool.installHint() + "</body></html>");
+        JLabel howTo = new JLabel("<html><body style='width:430px'>" + (null != download
+                ? "Or install it yourself: " : "") + tool.installHint() + "</body></html>");
         howTo.putClientProperty("FlatLaf.styleClass", "small");
+        JButton btnDownload = new JButton(null != active && null != download && downloaded(active)
+                ? "Check for an update..." : "Download and install...");
+        btnDownload.setToolTipText("ExifTweaker downloads " + tool.name() + " for you and uses it right away");
+        btnDownload.addActionListener(e -> {
+            String installed = download.get();
+            if (null != installed) {
+                tfPath.setText(installed);
+                test();
+            }
+        });
 
         JButton browse = new JButton("Browse...");
         browse.addActionListener(e -> browse());
@@ -73,7 +93,9 @@ public class ToolDialog extends JDialog {
 
         JPanel top = new JPanel();
         top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
-        for (JComponent c : new JComponent[]{intro, link, howTo}) {
+        JComponent[] parts = null != download ? new JComponent[]{intro, btnDownload, link, howTo}
+                : new JComponent[]{intro, link, howTo};
+        for (JComponent c : parts) {
             c.setAlignmentX(LEFT_ALIGNMENT);
             top.add(c);
             top.add(Box.createVerticalStrut(6));
@@ -110,6 +132,12 @@ public class ToolDialog extends JDialog {
     public String showDialog() {
         setVisible(true);
         return accepted ? tfPath.getText().strip() : null;
+    }
+
+    /** Whether {@code executable} was downloaded by ExifTweaker. */
+    private static boolean downloaded(String executable) {
+        return java.nio.file.Path.of(executable).toAbsolutePath().normalize()
+                .startsWith(me.rothens.gpsexif.tools.ToolInstaller.defaultToolsDir().toAbsolutePath().normalize());
     }
 
     static boolean isWindows() {

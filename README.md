@@ -17,9 +17,11 @@ It includes everything it needs; you don't have to install Java.
 | Linux (Debian, Ubuntu, Mint) | `exiftweaker_<version>_amd64.deb` | `sudo apt install ./exiftweaker_<version>_amd64.deb` |
 | Anything with Java 17+ | `exiftweaker-<version>-all.jar` | `java -jar exiftweaker-<version>-all.jar` (also for Intel Macs) |
 
-JPEG photos work out of the box. For **HEIC, PNG, TIFF, WebP and RAW** files also install the free
+JPEG photos work out of the box. For **HEIC, PNG, TIFF, WebP and RAW** files ExifTweaker uses the free
 [ExifTool](https://exiftool.org/), and for faster video exports [FFmpeg](https://ffmpeg.org/download.html) (see
-[Formats](#formats)).
+[Formats](#formats)). You don't have to install them yourself: on the first start ExifTweaker offers to download
+them (FFmpeg on Windows; on macOS `brew install ffmpeg`, on Linux your distribution's package). The Linux package
+installs ExifTool along.
 
 ## How to
 
@@ -171,9 +173,11 @@ another folder; the originals aren't touched.
 | HEIC/HEIF (iPhone), AVIF, PNG, TIFF, WebP | Written into the photo | [ExifTool](https://exiftool.org/) |
 | RAW: CR2, CR3, NEF, NRW, ARW, DNG, ORF, RW2, RAF, PEF, ... | Written to an `.xmp` sidecar next to it; the RAW file is never changed. Lightroom, darktable, digiKam and most photo tools read it. | [ExifTool](https://exiftool.org/) |
 
-When ExifTool isn't found, a banner at the top says which files need it; click it for the download link and to
-pick the program if it isn't on your PATH. The same works for FFmpeg in the video export dialog and in Settings:
-without it videos are made with a built-in encoder, which is slower and makes larger files.
+When ExifTool isn't found, a banner at the top says which files need it; click it to **download and install** it
+(from exiftool.org, checked against its published checksum, into ExifTweaker's own folder), or to pick a copy you
+installed yourself. The same works for FFmpeg in the video export dialog and in Settings: without it videos are made
+with a built-in encoder, which is slower and makes larger files. A downloaded ExifTool is checked for updates once a
+day, along with ExifTweaker itself.
 
 Writing keeps everything else in the file as it was, including the camera maker's own data (maker notes); this is
 tested on files from 16 cameras and phones and 6 RAW formats.
