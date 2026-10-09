@@ -60,6 +60,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: aur-exiftweaker-bin-${{ env.VERSION }}
+          # .SRCINFO starts with a dot
+          include-hidden-files: true
           path: |
             /aur/PKGBUILD
             /aur/.SRCINFO
