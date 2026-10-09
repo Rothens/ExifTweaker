@@ -182,7 +182,7 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 
 ---
 
-## 1.2 — Places ✅
+## 1.2 — Places ✅ (released as 1.4.0)
 
 - [x] **Place names** (#39): look up the place for each location (OpenStreetMap Nominatim, within its usage policy)
       and write it as City / State / Country into IPTC/XMP; show it in the app, playback and videos.
@@ -192,7 +192,7 @@ Showing every photo on the map is useful, but it's easy to clutter it, so this f
 
 ---
 
-## 1.3 — More sources & reach ✅
+## 1.3 — More sources & reach ✅ (released as 1.5.0)
 
 - [x] **More track formats** (#42): Google Maps location history (Takeout's Records.json and the Timeline exports
       from Android and iPhone), KML/KMZ, FIT and TCX, recognized by the content.
