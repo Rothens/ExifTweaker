@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.model;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.metadata.MetadataBackend;
 import me.rothens.gpsexif.metadata.MetadataChanges;
 import me.rothens.gpsexif.metadata.TextTag;
@@ -151,8 +152,8 @@ public class ImageFile {
 
     private void rewrite(Rewrite rewrite) throws IOException {
         if (!isWritable()) {
-            throw new IOException(file.getName() + " can't be written (" + file.getName().replaceAll(".*\\.", "")
-                    .toUpperCase(java.util.Locale.ROOT) + " files need ExifTool)");
+            throw new IOException(tr("{0} can't be written ({1} files need ExifTool)", file.getName(),
+                    file.getName().replaceAll(".*\\.", "").toUpperCase(java.util.Locale.ROOT)));
         }
         Path written = getWritePath();
         Path tmp = FileUtil.createSiblingTempFile(written);

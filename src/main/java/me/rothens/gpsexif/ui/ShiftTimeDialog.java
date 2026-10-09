@@ -1,5 +1,7 @@
 package me.rothens.gpsexif.ui;
 
+import static me.rothens.gpsexif.i18n.I18n.photos;
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.gpx.PhotoTime;
 import me.rothens.gpsexif.model.ImageFile;
 import me.rothens.gpsexif.model.MetadataTableModel;
@@ -22,19 +24,19 @@ public class ShiftTimeDialog extends JDialog {
 
     private final List<ImageFile> photos;
     private final ImageFile earliest;
-    private final JRadioButton rbBy = new JRadioButton("Shift by:", true);
-    private final JRadioButton rbTo = new JRadioButton("The earliest photo was taken at:");
+    private final JRadioButton rbBy = new JRadioButton(tr("Shift by:"), true);
+    private final JRadioButton rbTo = new JRadioButton(tr("The earliest photo was taken at:"));
     private final JTextField tfBy = new JTextField("+1:00:00", 12);
     private final JTextField tfTo = new JTextField(16);
     private final JLabel lblResult = new JLabel(" ");
-    private final JButton btnOk = new JButton("Shift");
+    private final JButton btnOk = new JButton(tr("Shift"));
     private final PreviewModel preview = new PreviewModel();
     private Duration shift;
     private boolean accepted;
 
     /** @param photos photos to shift; those without a date are skipped */
     public ShiftTimeDialog(Frame owner, List<ImageFile> photos) {
-        super(owner, "Shift date/time", true);
+        super(owner, tr("Shift date/time"), true);
         this.photos = photos.stream().filter(p -> null != p.getTaken())
                 .sorted(Comparator.comparing(ImageFile::getTaken)).toList();
         this.earliest = this.photos.isEmpty() ? null : this.photos.get(0);
@@ -44,8 +46,8 @@ public class ShiftTimeDialog extends JDialog {
         ButtonGroup group = new ButtonGroup();
         group.add(rbBy);
         group.add(rbTo);
-        tfBy.setToolTipText("e.g. +2:00:00, -30:00 (minutes:seconds), 1d 2h, -365d");
-        tfTo.setToolTipText("e.g. 2026-09-30 14:05:00");
+        tfBy.setToolTipText(tr("e.g. +2:00:00, -30:00 (minutes:seconds), 1d 2h, -365d"));
+        tfTo.setToolTipText(tr("e.g. 2026-09-30 14:05:00"));
 
         DocumentListener update = new DocumentListener() {
             @Override
@@ -94,7 +96,7 @@ public class ShiftTimeDialog extends JDialog {
             accepted = true;
             dispose();
         });
-        JButton cancel = new JButton("Cancel");
+        JButton cancel = new JButton(tr("Cancel"));
         cancel.addActionListener(e -> dispose());
         getRootPane().setDefaultButton(btnOk);
         getRootPane().registerKeyboardAction(e -> dispose(), KeyStroke.getKeyStroke("ESCAPE"),
@@ -141,14 +143,14 @@ public class ShiftTimeDialog extends JDialog {
             error = e.getMessage();
         }
         if (photos.isEmpty()) {
-            lblResult.setText("None of the selected photos has a date to shift.");
+            lblResult.setText(tr("None of the selected photos has a date to shift."));
         } else if (null != error) {
             lblResult.setText(error);
         } else {
-            lblResult.setText("Moves " + photos.size()
-                    + (photos.size() == 1 ? " photo " : " photos ") + (shift.isNegative() ? "back" : "forward")
-                    + " by " + PhotoTime.formatOffset(shift).substring(1)
-                    + (Math.abs(shift.toDays()) > 0 ? " (" + Math.abs(shift.toDays()) + " days)" : ""));
+            String by = PhotoTime.formatOffset(shift).substring(1)
+                    + (Math.abs(shift.toDays()) > 0 ? " " + tr("({0} days)", Math.abs(shift.toDays())) : "");
+            lblResult.setText(shift.isNegative() ? tr("Moves {0} back by {1}", photos(photos.size()), by)
+                    : tr("Moves {0} forward by {1}", photos(photos.size()), by));
         }
         btnOk.setEnabled(null != shift && !shift.isZero() && !photos.isEmpty());
         preview.fireTableDataChanged();
@@ -167,7 +169,7 @@ public class ShiftTimeDialog extends JDialog {
 
         @Override
         public String getColumnName(int column) {
-            return new String[]{"Photo", "Now", "After"}[column];
+            return new String[]{tr("Photo"), tr("Now"), tr("After")}[column];
         }
 
         @Override

@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.playback;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.map.AttributionPainter;
 import me.rothens.gpsexif.model.ImageFile;
 import org.jxmapviewer.JXMapViewer;
@@ -31,7 +32,8 @@ import java.util.function.Function;
  */
 final class TravelView extends JLayeredPane {
 
-    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH);
+    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern(tr("EEE, d MMM yyyy"),
+            me.rothens.gpsexif.i18n.I18n.locale());
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT);
 
     private final JXMapViewer fullMap = new JXMapViewer();
@@ -48,6 +50,8 @@ final class TravelView extends JLayeredPane {
     private InsetGrip grip;
     /** Whether the small map keeps its zoom and follows the marker, instead of showing the whole route. */
     private boolean followMarker;
+    /** Whether "Osaka, Namba → Tokyo, Chiyoda" shows while travelling. */
+    private boolean showTransfers = true;
 
     /**
      * @param images the loaded photo to draw, or {@code null} while it isn't loaded yet
@@ -186,6 +190,17 @@ final class TravelView extends JLayeredPane {
         repaint();
     }
 
+    /** Whether to show where the trip goes from and to while travelling. */
+    void setShowTransfers(boolean show) {
+        showTransfers = show;
+        repaint();
+    }
+
+    /** The settlement a photo was taken in, e.g. "Osaka, Namba", or {@code null}. */
+    private static String settlement(ImageFile photo) {
+        return null == photo || null == photo.getPlace() ? null : photo.getPlace().settlement();
+    }
+
     /** The small map's zoom level. */
     int getInsetZoom() {
         return insetMap.getZoom();
@@ -219,7 +234,7 @@ final class TravelView extends JLayeredPane {
 
         InsetGrip(java.util.function.DoubleConsumer onResized) {
             setCursor(Cursor.getPredefinedCursor(Cursor.NW_RESIZE_CURSOR));
-            setToolTipText("Drag to resize the map");
+            setToolTipText(tr("Drag to resize the map"));
             java.awt.event.MouseAdapter drag = new java.awt.event.MouseAdapter() {
                 @Override
                 public void mouseDragged(java.awt.event.MouseEvent e) {
@@ -329,7 +344,7 @@ final class TravelView extends JLayeredPane {
                 g.fillRect(0, 0, getWidth(), getHeight());
                 if (null != timeline && timeline.isEmpty()) {
                     g.setColor(Color.LIGHT_GRAY);
-                    g.drawString("None of these photos has a date.", 20, 30);
+                    g.drawString(tr("None of these photos has a date."), 20, 30);
                 }
                 return;
             }
@@ -384,7 +399,14 @@ final class TravelView extends JLayeredPane {
             ImageFile shown = null != frame.to()
                     ? (frame.alpha() >= 0.5 || null == frame.from() ? frame.to() : frame.from())
                     : (frame.alpha() < 0.5 ? frame.from() : null);
-            String place = null == shown || null == shown.getPlace() ? null : shown.getPlace().shortLabel();
+            String place = settlement(shown);
+            if (showTransfers && null != frame.travelTo() && frame.slot() >= 0) {
+                String from = settlement(timeline.getSlots().get(frame.slot()).stop().photo());
+                String to = settlement(frame.travelTo());
+                if (null != from && null != to && !from.equals(to)) {
+                    place = from + "  →  " + to;
+                }
+            }
             int w = Math.max(fb.stringWidth(time) + captionWidth, fs.stringWidth(date)) + 28;
             if (null != place) {
                 w = Math.max(w, fs.stringWidth(place) + 28);

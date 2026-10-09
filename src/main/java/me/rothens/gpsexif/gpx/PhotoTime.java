@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.gpx;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -60,7 +61,7 @@ public final class PhotoTime {
             long minutes = Long.parseLong(m.group(3));
             long seconds = Long.parseLong(m.group(4));
             if (seconds >= 60 || (null != m.group(2) && minutes >= 60)) {
-                throw new IllegalArgumentException("Invalid time offset: " + text);
+                throw new IllegalArgumentException(tr("Invalid time offset: {0}", text));
             }
             return signed(m.group(1), Duration.ofHours(h).plusMinutes(minutes).plusSeconds(seconds));
         }
@@ -81,7 +82,7 @@ public final class PhotoTime {
             }
             return signed(m.group(1), d);
         }
-        throw new IllegalArgumentException("Invalid time offset: " + text + " (use e.g. +3:12, -1:00:00 or 1d 2h 5m)");
+        throw new IllegalArgumentException(tr("Invalid time offset: {0} (use e.g. +3:12, -1:00:00 or 1d 2h 5m)", text));
     }
 
     /** Formats as {@code +h:mm:ss} / {@code -h:mm:ss}, parseable by {@link #parseOffset}. */
@@ -96,16 +97,16 @@ public final class PhotoTime {
     public static String describe(Duration d) {
         long s = d.abs().getSeconds();
         if (s < 60) {
-            return s + " s";
+            return tr("{0} s", s);
         }
         if (s < 3600) {
-            return (s / 60) + " min" + (s % 60 > 0 ? " " + (s % 60) + " s" : "");
+            return tr("{0} min", s / 60) + (s % 60 > 0 ? " " + tr("{0} s", s % 60) : "");
         }
         if (s < 48 * 3600) {
             long minutes = (s / 60) % 60;
-            return (s / 3600) + " h" + (minutes > 0 ? " " + minutes + " min" : "");
+            return tr("{0} h", s / 3600) + (minutes > 0 ? " " + tr("{0} min", minutes) : "");
         }
-        return (s / 86400) + " days";
+        return tr("{0} days", s / 86400);
     }
 
     private static Duration signed(String sign, Duration d) {

@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.gpx;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.util.SafeXml;
 import org.jxmapviewer.viewer.GeoPosition;
 import org.w3c.dom.Document;
@@ -40,11 +41,11 @@ public final class GpxParser {
         try {
             doc = SafeXml.newDocumentBuilder(true).parse(in);
         } catch (ParserConfigurationException | SAXException e) {
-            throw new IOException(name + " isn't a valid GPX file: " + e.getMessage(), e);
+            throw new IOException(tr("{0} isn't a valid GPX file: {1}", name, e.getMessage()), e);
         }
         Element root = doc.getDocumentElement();
         if (!"gpx".equals(localName(root))) {
-            throw new IOException(name + " isn't a GPX file (root element <" + localName(root) + ">)");
+            throw new IOException(tr("{0} isn't a GPX file (root element <{1}>)", name, localName(root)));
         }
         List<List<TrackPoint>> segments = new ArrayList<>();
         NodeList segmentNodes = doc.getElementsByTagNameNS("*", "trkseg");

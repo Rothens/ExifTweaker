@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.tutorial;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -180,7 +181,7 @@ final class TutorialOverlay extends JComponent {
         private final JLabel title = new JLabel();
         private final JLabel text = new JLabel();
         private final JLabel counter = new JLabel();
-        private final JLabel done = new JLabel("✓ Done");
+        private final JLabel done = new JLabel(tr("✓ Done"));
         private final JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
 
         Bubble() {
@@ -228,19 +229,19 @@ final class TutorialOverlay extends JComponent {
                 makeDefault(first);
             } else {
                 // The welcome and closing bubbles don't count as steps
-                counter.setText(index + " of " + (count - 2));
+                counter.setText(tr("{0} of {1}", index, count - 2));
                 boolean last = index == count - 1;
                 if (!last) {
-                    JButton skip = new JButton("Skip tour");
+                    JButton skip = new JButton(tr("Skip tour"));
                     skip.addActionListener(e -> tutorial.close());
                     buttons.add(skip);
                 }
                 if (index > 1) {
-                    JButton back = new JButton("Back");
+                    JButton back = new JButton(tr("Back"));
                     back.addActionListener(e -> tutorial.back());
                     buttons.add(back);
                 }
-                JButton next = new JButton(last ? "Finish" : "Next");
+                JButton next = new JButton(last ? tr("Finish") : tr("Next"));
                 next.addActionListener(e -> tutorial.next());
                 buttons.add(next);
                 makeDefault(next);

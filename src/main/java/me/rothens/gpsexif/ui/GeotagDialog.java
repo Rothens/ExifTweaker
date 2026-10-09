@@ -1,6 +1,8 @@
 package me.rothens.gpsexif.ui;
 
-import me.rothens.gpsexif.gpx.GpxParser;
+import static me.rothens.gpsexif.i18n.I18n.photos;
+import static me.rothens.gpsexif.i18n.I18n.tr;
+import me.rothens.gpsexif.gpx.TrackReader;
 import me.rothens.gpsexif.gpx.PhotoTrack;
 import me.rothens.gpsexif.gpx.PhotoTime;
 import me.rothens.gpsexif.gpx.Track;
@@ -72,15 +74,15 @@ public class GeotagDialog extends JDialog {
     private TrackMatcher matcher = new TrackMatcher(List.of());
     private Duration clockOffset = Duration.ZERO;
 
-    private final JLabel lblTracks = new JLabel("No GPX file loaded");
+    private final JLabel lblTracks = new JLabel(tr("No track loaded"));
     private final JComboBox<String> cbZone;
     private final JTextField tfOffset = new JTextField("+0:00:00", 8);
     private final JSpinner spMaxGap;
-    private final JCheckBox chkAltitude = new JCheckBox("Write altitude from the track", true);
+    private final JCheckBox chkAltitude = new JCheckBox(tr("Write altitude from the track"), true);
     private final RowModel tableModel = new RowModel();
     private final JTable table = new JTable(tableModel);
     private final JLabel lblSummary = new JLabel(" ");
-    private final JButton btnApply = new JButton("Apply");
+    private final JButton btnApply = new JButton(tr("Apply"));
 
     private static final class Row {
         final ImageFile image;
@@ -94,7 +96,7 @@ public class GeotagDialog extends JDialog {
     }
 
     public GeotagDialog(Frame owner, List<ImageFile> photos, Settings settings, Host host) {
-        super(owner, "Geotag from GPX", false);
+        super(owner, tr("Geotag from GPX"), false);
         this.host = host;
         this.settings = settings;
         for (ImageFile photo : photos) {
@@ -104,30 +106,28 @@ public class GeotagDialog extends JDialog {
         TreeSet<String> zones = new TreeSet<>(ZoneId.getAvailableZoneIds());
         cbZone = new JComboBox<>(zones.toArray(new String[0]));
         cbZone.setSelectedItem(settings.getCameraZone().getId());
-        cbZone.setToolTipText("The time zone the camera's clock was set to. Photos that record their own UTC "
-                + "offset use that instead.");
+        cbZone.setToolTipText(tr("The time zone the camera's clock was set to. Photos that record their own UTC offset use that instead."));
         spMaxGap = new JSpinner(new SpinnerNumberModel(settings.getGpxMaxGapMinutes(), 1, 24 * 60, 1));
-        spMaxGap.setToolTipText("Photos taken further than this from any track point stay unmatched");
-        tfOffset.setToolTipText("How far the camera's clock was AHEAD of the real time (negative if behind), "
-                + "e.g. +3:12, -1:00:00 or 2h 5m");
+        spMaxGap.setToolTipText(tr("Photos taken further than this from any track point stay unmatched"));
+        tfOffset.setToolTipText(tr("How far the camera's clock was AHEAD of the real time (negative if behind), e.g. +3:12, -1:00:00 or 2h 5m"));
 
-        JButton btnAdd = new JButton("Add GPX files...");
+        JButton btnAdd = new JButton(tr("Add track files..."));
+        btnAdd.setToolTipText(tr("<html>GPX, KML/KMZ, TCX, FIT (Garmin, Strava, Wahoo),<br>or your Google Maps location history (Takeout's Records.json, the Timeline export)</html>"));
         btnAdd.addActionListener(e -> addFiles());
-        JButton btnPhotos = new JButton("Use photos with a location...");
-        btnPhotos.setToolTipText("<html>Taken with a phone as well? Its photos know where they were taken:<br>"
-                + "use them as the track to place the photos of a camera without GPS.</html>");
+        JButton btnPhotos = new JButton(tr("Use photos with a location..."));
+        btnPhotos.setToolTipText(tr("<html>Taken with a phone as well? Its photos know where they were taken:<br>use them as the track to place the photos of a camera without GPS.</html>"));
         btnPhotos.addActionListener(e -> choosePhotoTrack(btnPhotos));
-        JButton btnClear = new JButton("Remove tracks");
+        JButton btnClear = new JButton(tr("Remove tracks"));
         btnClear.addActionListener(e -> {
             tracks.clear();
             referencePhotos.clear();
             trackChanged();
         });
-        JButton btnFromClock = new JButton("From clock photo...");
-        btnFromClock.setToolTipText("Select a photo showing a clock, then enter the time the clock shows");
+        JButton btnFromClock = new JButton(tr("From clock photo..."));
+        btnFromClock.setToolTipText(tr("Select a photo showing a clock, then enter the time the clock shows"));
         btnFromClock.addActionListener(e -> offsetFromClockPhoto());
-        JButton btnFromMap = new JButton("From map...");
-        btnFromMap.setToolTipText("Select a photo, right-click where it was taken on the main map, then press this");
+        JButton btnFromMap = new JButton(tr("From map..."));
+        btnFromMap.setToolTipText(tr("Select a photo, right-click where it was taken on the main map, then press this"));
         btnFromMap.addActionListener(e -> offsetFromMap());
 
         cbZone.addActionListener(e -> {
@@ -172,7 +172,7 @@ public class GeotagDialog extends JDialog {
         });
 
         btnApply.addActionListener(e -> apply());
-        JButton btnClose = new JButton("Close");
+        JButton btnClose = new JButton(tr("Close"));
         btnClose.addActionListener(e -> dispose());
 
         JPanel trackRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
@@ -183,20 +183,20 @@ public class GeotagDialog extends JDialog {
         trackInfoRow.add(lblTracks);
 
         JPanel clockRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        clockRow.add(new JLabel("Camera time zone:"));
+        clockRow.add(new JLabel(tr("Camera time zone:")));
         clockRow.add(cbZone);
-        clockRow.add(new JLabel("  Camera clock ahead by:"));
+        clockRow.add(new JLabel("  " + tr("Camera clock ahead by:")));
         clockRow.add(tfOffset);
 
         JPanel helperRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        helperRow.add(new JLabel("Work out the clock offset:"));
+        helperRow.add(new JLabel(tr("Work out the clock offset:")));
         helperRow.add(btnFromClock);
         helperRow.add(btnFromMap);
 
         JPanel gapRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        gapRow.add(new JLabel("Max. time from track:"));
+        gapRow.add(new JLabel(tr("Max. time from track:")));
         gapRow.add(spMaxGap);
-        gapRow.add(new JLabel("min"));
+        gapRow.add(new JLabel(tr("min")));
         gapRow.add(Box.createHorizontalStrut(12));
         gapRow.add(chkAltitude);
 
@@ -240,12 +240,9 @@ public class GeotagDialog extends JDialog {
         List<String> errors = new ArrayList<>();
         for (File file : files) {
             try {
-                Track track = GpxParser.parse(file.toPath());
-                if (track.pointCount() == 0) {
-                    errors.add(file.getName() + ": no track points");
-                } else {
-                    tracks.add(track);
-                }
+                // A location history can span years: only the days around the photos are kept
+                tracks.add(TrackReader.read(file.toPath(), TrackReader.around(
+                        rows.stream().map(r -> r.image.getTaken()).toList(), java.time.Duration.ofDays(3))));
             } catch (IOException e) {
                 errors.add(e.getMessage());
             }
@@ -290,10 +287,10 @@ public class GeotagDialog extends JDialog {
         List<ImageFile> opened = host.openedPhotos();
         long here = PhotoTrack.usable(opened);
         JPopupMenu menu = new JPopupMenu();
-        JMenuItem thisFolder = new JMenuItem("Photos of this folder that have a location (" + here + ")");
+        JMenuItem thisFolder = new JMenuItem(tr("Photos of this folder that have a location ({0})", here));
         thisFolder.setEnabled(here > 0);
-        thisFolder.addActionListener(e -> usePhotos(opened, "photos of this folder"));
-        JMenuItem other = new JMenuItem("Photos from another folder (e.g. your phone's)...");
+        thisFolder.addActionListener(e -> usePhotos(opened, tr("photos of this folder")));
+        JMenuItem other = new JMenuItem(tr("Photos from another folder (e.g. your phone's)..."));
         other.addActionListener(e -> chooseOtherFolder());
         menu.add(thisFolder);
         menu.add(other);
@@ -303,14 +300,14 @@ public class GeotagDialog extends JDialog {
     private void chooseOtherFolder() {
         JFileChooser chooser = new JFileChooser(GpxFileChooser.startFolder(rows.stream().map(r -> r.image).toList(),
                 settings));
-        chooser.setDialogTitle("Folder with photos that have a location");
+        chooser.setDialogTitle(tr("Folder with photos that have a location"));
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
             return;
         }
         File folder = chooser.getSelectedFile();
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        lblTracks.setText("Reading " + folder.getName() + "...");
+        lblTracks.setText(tr("Reading {0}...", folder.getName()));
         new SwingWorker<List<ImageFile>, Void>() {
             @Override
             protected List<ImageFile> doInBackground() throws Exception {
@@ -324,14 +321,14 @@ public class GeotagDialog extends JDialog {
                     List<ImageFile> photos = get();
                     if (PhotoTrack.usable(photos) == 0) {
                         updateTrackLabel();
-                        message("None of the photos in " + folder.getName() + " has both a location and a date."
-                                + (photos.isEmpty() ? "\n(No photos found there.)" : ""));
+                        message(tr("None of the photos in {0} has both a location and a date.", folder.getName())
+                                + (photos.isEmpty() ? "\n" + tr("(No photos found there.)") : ""));
                     } else {
-                        usePhotos(photos, "photos in " + folder.getName());
+                        usePhotos(photos, tr("photos in {0}", folder.getName()));
                     }
                 } catch (InterruptedException | java.util.concurrent.ExecutionException e) {
                     updateTrackLabel();
-                    message("Couldn't read " + folder + ":\n" + e.getMessage());
+                    message(tr("Couldn't read {0}:", folder) + "\n" + e.getMessage());
                 }
             }
         }.execute();
@@ -348,7 +345,7 @@ public class GeotagDialog extends JDialog {
     private void updateTrackLabel() {
         List<Track> all = allTracks();
         if (all.isEmpty()) {
-            lblTracks.setText("No GPX file loaded");
+            lblTracks.setText(tr("No track loaded"));
             return;
         }
         int points = all.stream().mapToInt(Track::pointCount).sum();
@@ -356,16 +353,16 @@ public class GeotagDialog extends JDialog {
                 .min(Instant::compareTo).orElse(null);
         Instant end = all.stream().map(Track::end).filter(java.util.Objects::nonNull)
                 .max(Instant::compareTo).orElse(null);
-        String range = null == start ? "no times!"
+        String range = null == start ? tr("no times!")
                 : format(start) + " - " + format(end) + " (" + zone().getId() + ")";
         List<String> sources = new ArrayList<>();
         if (!tracks.isEmpty()) {
-            sources.add(tracks.size() + (tracks.size() == 1 ? " file" : " files"));
+            sources.add(tracks.size() == 1 ? tr("1 file") : tr("{0} files", tracks.size()));
         }
         if (!referencePhotos.isEmpty()) {
             sources.add(referencePhotos.size() + " " + referenceName);
         }
-        lblTracks.setText(String.join(" + ", sources) + ", " + points + " points, " + range);
+        lblTracks.setText(tr("{0}, {1} points, {2}", String.join(" + ", sources), points, range));
     }
 
     private String format(Instant instant) {
@@ -427,23 +424,22 @@ public class GeotagDialog extends JDialog {
         StringBuilder sb = new StringBuilder();
         if (!matcher.hasTimedPoints()) {
             sb.append(tracks.isEmpty() && referencePhotos.isEmpty()
-                    ? "Add a GPX file recorded while taking the photos, or use photos that have a location."
-                    : "The loaded tracks have no times, so photos can't be matched.");
+                    ? tr("Add a track recorded while taking the photos, or use photos that have a location.")
+                    : tr("The loaded tracks have no times, so photos can't be matched."));
         } else {
-            sb.append(matched).append(" of ").append(rows.size()).append(" photos matched");
+            sb.append(tr("{0} of {1} photos matched", matched, rows.size()));
             if (noDate > 0) {
-                sb.append(", ").append(noDate).append(" without date");
+                sb.append(", ").append(tr("{0} without date", noDate));
             }
             long unplaced = rows.stream().filter(r -> null != r.image.getTaken() && !r.image.hasExifGPS()
                     && (null == r.match || !r.match.isMatched())).count();
             if (!referencePhotos.isEmpty() && unplaced > 0) {
                 // Photos are much further apart than GPX points
-                sb.append(" - ").append(unplaced).append(unplaced == 1 ? " photo" : " photos")
-                        .append(" without a location left: try a larger Max. time");
+                sb.append(" - ").append(tr("{0} without a location left: try a larger Max. time", photos((int) unplaced)));
             }
         }
         lblSummary.setText(sb.toString());
-        btnApply.setText(selected == 0 ? "Apply" : "Apply to " + selected + (selected == 1 ? " photo" : " photos"));
+        btnApply.setText(selected == 0 ? tr("Apply") : tr("Apply to {0}", photos(selected)));
         btnApply.setEnabled(selected > 0);
     }
 
@@ -468,11 +464,11 @@ public class GeotagDialog extends JDialog {
     private void offsetFromClockPhoto() {
         Row row = selectedRow();
         if (null == row || null == row.image.getTaken()) {
-            message("Select a photo with a date in the table first - ideally one showing a clock or a phone screen.");
+            message(tr("Select a photo with a date in the table first - ideally one showing a clock or a phone screen."));
             return;
         }
-        String input = JOptionPane.showInputDialog(this, "What time does the clock in " + row.image
-                + " show? (HH:mm:ss)\nThe camera recorded " + TIME.format(row.image.getTaken()) + ".",
+        String input = JOptionPane.showInputDialog(this, tr("What time does the clock in {0} show? (HH:mm:ss)\nThe camera recorded {1}.",
+                row.image, TIME.format(row.image.getTaken())),
                 row.image.getTaken().toLocalTime().withNano(0).toString());
         if (null == input) {
             return;
@@ -480,7 +476,7 @@ public class GeotagDialog extends JDialog {
         try {
             setOffset(PhotoTime.offsetFromClockPhoto(row.image.getTaken(), LocalTime.parse(input.trim())));
         } catch (DateTimeParseException e) {
-            message("\"" + input + "\" isn't a time. Use e.g. 14:05:30.");
+            message(tr("\"{0}\" isn't a time. Use e.g. 14:05:30.", input));
         }
     }
 
@@ -488,8 +484,7 @@ public class GeotagDialog extends JDialog {
         Row row = selectedRow();
         GeoPosition picked = host.pickedPosition();
         if (null == row || null == row.image.getTaken() || null == picked || !matcher.hasTimedPoints()) {
-            message("Load a GPX track, select a photo with a date in the table, and right-click on the main map "
-                    + "where that photo was taken. Then press this button again.");
+            message(tr("Load a track, select a photo with a date in the table, and right-click on the main map where that photo was taken. Then press this button again."));
             return;
         }
         TrackPoint nearest = matcher.nearestPoint(picked);
@@ -497,11 +492,12 @@ public class GeotagDialog extends JDialog {
         Instant cameraTime = PhotoTime.toInstant(row.image.getTaken(), row.image.getTakenOffset(), zone(),
                 Duration.ZERO);
         Duration offset = Duration.between(nearest.time(), cameraTime);
-        int answer = JOptionPane.showConfirmDialog(this, String.format(Locale.ROOT,
-                "The nearest track point is %.0f m from the spot you picked, recorded at %s.%n"
-                        + "That means the camera clock was %s by %s.%n%nUse this offset?",
-                metres, format(nearest.time()), offset.isNegative() ? "behind" : "ahead",
-                PhotoTime.describe(offset)), getTitle(), JOptionPane.OK_CANCEL_OPTION);
+        String message = offset.isNegative()
+                ? tr("The nearest track point is {0} m from the spot you picked, recorded at {1}.\nThat means the camera clock was behind by {2}.\n\nUse this offset?",
+                Math.round(metres), format(nearest.time()), PhotoTime.describe(offset))
+                : tr("The nearest track point is {0} m from the spot you picked, recorded at {1}.\nThat means the camera clock was ahead by {2}.\n\nUse this offset?",
+                Math.round(metres), format(nearest.time()), PhotoTime.describe(offset));
+        int answer = JOptionPane.showConfirmDialog(this, message, getTitle(), JOptionPane.OK_CANCEL_OPTION);
         if (answer == JOptionPane.OK_OPTION) {
             setOffset(offset);
         }
@@ -523,7 +519,7 @@ public class GeotagDialog extends JDialog {
     }
 
     private final class RowModel extends AbstractTableModel {
-        private final String[] columns = {"Use", "Photo", "Taken (camera clock)", "Result", "Altitude"};
+        private final String[] columns = {tr("Use"), tr("Photo"), tr("Taken (camera clock)"), tr("Result"), tr("Altitude")};
 
         @Override
         public int getRowCount() {
@@ -577,18 +573,18 @@ public class GeotagDialog extends JDialog {
 
         private String result(Row row) {
             if (null == row.image.getTaken()) {
-                return "No date in EXIF";
+                return tr("No date in EXIF");
             }
             if (null == row.match) {
                 return "";
             }
             if (!row.match.isMatched()) {
-                return null == row.match.gap() ? "No match" : "No match - " + PhotoTime.describe(row.match.gap())
-                        + " from the track";
+                return null == row.match.gap() ? tr("No match")
+                        : tr("No match - {0} from the track", PhotoTime.describe(row.match.gap()));
             }
             String text = PositionUtil.getPositionString(row.match.position());
             if (row.image.hasExifGPS()) {
-                text += " (replaces current location)";
+                text += " " + tr("(replaces current location)");
             }
             return text;
         }

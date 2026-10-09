@@ -98,7 +98,7 @@ class VideoFramesTest {
                 new TravelTimeline.Settings(Duration.ofSeconds(10), Duration.ofSeconds(2), Duration.ofMillis(500),
                         true, Duration.ofHours(1), 2000, Duration.ofSeconds(2)));
         TravelFrames frames = edt(() -> new TravelFrames(timeline, List.of(timeline.getStraightRoute()), clock,
-                tiles, 320, 180, 10, 0.25, false, -1));
+                tiles, 320, 180, 10, 0.25, false, -1, true));
         assertEquals(100, frames.getFrameCount());
         BufferedImage frame = new BufferedImage(320, 180, BufferedImage.TYPE_3BYTE_BGR);
         frames.render(10, frame); // 1 s: the first photo

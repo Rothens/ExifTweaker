@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.model;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import com.formdev.flatlaf.FlatLaf;
 
 import javax.swing.*;
@@ -41,19 +42,20 @@ public class ImageListRenderer extends JLabel implements ListCellRenderer<ImageF
         setText(value.getFile().getName());
         TripMark mark = value.getTripMark();
         setIcon(TripMark.PREFER == mark ? PREFER : TripMark.SKIP == mark ? SKIP : null);
-        String trip = TripMark.PREFER == mark ? " - preferred in trips" : TripMark.SKIP == mark ? " - skipped in trips" : "";
+        String trip = TripMark.PREFER == mark ? " - " + tr("preferred in trips")
+                : TripMark.SKIP == mark ? " - " + tr("skipped in trips") : "";
         if (TripMark.SKIP == mark && !isSelected) {
             Color c = getForeground();
             setForeground(new Color(c.getRed(), c.getGreen(), c.getBlue(), 130));
         }
         if (value.isWritable()) {
             setFont(list.getFont());
-            setToolTipText((value.hasExifGPS() ? null == value.getPlace() ? "Has GPS position"
-                    : value.getPlace().label() : "No GPS position") + trip);
+            setToolTipText((value.hasExifGPS() ? null == value.getPlace() ? tr("Has GPS position")
+                    : value.getPlace().label() : tr("No GPS position")) + trip);
         } else {
             setFont(list.getFont().deriveFont(Font.ITALIC));
             setForeground(UIManager.getColor("Label.disabledForeground"));
-            setToolTipText("Read-only: this file type needs ExifTool (see the banner at the top)");
+            setToolTipText(tr("Read-only: this file type needs ExifTool (see the banner at the top)"));
         }
         return this;
     }

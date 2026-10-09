@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.ui;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.util.Settings;
 import me.rothens.gpsexif.video.Ffmpeg;
 import me.rothens.gpsexif.video.FrameSource;
@@ -48,8 +49,8 @@ public class VideoExportDialog extends JDialog {
             new Size(1920, 1080, "(Full HD)"),
             new Size(2560, 1440, "(QHD)"),
             new Size(3840, 2160, "(4K)"),
-            new Size(1080, 1920, "(portrait, for phones)"),
-            new Size(1080, 1080, "(square)")};
+            new Size(1080, 1920, tr("(portrait, for phones)")),
+            new Size(1080, 1080, tr("(square)"))};
     private static final Integer[] FPS = {24, 25, 30, 50, 60};
     /** Rough speed of the built-in encoder at 1920×1080, for the time estimate. */
     private static final double BUILT_IN_FPS_AT_1080P = 4;
@@ -62,8 +63,8 @@ public class VideoExportDialog extends JDialog {
     private final JComboBox<Integer> cbFps = new JComboBox<>(FPS);
     private final JLabel lblLength = new JLabel(" ");
     private final JLabel lblEncoder = new JLabel(" ");
-    private final JButton btnExport = new JButton("Export...");
-    private final JButton btnClose = new JButton("Close");
+    private final JButton btnExport = new JButton(tr("Export..."));
+    private final JButton btnClose = new JButton(tr("Close"));
     private final JProgressBar progress = new JProgressBar();
     private final JLabel lblProgress = new JLabel(" ");
     private final JPanel options;
@@ -81,7 +82,7 @@ public class VideoExportDialog extends JDialog {
      */
     public VideoExportDialog(Window owner, Settings settings, String defaultName, JComponent extraOptions,
                              DoubleSupplier lengthSeconds, Frames frames) {
-        super(owner, "Export video", ModalityType.APPLICATION_MODAL);
+        super(owner, tr("Export video"), ModalityType.APPLICATION_MODAL);
         this.settings = settings;
         this.defaultName = defaultName;
         this.lengthSeconds = lengthSeconds;
@@ -107,7 +108,7 @@ public class VideoExportDialog extends JDialog {
         cbSize.addActionListener(e -> refreshLength());
         cbFps.addActionListener(e -> refreshLength());
         JButton btnFfmpeg = new JButton("FFmpeg...");
-        btnFfmpeg.setToolTipText("Set up FFmpeg for faster exports and smaller files");
+        btnFfmpeg.setToolTipText(tr("Set up FFmpeg for faster exports and smaller files"));
         btnFfmpeg.addActionListener(e -> setUpFfmpeg());
 
         options = new JPanel(new GridBagLayout());
@@ -124,15 +125,15 @@ public class VideoExportDialog extends JDialog {
         }
         c.gridx = 0;
         c.gridy = row;
-        options.add(new JLabel("Size:"), c);
+        options.add(new JLabel(tr("Size:")), c);
         c.gridx = 1;
         options.add(cbSize, c);
         c.gridx = 0;
         c.gridy = ++row;
-        options.add(new JLabel("Frame rate:"), c);
+        options.add(new JLabel(tr("Frame rate:")), c);
         JPanel fpsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         fpsRow.add(cbFps);
-        fpsRow.add(new JLabel("  frames per second"));
+        fpsRow.add(new JLabel("  " + tr("frames per second")));
         c.gridx = 1;
         options.add(fpsRow, c);
         c.gridx = 0;
@@ -196,14 +197,14 @@ public class VideoExportDialog extends JDialog {
         Format f = format();
         double seconds = lengthSeconds.getAsDouble();
         long frameCount = Math.round(seconds * f.fps());
-        lblLength.setText("Length " + clock(seconds) + "  ·  " + String.format(Locale.ROOT, "%,d", frameCount)
-                + " frames");
+        lblLength.setText(tr("Length {0}  ·  {1} frames", clock(seconds),
+                String.format(me.rothens.gpsexif.i18n.I18n.locale(), "%,d", frameCount)));
         if (null != ffmpeg) {
-            showEncoder("Encoder: FFmpeg " + Ffmpeg.version(ffmpeg) + " (" + ffmpeg + ")", true);
+            showEncoder(tr("Encoder: FFmpeg {0} ({1})", Ffmpeg.version(ffmpeg), ffmpeg), true);
         } else {
             double fps = BUILT_IN_FPS_AT_1080P * 1920.0 * 1080 / (f.width() * f.height());
-            showEncoder("<html>FFmpeg wasn't found, so the built-in encoder is used:<br>slower (this video takes "
-                    + duration(frameCount / fps) + ") and larger files.</html>", false);
+            showEncoder(tr("<html>FFmpeg wasn't found, so the built-in encoder is used:<br>slower (this video takes {0}) and larger files.</html>",
+                    duration(frameCount / fps)), false);
         }
     }
 
@@ -236,16 +237,16 @@ public class VideoExportDialog extends JDialog {
         try {
             source = frames.create(format);
         } catch (Exception e) {
-            showError("The video can't be made:\n" + e.getMessage());
+            showError(tr("The video can't be made:") + "\n" + e.getMessage());
             return;
         }
         int total = source.getFrameCount();
         progress.setMaximum(total);
         progress.setValue(0);
-        lblProgress.setText("Starting...");
+        lblProgress.setText(tr("Starting..."));
         cards.show(body, "progress");
         btnExport.setEnabled(false);
-        btnClose.setText("Cancel");
+        btnClose.setText(tr("Cancel"));
         cancelled.set(false);
         long start = System.nanoTime();
         String encoderPath = ffmpeg;
@@ -279,9 +280,10 @@ public class VideoExportDialog extends JDialog {
         }
         progress.setValue(done);
         double elapsed = (System.nanoTime() - start) / 1e9;
-        String text = "Frame " + String.format(Locale.ROOT, "%,d of %,d", done, total);
+        Locale l = me.rothens.gpsexif.i18n.I18n.locale();
+        String text = tr("Frame {0} of {1}", String.format(l, "%,d", done), String.format(l, "%,d", total));
         if (done >= 10 && elapsed > 2) {
-            text += "  ·  " + duration(elapsed / done * (total - done)) + " left";
+            text += "  ·  " + tr("{0} left", duration(elapsed / done * (total - done)));
         }
         lblProgress.setText(text);
     }
@@ -307,12 +309,12 @@ public class VideoExportDialog extends JDialog {
         if (!ok) {
             cards.show(body, "options");
             btnExport.setEnabled(true);
-            btnClose.setText("Close");
-            showError("The video couldn't be exported:\n" + error);
+            btnClose.setText(tr("Close"));
+            showError(tr("The video couldn't be exported:") + "\n" + error);
             return;
         }
         dispose();
-        StringBuilder msg = new StringBuilder("Saved " + target.getFileName());
+        StringBuilder msg = new StringBuilder(tr("Saved {0}", target.getFileName()));
         try {
             msg.append(" (").append(SettingsDialog.formatSize(Files.size(target))).append(")");
         } catch (java.io.IOException ignored) {
@@ -322,16 +324,16 @@ public class VideoExportDialog extends JDialog {
         if (!source.getWarnings().isEmpty()) {
             msg.append("\n\n").append(source.getWarnings());
         }
-        Object[] choices = {"Open video", "Close"};
-        int choice = JOptionPane.showOptionDialog(getOwner(), msg.toString(), "Export video",
+        Object[] choices = {tr("Open video"), tr("Close")};
+        int choice = JOptionPane.showOptionDialog(getOwner(), msg.toString(), tr("Export video"),
                 JOptionPane.DEFAULT_OPTION, source.getWarnings().isEmpty() ? JOptionPane.INFORMATION_MESSAGE
                         : JOptionPane.WARNING_MESSAGE, null, choices, choices[1]);
         if (choice == 0) {
             try {
                 Desktop.getDesktop().open(target.toFile());
             } catch (Exception e) {
-                JOptionPane.showMessageDialog(getOwner(), "Couldn't open the video:\n" + e.getMessage(),
-                        "Export video", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(getOwner(), tr("Couldn't open the video:") + "\n" + e.getMessage(),
+                        tr("Export video"), JOptionPane.WARNING_MESSAGE);
             }
         }
     }
@@ -343,7 +345,7 @@ public class VideoExportDialog extends JDialog {
         }
         if (!cancelled.get()) {
             cancelled.set(true);
-            lblProgress.setText("Cancelling...");
+            lblProgress.setText(tr("Cancelling..."));
             btnClose.setEnabled(false);
             worker.cancel(true);
         }
@@ -352,16 +354,16 @@ public class VideoExportDialog extends JDialog {
     private Path chooseFile() {
         String dir = settings.getVideoDirectory();
         JFileChooser chooser = new JFileChooser(dir.isEmpty() ? null : new File(dir));
-        chooser.setDialogTitle("Export video");
-        chooser.setFileFilter(new FileNameExtensionFilter("MP4 video (*.mp4)", "mp4"));
+        chooser.setDialogTitle(tr("Export video"));
+        chooser.setFileFilter(new FileNameExtensionFilter(tr("MP4 video (*.mp4)"), "mp4"));
         chooser.setSelectedFile(new File(chooser.getCurrentDirectory(), defaultName + ".mp4"));
         while (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
             File file = chooser.getSelectedFile();
             if (!file.getName().toLowerCase(Locale.ROOT).endsWith(".mp4")) {
                 file = new File(file.getParentFile(), file.getName() + ".mp4");
             }
-            if (file.exists() && JOptionPane.showConfirmDialog(this, file.getName() + " already exists. Replace it?",
-                    "Export video", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION) {
+            if (file.exists() && JOptionPane.showConfirmDialog(this, tr("{0} already exists. Replace it?", file.getName()),
+                    tr("Export video"), JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION) {
                 continue;
             }
             settings.setVideoDirectory(file.getParent());
@@ -371,7 +373,7 @@ public class VideoExportDialog extends JDialog {
     }
 
     private void showError(String message) {
-        JOptionPane.showMessageDialog(this, message, "Export video", JOptionPane.WARNING_MESSAGE);
+        JOptionPane.showMessageDialog(this, message, tr("Export video"), JOptionPane.WARNING_MESSAGE);
     }
 
     private static String clock(double seconds) {
@@ -379,12 +381,13 @@ public class VideoExportDialog extends JDialog {
         return String.format(Locale.ROOT, "%d:%02d", s / 60, s % 60);
     }
 
-    /** A rough duration: "under a minute", "about 12 min", "about 2.5 hours". */
+    /** A rough duration: tr("under a minute"), "about 12 min", "about 2.5 hours". */
     static String duration(double seconds) {
         if (seconds < 60) {
-            return "under a minute";
+            return tr("under a minute");
         }
         long m = Math.round(seconds / 60);
-        return m < 90 ? "about " + m + " min" : String.format(Locale.ROOT, "about %.1f hours", m / 60.0);
+        return m < 90 ? tr("about {0} min", m)
+                : tr("about {0} hours", String.format(me.rothens.gpsexif.i18n.I18n.locale(), "%.1f", m / 60.0));
     }
 }

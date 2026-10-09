@@ -25,8 +25,17 @@ public class Settings {
     private static final String RENAME_PATTERN = "RENAME_PATTERN";
     private static final String SHARE_DIRECTORY = "SHARE_DIRECTORY";
     private static final String TRAVEL_FULL_MAP = "TRAVEL_FULL_MAP";
+    private static final String UPDATE_CHECK = "UPDATE_CHECK";
+    private static final String TOOLS_OFFERED = "TOOLS_OFFERED";
+    private static final String LANGUAGE = "LANGUAGE";
+    private static final String EXIFTOOL_CHECKED_AT = "EXIFTOOL_CHECKED_AT";
+    private static final String UPDATE_CHECKED_AT = "UPDATE_CHECKED_AT";
+    private static final String UPDATE_LATEST = "UPDATE_LATEST";
+    private static final String UPDATE_LATEST_URL = "UPDATE_LATEST_URL";
+    private static final String UPDATE_DISMISSED = "UPDATE_DISMISSED";
     private static final String TRAVEL_INSET = "TRAVEL_INSET";
     private static final String TRAVEL_FOLLOW = "TRAVEL_FOLLOW";
+    private static final String TRAVEL_TRANSFERS = "TRAVEL_TRANSFERS";
     private static final String TRAVEL_INSET_ZOOM = "TRAVEL_INSET_ZOOM";
     private static final String SHARE_PRIVACY = "SHARE_PRIVACY";
     private static final String SHARE_SIZE = "SHARE_SIZE";
@@ -305,6 +314,15 @@ public class Settings {
         prefs.putBoolean(TRAVEL_FOLLOW, follow);
     }
 
+    /** Whether Travel mode shows "from → to" while travelling. On by default. */
+    public boolean isTravelTransfers() {
+        return prefs.getBoolean(TRAVEL_TRANSFERS, true);
+    }
+
+    public void setTravelTransfers(boolean show) {
+        prefs.putBoolean(TRAVEL_TRANSFERS, show);
+    }
+
     /** The zoom level chosen for the following small map; -1 if none yet. */
     public int getTravelInsetZoom() {
         return prefs.getInt(TRAVEL_INSET_ZOOM, -1);
@@ -348,5 +366,71 @@ public class Settings {
 
     public void setShareQuality(int quality) {
         prefs.putInt(SHARE_QUALITY, Math.max(50, Math.min(100, quality)));
+    }
+
+    /** The language of the user interface ("hu", "en"); empty to follow the system. */
+    public String getLanguage() {
+        return prefs.get(LANGUAGE, "");
+    }
+
+    public void setLanguage(String language) {
+        prefs.put(LANGUAGE, null == language ? "" : language);
+    }
+
+    /** Whether downloading ExifTool / FFmpeg was offered already (once, after the first start's tour). */
+    public boolean isToolsOffered() {
+        return prefs.getBoolean(TOOLS_OFFERED, false);
+    }
+
+    public void setToolsOffered(boolean offered) {
+        prefs.putBoolean(TOOLS_OFFERED, offered);
+    }
+
+    /** When a downloaded ExifTool was last checked for a newer version (epoch millis), 0 if never. */
+    public long getExifToolCheckedAt() {
+        return prefs.getLong(EXIFTOOL_CHECKED_AT, 0);
+    }
+
+    public void setExifToolCheckedAt(long millis) {
+        prefs.putLong(EXIFTOOL_CHECKED_AT, millis);
+    }
+
+    /** Whether to look for a new version once a day. On by default. */
+    public boolean isUpdateCheck() {
+        return prefs.getBoolean(UPDATE_CHECK, true);
+    }
+
+    public void setUpdateCheck(boolean check) {
+        prefs.putBoolean(UPDATE_CHECK, check);
+    }
+
+    /** When GitHub was last asked for the latest version (epoch millis), 0 if never. */
+    public long getUpdateCheckedAt() {
+        return prefs.getLong(UPDATE_CHECKED_AT, 0);
+    }
+
+    /** Remembers the latest release found, so it isn't asked for again within the day. */
+    public void setLatestRelease(String version, String url, long checkedAt) {
+        prefs.put(UPDATE_LATEST, version);
+        prefs.put(UPDATE_LATEST_URL, url);
+        prefs.putLong(UPDATE_CHECKED_AT, checkedAt);
+    }
+
+    /** The latest release found, or empty. */
+    public String getLatestVersion() {
+        return prefs.get(UPDATE_LATEST, "");
+    }
+
+    public String getLatestUrl() {
+        return prefs.get(UPDATE_LATEST_URL, "");
+    }
+
+    /** The version whose "new version" note was closed, so it doesn't come back; empty if none. */
+    public String getDismissedVersion() {
+        return prefs.get(UPDATE_DISMISSED, "");
+    }
+
+    public void setDismissedVersion(String version) {
+        prefs.put(UPDATE_DISMISSED, version);
     }
 }

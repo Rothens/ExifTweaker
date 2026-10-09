@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.map;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.gpx.TrackMatcher;
 import me.rothens.gpsexif.metadata.Place;
 import me.rothens.gpsexif.util.MiniJson;
@@ -90,7 +91,7 @@ public class PlaceNames {
             place = parse(new String(in.readAllBytes(), StandardCharsets.UTF_8));
         } catch (IOException e) {
             failedAt = clock.getAsLong();
-            lastFailure = new IOException("Couldn't look up the place name: " + e.getMessage(), e);
+            lastFailure = new IOException(tr("Couldn't look up the place name: {0}", e.getMessage()), e);
             throw lastFailure;
         }
         remember(position, place);
@@ -138,13 +139,19 @@ public class PlaceNames {
         }
         String name = text(result, "name");
         String category = text(result, "category");
+        // The part of the city: Namba in Osaka, Chiyoda in Tokyo, Lipótváros in Budapest
+        String district = first(address, "suburb", "quarter", "city_district", "borough", "neighbourhood");
+        if (null != district && district.equals(city)) {
+            district = null;
+        }
+        // A landmark if the spot is one, else the neighbourhood when it's finer than the district
         String sublocation = null != name && null != category && Set.of("tourism", "historic", "leisure", "natural",
                 "amenity", "man_made", "waterway", "building").contains(category) && !name.equals(city)
-                ? name : first(address, "neighbourhood", "quarter", "suburb", "city_district");
-        if (null != sublocation && sublocation.equals(city)) {
+                ? name : first(address, "neighbourhood", "quarter");
+        if (null != sublocation && (sublocation.equals(city) || sublocation.equals(district))) {
             sublocation = null;
         }
-        return new Place(sublocation, city, state, text(address, "country"), code);
+        return new Place(sublocation, city, state, text(address, "country"), code, district);
     }
 
     private static String first(Map<?, ?> map, String... keys) {
@@ -168,10 +175,11 @@ public class PlaceNames {
                 if (Files.exists(cacheFile)) {
                     for (String line : Files.readAllLines(cacheFile, StandardCharsets.UTF_8)) {
                         String[] f = line.split("\t", -1);
-                        if (f.length == 8) {
+                        // Older lines without the district (8 fields) are looked up again
+                        if (f.length == 9) {
                             try {
                                 cache.add(new Entry(f[0], Double.parseDouble(f[1]), Double.parseDouble(f[2]),
-                                        new Place(f[3], f[4], f[5], f[6], f[7])));
+                                        new Place(f[3], f[4], f[5], f[6], f[7], f[8])));
                             } catch (NumberFormatException ignored) {
                                 // skip a broken line
                             }
@@ -194,7 +202,8 @@ public class PlaceNames {
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
                 out.write(String.join("\t", language, String.format(Locale.ROOT, "%.6f", entry.lat()),
                         String.format(Locale.ROOT, "%.6f", entry.lon()), field(place.sublocation()),
-                        field(place.city()), field(place.state()), field(place.country()), field(place.countryCode())));
+                        field(place.city()), field(place.state()), field(place.country()), field(place.countryCode()),
+                        field(place.district())));
                 out.newLine();
             }
         } catch (IOException e) {

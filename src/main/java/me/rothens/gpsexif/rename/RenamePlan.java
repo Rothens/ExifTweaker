@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.rename;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,7 +34,7 @@ public final class RenamePlan {
      * The outcome for one photo.
      *
      * @param moves   the photo's move first, then its companions'; empty if the name stays
-     * @param warning e.g. "no date taken", or {@code null}
+     * @param warning e.g. tr("no date taken"), or {@code null}
      */
     public record Item(Source source, String newName, List<Move> moves, String warning) {
         public boolean isChanged() {
@@ -89,10 +90,10 @@ public final class RenamePlan {
             String applied = pattern.apply(first.values(), number);
             String warning = null;
             if (null == first.taken() && pattern.pattern().contains("{date")) {
-                warning = "no date taken";
+                warning = tr("no date taken");
             }
             if (applied.isEmpty()) {
-                warning = "nothing to name it after: stays";
+                warning = tr("nothing to name it after: stays");
             }
             String name = applied.isEmpty() ? base(first.path()) : applied;
             String candidate = name;
@@ -222,7 +223,7 @@ public final class RenamePlan {
                     // reported below with the original failure
                 }
             }
-            throw new IOException("Couldn't rename: " + e.getMessage() + ". Nothing was renamed.", e);
+            throw new IOException(tr("Couldn't rename: {0}. Nothing was renamed.", e.getMessage()), e);
         }
     }
 

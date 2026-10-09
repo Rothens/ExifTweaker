@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.playback;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.gpx.PhotoTime;
 import me.rothens.gpsexif.model.ImageFile;
 
@@ -21,7 +22,7 @@ import java.util.TreeSet;
  */
 public final class ClockZone {
 
-    public static final String CAMERA_CLOCK = "Camera clock";
+    public static final String CAMERA_CLOCK = tr("Camera clock");
 
     private final ZoneId cameraZone;
     private final ZoneId displayZone;
@@ -102,9 +103,8 @@ public final class ClockZone {
             chooser.addItem(displayZone.getId());
             chooser.setSelectedItem(displayZone.getId());
         }
-        chooser.setToolTipText("<html>Show the times as the camera's clock recorded them ("
-                + cameraZone.getDisplayName(TextStyle.FULL, Locale.ENGLISH) + ", " + cameraZone.getId()
-                + ")<br>or in another time zone, e.g. the local time of the trip.</html>");
+        chooser.setToolTipText(tr("<html>Show the times as the camera's clock recorded them ({0}, {1})<br>or in another time zone, e.g. the local time of the trip.</html>",
+                cameraZone.getDisplayName(TextStyle.FULL, me.rothens.gpsexif.i18n.I18n.locale()), cameraZone.getId()));
         return chooser;
     }
 

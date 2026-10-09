@@ -113,4 +113,38 @@ class MetadataTableModelTest {
         assertEquals("", MetadataTableModel.parse(MetadataTableModel.Editable.DESCRIPTION, "  ")
                 .getText().get(TextTag.DESCRIPTION), "blank removes a text field");
     }
+
+    @Test
+    void placePartsAreSeparateRowsAndOnlyTheEditedPartChanges() throws IOException {
+        ImageFile a = photo("a.jpg", new MetadataChanges().position(new GeoPosition(1, 2))
+                .place(new me.rothens.gpsexif.metadata.Place("Apátság", "Tihny", "Veszprém", "Magyarország", "HU")));
+        ImageFile b = photo("b.jpg", new MetadataChanges().position(new GeoPosition(1, 2))
+                .place(new me.rothens.gpsexif.metadata.Place(null, "Tihany", null, "Hungary", "HU", "Óvár")));
+        MetadataTableModel model = model(List.of(a, b));
+        assertEquals(MetadataTableModel.MULTIPLE, model.getValueAt(row("City"), 1));
+        assertEquals("HU", model.getValueAt(row("Country code"), 1));
+        assertTrue(model.isCellEditable(row("Landmark"), 1));
+
+        model.setValueAt("Tihany", row("City"), 1);
+        assertEquals(1, changes.size());
+        for (ImageFile photo : List.of(a, b)) {
+            photo.apply(changes.get(0));
+        }
+        assertEquals(new me.rothens.gpsexif.metadata.Place("Apátság", "Tihany", "Veszprém", "Magyarország", "HU"),
+                a.getPlace(), "only the city changed");
+        assertEquals(new me.rothens.gpsexif.metadata.Place(null, "Tihany", null, "Hungary", "HU", "Óvár"), b.getPlace());
+
+        model.setValueAt("Hungary!", row("Country code"), 1);
+        assertEquals(1, invalid.size(), "a country code is 2 letters");
+        model.setValueAt("jp", row("Country code"), 1);
+        a.apply(changes.get(1));
+        assertEquals("JP", a.getPlace().countryCode());
+
+        // A photo without a place gets one from a single part
+        ImageFile c = photo("c.jpg", new MetadataChanges().position(new GeoPosition(1, 2)));
+        c.apply(new MetadataChanges().placePart(me.rothens.gpsexif.metadata.Place.Part.CITY, "Szeged"));
+        assertEquals("Szeged", c.getPlace().city());
+        c.apply(new MetadataChanges().placePart(me.rothens.gpsexif.metadata.Place.Part.CITY, ""));
+        assertNull(c.getPlace(), "removing the only part removes the place");
+    }
 }

@@ -163,11 +163,45 @@ public class ExifTool implements AutoCloseable {
         if (null != process && process.isAlive()) {
             return;
         }
-        process = new ProcessBuilder(executable, "-stay_open", "True", "-@", "-").start();
+        process = new ProcessBuilder(executable, "-config", config().toString(), "-stay_open", "True", "-@", "-")
+                .start();
         stdin = new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8);
         stdout = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8));
         stderr = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8));
     }
+
+    /**
+     * ExifTweaker's ExifTool configuration: its own XMP namespace, for the district (XMP-exiftweaker:District).
+     * It takes the place of a ~/.ExifTool_config, which doesn't affect ExifTweaker's writes this way.
+     */
+    private static synchronized Path config() throws IOException {
+        if (null == config || !Files.exists(config)) {
+            config = Files.createTempFile("exiftweaker-", ".config");
+            config.toFile().deleteOnExit();
+            Files.writeString(config, CONFIG, StandardCharsets.UTF_8);
+        }
+        return config;
+    }
+
+    private static Path config;
+
+    static final String CONFIG = """
+            # ExifTweaker's own XMP namespace
+            %Image::ExifTool::UserDefined = (
+                'Image::ExifTool::XMP::Main' => {
+                    exiftweaker => {
+                        SubDirectory => { TagTable => 'Image::ExifTool::UserDefined::exiftweaker' },
+                    },
+                },
+            );
+            %Image::ExifTool::UserDefined::exiftweaker = (
+                GROUPS => { 0 => 'XMP', 1 => 'XMP-exiftweaker', 2 => 'Location' },
+                NAMESPACE => { 'exiftweaker' => 'NAMESPACE_URI' },
+                WRITABLE => 'string',
+                District => { },
+            );
+            1;
+            """.replace("NAMESPACE_URI", XmpPlace.EXIFTWEAKER);
 
     /** Stops the process; the next command starts a new one. */
     @Override

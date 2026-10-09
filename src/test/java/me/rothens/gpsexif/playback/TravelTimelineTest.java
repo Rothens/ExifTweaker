@@ -289,6 +289,18 @@ class TravelTimelineTest {
         // Same timing as with the map: halfway to the lake, the breakfast photo is up and the marker halfway there
         TravelTimeline.Frame onTheRoad = t.frameAt(37);
         assertEquals("d.jpg", onTheRoad.visible().getFile().getName());
+        assertEquals("e.jpg", onTheRoad.travelTo().getFile().getName(), "on the way to the lake");
+        assertNull(t.frameAt(16.5).travelTo(), "just arrived at breakfast");
+        assertNull(t.frameAt(15).travelTo(), "the night at the hotel is a stay, not travel");
         assertEquals((BREAKFAST.getLatitude() + LAKE.getLatitude()) / 2, onTheRoad.marker().getLatitude(), 1e-6);
+    }
+
+    @Test
+    void travellingOnTheFullMapKnowsWhereTo() throws Exception {
+        TravelTimeline t = new TravelTimeline(trip(), TravelTimelineTest::utc, List.of(), SETTINGS);
+        TravelTimeline.Frame onTheRoad = t.frameAt(37);
+        assertNull(onTheRoad.visible());
+        assertEquals("e.jpg", onTheRoad.travelTo().getFile().getName());
+        assertNull(t.frameAt(58.5).travelTo(), "the last photo goes nowhere");
     }
 }

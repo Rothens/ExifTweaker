@@ -22,6 +22,7 @@ public final class MetadataChanges {
     private final Map<TextTag, String> text = new EnumMap<>(TextTag.class);
     private LocalDateTime taken;
     private Place place;
+    private final Map<Place.Part, String> placeParts = new EnumMap<>(Place.Part.class);
     private Duration timeShift;
 
     public MetadataChanges position(GeoPosition position) {
@@ -47,9 +48,35 @@ public final class MetadataChanges {
         return this;
     }
 
+    /** Sets one part of the place name (e.g. only the city), keeping the photo's other parts; blank removes it. */
+    public MetadataChanges placePart(Place.Part part, String value) {
+        placeParts.put(part, null == value ? "" : value.strip());
+        return this;
+    }
+
     /** The place to write, {@link Place#NONE} to remove it, or {@code null} to leave it as it is. */
     public Place getPlace() {
         return place;
+    }
+
+    /** Whether the place name changes at all (as a whole or in parts). */
+    public boolean hasPlaceChange() {
+        return null != place || !placeParts.isEmpty();
+    }
+
+    /**
+     * The place to write to a photo whose place is now {@code current} ({@code null} if it has none): the new place,
+     * with the changed parts applied; {@code null} if the place doesn't change.
+     */
+    public Place placeFor(Place current) {
+        if (!hasPlaceChange()) {
+            return null;
+        }
+        Place result = null != place ? place : null == current ? Place.NONE : current;
+        for (Map.Entry<Place.Part, String> part : placeParts.entrySet()) {
+            result = result.with(part.getKey(), part.getValue());
+        }
+        return result;
     }
 
     /** Altitude in metres above sea level (negative below); {@code null} removes it. */

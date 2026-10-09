@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.playback;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.model.ImageFile;
 import me.rothens.gpsexif.ui.VideoExportDialog;
 import me.rothens.gpsexif.util.PhotoLoader;
@@ -47,7 +48,7 @@ public class PlaybackWindow extends JFrame {
     private final JButton btnPlay = new JButton("▶");
     private final JSlider slider;
     private final JComboBox<String> cbSpeed = new JComboBox<>();
-    private final JCheckBox chkLoop = new JCheckBox("Loop");
+    private final JCheckBox chkLoop = new JCheckBox(tr("Loop"));
     private final JComboBox<String> cbZone;
     private ClockZone clock;
     private final Timer timer;
@@ -61,7 +62,7 @@ public class PlaybackWindow extends JFrame {
      */
     public PlaybackWindow(Window owner, PlaybackSequence sequence, TileFactoryInfo tileInfo, LocalCache tileCache,
                           String userAgent, Settings settings) {
-        super("Playback");
+        super(tr("Playback"));
         this.sequence = sequence;
         this.settings = settings;
         this.clock = new ClockZone(settings.getCameraZone(), settings.getDisplayZone());
@@ -93,7 +94,7 @@ public class PlaybackWindow extends JFrame {
             }
         });
         for (int s : SECONDS) {
-            cbSpeed.addItem(s + (s == 1 ? " second" : " seconds"));
+            cbSpeed.addItem(s == 1 ? tr("1 second") : tr("{0} seconds", s));
         }
         cbSpeed.setSelectedIndex(2);
         timer = new Timer(delay(), e -> advance());
@@ -104,9 +105,9 @@ public class PlaybackWindow extends JFrame {
 
         JButton btnPrev = new JButton("⏮");
         JButton btnNext = new JButton("⏭");
-        btnPrev.setToolTipText("Previous photo (Left)");
-        btnNext.setToolTipText("Next photo (Right)");
-        btnPlay.setToolTipText("Play / pause (Space)");
+        btnPrev.setToolTipText(tr("Previous photo (Left)"));
+        btnNext.setToolTipText(tr("Next photo (Right)"));
+        btnPlay.setToolTipText(tr("Play / pause (Space)"));
         btnPrev.addActionListener(e -> step(-1));
         btnNext.addActionListener(e -> step(1));
         btnPlay.addActionListener(e -> togglePlay());
@@ -121,13 +122,13 @@ public class PlaybackWindow extends JFrame {
         left.add(btnPlay);
         left.add(btnNext);
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        right.add(new JLabel("Each photo:"));
+        right.add(new JLabel(tr("Each photo:")));
         right.add(cbSpeed);
         right.add(chkLoop);
-        right.add(new JLabel("  Times in:"));
+        right.add(new JLabel("  " + tr("Times in:")));
         right.add(cbZone);
-        JButton btnExport = new JButton("Export video...");
-        btnExport.setToolTipText("Save the playback as an MP4 video");
+        JButton btnExport = new JButton(tr("Export video..."));
+        btnExport.setToolTipText(tr("Save the playback as an MP4 video"));
         btnExport.setFocusable(false);
         btnExport.addActionListener(e -> exportVideo());
         right.add(new JLabel("  "));
@@ -163,11 +164,11 @@ public class PlaybackWindow extends JFrame {
         JSpinner spSeconds = new JSpinner(new SpinnerNumberModel(
                 (double) SECONDS[Math.max(0, cbSpeed.getSelectedIndex())], 0.5, 60.0, 0.5));
         JSpinner spFade = new JSpinner(new SpinnerNumberModel(0.5, 0.0, 5.0, 0.1));
-        spFade.setToolTipText("Each photo fades into the next during its last moments (0 for a hard cut)");
+        spFade.setToolTipText(tr("Each photo fades into the next during its last moments (0 for a hard cut)"));
         JPanel extra = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        extra.add(new JLabel("Each photo (s):"));
+        extra.add(new JLabel(tr("Each photo (s):")));
         extra.add(spSeconds);
-        extra.add(new JLabel("   Cross-fade (s):"));
+        extra.add(new JLabel("   " + tr("Cross-fade (s):")));
         extra.add(spFade);
         ClockZone videoClock = clock;
         VideoExportDialog dialog = new VideoExportDialog(this, settings,

@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.map;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.model.ImageFile;
 import org.jxmapviewer.JXMapViewer;
 import org.jxmapviewer.painter.Painter;
@@ -163,8 +164,8 @@ public class PhotoMarkerLayer implements Painter<JXMapViewer> {
                 }
             }
             if (result.isCapped()) {
-                drawNotice(g2, "Showing " + result.clusters().size() + " of " + result.totalInView()
-                        + " photo markers - zoom in to see more");
+                drawNotice(g2, tr("Showing {0} of {1} photo markers - zoom in to see more", result.clusters().size(),
+                        result.totalInView()));
             }
         } finally {
             g2.dispose();
@@ -239,7 +240,7 @@ public class PhotoMarkerLayer implements Painter<JXMapViewer> {
             menu.add(item);
         }
         if (items.size() > MAX_LISTED) {
-            JMenuItem more = new JMenuItem("... and " + (items.size() - MAX_LISTED) + " more");
+            JMenuItem more = new JMenuItem(tr("... and {0} more", items.size() - MAX_LISTED));
             more.setEnabled(false);
             menu.add(more);
         }

@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.ui;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.FlatLightLaf;
@@ -59,6 +60,6 @@ public enum Theme {
 
     @Override
     public String toString() {
-        return displayName;
+        return tr(displayName);
     }
 }

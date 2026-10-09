@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.playback;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.gpx.Track;
 import me.rothens.gpsexif.gpx.TrackPoint;
 import me.rothens.gpsexif.map.AttributionPainter;
@@ -26,7 +27,8 @@ import java.util.Locale;
  */
 final class PlaybackView extends JLayeredPane {
 
-    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale.ENGLISH);
+    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern(tr("EEEE, d MMMM yyyy"),
+            me.rothens.gpsexif.i18n.I18n.locale());
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.ROOT);
 
     private final JXMapViewer map = new JXMapViewer();
@@ -147,7 +149,7 @@ final class PlaybackView extends JLayeredPane {
                     g2.drawImage(image, (getWidth() - w) / 2, (getHeight() - h) / 2, w, h, null);
                 } else {
                     g2.setColor(new Color(150, 150, 150));
-                    String text = "Loading " + photo.getFile().getName() + "...";
+                    String text = tr("Loading {0}...", photo.getFile().getName());
                     g2.drawString(text, (getWidth() - g2.getFontMetrics().stringWidth(text)) / 2, getHeight() / 2);
                 }
                 paintTimestamp(g2);

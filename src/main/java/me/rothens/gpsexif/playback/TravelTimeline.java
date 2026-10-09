@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.playback;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import me.rothens.gpsexif.gpx.Track;
 import me.rothens.gpsexif.gpx.TrackMatcher;
 import me.rothens.gpsexif.model.ImageFile;
@@ -79,9 +80,17 @@ public class TravelTimeline {
      * @param marker  where the moving marker is, or {@code null} if nothing is known yet
      * @param photoAt location of the photo being shown (the small dot), or {@code null}
      * @param caption e.g. "+9 h" while a stay is squeezed, or {@code null}
+     * @param travelTo while travelling to the next shown photo (on the map, or with the last photo up), that photo;
+     *                 otherwise {@code null}
      */
     public record Frame(double videoTime, Instant time, ImageFile from, ImageFile to, double alpha,
-                        GeoPosition marker, GeoPosition photoAt, String caption, int slot) {
+                        GeoPosition marker, GeoPosition photoAt, String caption, int slot, ImageFile travelTo) {
+
+        public Frame(double videoTime, Instant time, ImageFile from, ImageFile to, double alpha,
+                     GeoPosition marker, GeoPosition photoAt, String caption, int slot) {
+            this(videoTime, time, from, to, alpha, marker, photoAt, caption, slot, null);
+        }
+
         /** The photo mostly visible, or {@code null} while the map is. */
         public ImageFile visible() {
             return alpha >= 0.5 ? to : from;
@@ -357,23 +366,23 @@ public class TravelTimeline {
     /** One-line summary, e.g. "Shows 84 of 300 photos; 1 s of travel = 6 min; 2 nights squeezed". */
     public String summary() {
         if (stops.isEmpty()) {
-            return "No photos with a date.";
+            return tr("No photos with a date.");
         }
-        StringBuilder sb = new StringBuilder("Shows " + slots.size() + " of " + stops.size() + " photos");
+        StringBuilder sb = new StringBuilder(tr("Shows {0} of {1} photos", slots.size(), stops.size()));
         if (skipped > 0) {
-            sb.append(" (").append(skipped).append(" skipped)");
+            sb.append(" ").append(tr("({0} skipped)", skipped));
         }
         if (secondsPerVideoSecond > 0) {
-            sb.append("; 1 s of video = ").append(me.rothens.gpsexif.gpx.PhotoTime.describe(
-                    Duration.ofMillis(Math.round(secondsPerVideoSecond * 1000)))).append(" of travel");
+            sb.append("; ").append(tr("1 s of video = {0} of travel", me.rothens.gpsexif.gpx.PhotoTime.describe(
+                    Duration.ofMillis(Math.round(secondsPerVideoSecond * 1000)))));
         }
         if (squeezedStays > 0) {
-            sb.append("; ").append(squeezedStays).append(squeezedStays == 1 ? " long stop" : " long stops")
-                    .append(" squeezed");
+            sb.append("; ").append(squeezedStays == 1 ? tr("1 long stop squeezed")
+                    : tr("{0} long stops squeezed", squeezedStays));
         }
         if (shortenedJourneys > 0) {
-            sb.append("; ").append(shortenedJourneys).append(shortenedJourneys == 1 ? " journey" : " journeys")
-                    .append(" shortened");
+            sb.append("; ").append(shortenedJourneys == 1 ? tr("1 journey shortened")
+                    : tr("{0} journeys shortened", shortenedJourneys));
         }
         return sb.toString();
     }
@@ -463,13 +472,23 @@ public class TravelTimeline {
             ImageFile from = previous.showMap() ? null : previous.stop().photo();
             return new Frame(v, time, from, photo, t / fade, marker, photoAt, null, index);
         }
+        ImageFile travelTo = null;
+        if (index + 1 < slots.size() && null == slot.pause() && t >= (slot.showMap() ? hold - fade : hold)) {
+            Slot next = slots.get(index + 1);
+            GeoPosition a = slot.stop().position();
+            GeoPosition b = next.stop().position();
+            if (slot.showMap() || null == a || null == b
+                    || TrackMatcher.distanceMetres(a, b) >= MIN_TRAVEL_DISTANCE_M) {
+                travelTo = next.stop().photo();
+            }
+        }
         if (slot.showMap() && t >= hold - fade) {
             double alpha = Math.min(1, (t - (hold - fade)) / fade);
-            return new Frame(v, time, photo, null, alpha, marker, photoAt, null, index);
+            return new Frame(v, time, photo, null, alpha, marker, photoAt, null, index, travelTo);
         }
         // The clock races through the stop during the whole slot, so the caption shows once the photo is in
         String caption = null != slot.pause() && t >= Math.min(fade, hold)
                 ? "+" + me.rothens.gpsexif.gpx.PhotoTime.describe(slot.pause()) : null;
-        return new Frame(v, time, photo, photo, 1, marker, photoAt, caption, index);
+        return new Frame(v, time, photo, photo, 1, marker, photoAt, caption, index, travelTo);
     }
 }

@@ -17,9 +17,11 @@ It includes everything it needs; you don't have to install Java.
 | Linux (Debian, Ubuntu, Mint) | `exiftweaker_<version>_amd64.deb` | `sudo apt install ./exiftweaker_<version>_amd64.deb` |
 | Anything with Java 17+ | `exiftweaker-<version>-all.jar` | `java -jar exiftweaker-<version>-all.jar` (also for Intel Macs) |
 
-JPEG photos work out of the box. For **HEIC, PNG, TIFF, WebP and RAW** files also install the free
+JPEG photos work out of the box. For **HEIC, PNG, TIFF, WebP and RAW** files ExifTweaker uses the free
 [ExifTool](https://exiftool.org/), and for faster video exports [FFmpeg](https://ffmpeg.org/download.html) (see
-[Formats](#formats)).
+[Formats](#formats)). You don't have to install them yourself: on the first start ExifTweaker offers to download
+them (FFmpeg on Windows; on macOS `brew install ffmpeg`, on Linux your distribution's package). The Linux package
+installs ExifTool along.
 
 ## How to
 
@@ -60,12 +62,17 @@ other are grouped into one marker with a count; click a group to zoom in, or a p
 
 ### Place names
 
-When a location is saved, ExifTweaker also writes **where** that is in words: the city, state and country (and a
-landmark or neighbourhood when there is one), e.g. *Tihany, Veszprém, Magyarország*. Lightroom, digiKam, photo
+When a location is saved, ExifTweaker also writes **where** that is in words: the city, town or village, the part
+of it (e.g. *Namba* in Osaka), state and country, and a landmark when there is one, e.g. *Tihanyi bencés apátság,
+Tihany, Veszprém, Magyarország*. The part of the city has no standard field, so it goes into ExifTweaker's own
+(`XMP-exiftweaker:District`); the rest are the standard ones. Lightroom, digiKam, photo
 sites and the photo's own details show these (IPTC/XMP location fields). The place shows in the details on the right
 and in Play photos, Travel mode and their videos.
 
-- **Edit → Look up place names** adds them to photos that already have a location.
+- Each part has its own row in the details on the right (Landmark, City, District, State, Country, Country code):
+  double-click to correct one. With several photos selected, only that part changes on each of them.
+- **Edit → Look up place names** adds them to photos that already have a location: to the selected ones, or with
+  none selected, to every photo that doesn't have a place name yet. Big batches tell you first how long they take.
 - The names come from OpenStreetMap Nominatim, in your system's language. Each lookup is remembered, so photos
   close to one another (within 150 m) and later saves don't ask again; offline, the location is saved without the
   name and you can add it later.
@@ -76,7 +83,7 @@ and in Play photos, Travel mode and their videos.
 **Edit → Rename photos...** (F2) names the selected photos (or all of them) after when and where they were taken,
 e.g. `{date} {place} {n:000}` gives `2026-07-11 Tihany 001.jpg`. The new names are listed before anything is renamed.
 
-- Fields: `{date}` (or any format, e.g. `{date:yyyy-MM-dd HH.mm.ss}`), `{place}` (the city), `{country}`,
+- Fields: `{date}` (or any format, e.g. `{date:yyyy-MM-dd HH.mm.ss}`), `{place}` (the city), `{district}`, `{country}`,
   `{state}`, `{sublocation}`, `{name}` (the current name), `{camera}` and `{n}`, a number in date order (`{n:000}`
   for three digits). A photo without a place simply leaves that part out.
 - Nothing is ever overwritten: a name that is taken gets " (2)". Backups (`.bak`) and XMP sidecars are renamed
@@ -85,10 +92,13 @@ e.g. `{date} {place} {n:000}` gives `2026-07-11 Tihany 001.jpg`. The new names a
 ### Geotag from a GPX track
 
 If your phone, watch or GPS logger recorded where you went, ExifTweaker can work out where each photo was taken
-from the time it was taken.
+from the time it was taken. It reads **GPX**, **KML/KMZ**, **TCX** and **FIT** files (Garmin, Strava, Wahoo, ...)
+and your **Google Maps location history**: Takeout's `Records.json`, or the Timeline export from the phone
+(Android: Settings → Location → Timeline → Export; iPhone: Google Maps → Your Timeline → Export). Only the days around
+the photos are read from a history of many years.
 
 1. Select the photos (or none, for all of them) and choose **File → Geotag from GPX** (Ctrl+G).
-2. **Add GPX files...**: the track appears on the map.
+2. **Add track files...**: the track appears on the map.
 3. Pick the **camera time zone** - the time zone the camera's clock was set to.
 4. If the camera's clock was off, enter by how much, or let ExifTweaker work it out: **From clock photo...** (a photo
    of a clock showing the right time) or **From map...** (a photo whose location you know: right-click it on the
@@ -106,7 +116,7 @@ unmatched.
 ### Edit dates and other metadata
 
 Double-click a value in the table on the right to change the **date taken, camera make and model, artist,
-copyright, description, altitude or camera direction** - for one photo, or for all selected ones (values that
+copyright, description, altitude, camera direction or the parts of the place name** - for one photo, or for all selected ones (values that
 differ show as *(multiple values)* and are only written if you change them). Save writes them.
 
 **Edit → Shift date/time** (Ctrl+T) moves the date taken of the selected photos, e.g. +1 h for a camera that was
@@ -122,6 +132,8 @@ left on home time during a trip.
   between photos** off, the last photo stays up while the marker travels on the small map. Drag the small map's top
   left corner to resize it; zoom it with the mouse wheel. With **Small map follows the marker** it stays at the
   zoom you chose and keeps the marker in the middle, instead of showing the whole route.
+- With place names, the clock shows where the photo was taken (*Osaka, Namba*), and while travelling where from
+  and where to (*Osaka, Namba → Tokyo, Chiyoda*; **Show from → to**).
 - Both can show the time as the camera recorded it or in any time zone (**Times in**), and **Export video...**
   saves them as an MP4 video, from 720p to 4K, also in portrait for phones.
 - Right-click photos in the list for **Skip in trips** (left out of both, and of the videos) or **Prefer in trips**
@@ -161,9 +173,11 @@ another folder; the originals aren't touched.
 | HEIC/HEIF (iPhone), AVIF, PNG, TIFF, WebP | Written into the photo | [ExifTool](https://exiftool.org/) |
 | RAW: CR2, CR3, NEF, NRW, ARW, DNG, ORF, RW2, RAF, PEF, ... | Written to an `.xmp` sidecar next to it; the RAW file is never changed. Lightroom, darktable, digiKam and most photo tools read it. | [ExifTool](https://exiftool.org/) |
 
-When ExifTool isn't found, a banner at the top says which files need it; click it for the download link and to
-pick the program if it isn't on your PATH. The same works for FFmpeg in the video export dialog and in Settings:
-without it videos are made with a built-in encoder, which is slower and makes larger files.
+When ExifTool isn't found, a banner at the top says which files need it; click it to **download and install** it
+(from exiftool.org, checked against its published checksum, into ExifTweaker's own folder), or to pick a copy you
+installed yourself. The same works for FFmpeg in the video export dialog and in Settings: without it videos are made
+with a built-in encoder, which is slower and makes larger files. A downloaded ExifTool is checked for updates once a
+day, along with ExifTweaker itself.
 
 Writing keeps everything else in the file as it was, including the camera maker's own data (maker notes); this is
 tested on files from 16 cameras and phones and 6 RAW formats.
@@ -205,7 +219,20 @@ On macOS use Cmd instead of Ctrl.
 - Light or dark theme (or following the system), OpenStreetMap or satellite imagery, the size of the map cache, and
   where ExifTool and FFmpeg are, in **Settings**.
 - ExifTweaker goes online only for map tiles (OpenStreetMap, Esri), place search and place names (OpenStreetMap
-  Nominatim: only the coordinates are sent). Your photos never leave your computer.
+  Nominatim: only the coordinates are sent), and once a day to ask GitHub whether a new version is out (a note at
+  the top then links to it; nothing is installed by itself; can be turned off in Settings, or checked any time with
+  **Help → Check for updates**). Your photos never leave your computer.
+
+## Languages
+
+ExifTweaker speaks English and Hungarian (magyar). It follows the system's language; **Settings → Language** changes
+it (after a restart).
+
+Adding a language is one text file: copy
+[`hu.txt`](src/main/resources/me/rothens/gpsexif/i18n/hu.txt) to e.g. `de.txt` next to it, replace the second line
+of each pair with your translation (keep `{0}`, `{1}`, HTML tags and `\n` as they are; the date patterns are
+Java [DateTimeFormatter](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/time/format/DateTimeFormatter.html)
+patterns), and add the language to `I18n.LANGUAGES`. The tests check that every text has a translation.
 
 ## Building from source
 

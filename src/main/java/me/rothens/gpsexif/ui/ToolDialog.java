@@ -1,5 +1,6 @@
 package me.rothens.gpsexif.ui;
 
+import static me.rothens.gpsexif.i18n.I18n.tr;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
@@ -35,11 +36,20 @@ public class ToolDialog extends JDialog {
      * @param active     the executable in use, or {@code null} if it wasn't found
      */
     public ToolDialog(Window owner, Tool tool, String configured, String active) {
+        this(owner, tool, configured, active, null);
+    }
+
+    /**
+     * @param download downloads and installs the tool, returning its executable or {@code null}; {@code null} if it
+     *                 can't be downloaded on this system
+     */
+    public ToolDialog(Window owner, Tool tool, String configured, String active,
+                      java.util.function.Supplier<String> download) {
         super(owner, tool.name(), ModalityType.APPLICATION_MODAL);
         this.tool = tool;
         tfPath.setText(configured);
         tfPath.putClientProperty("JTextField.placeholderText",
-                "Empty: look for \"" + tool.command() + "\" on the PATH");
+                tr("Empty: look for \"{0}\" on the PATH", tool.command()));
 
         JLabel intro = new JLabel("<html><body style='width:430px'>" + tool.introHtml() + "</body></html>");
 
@@ -47,15 +57,26 @@ public class ToolDialog extends JDialog {
         link.setBorderPainted(false);
         link.setContentAreaFilled(false);
         link.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        link.setToolTipText("Open the " + tool.name() + " download page in your browser");
+        link.setToolTipText(tr("Open the {0} download page in your browser", tool.name()));
         link.addActionListener(e -> openDownloadPage());
 
-        JLabel howTo = new JLabel("<html><body style='width:430px'>" + tool.installHint() + "</body></html>");
+        JLabel howTo = new JLabel("<html><body style='width:430px'>" + (null != download
+                ? tr("Or install it yourself:") + " " : "") + tool.installHint() + "</body></html>");
         howTo.putClientProperty("FlatLaf.styleClass", "small");
+        JButton btnDownload = new JButton(null != active && null != download && downloaded(active)
+                ? tr("Check for an update...") : tr("Download and install..."));
+        btnDownload.setToolTipText(tr("ExifTweaker downloads {0} for you and uses it right away", tool.name()));
+        btnDownload.addActionListener(e -> {
+            String installed = download.get();
+            if (null != installed) {
+                tfPath.setText(installed);
+                test();
+            }
+        });
 
-        JButton browse = new JButton("Browse...");
+        JButton browse = new JButton(tr("Browse..."));
         browse.addActionListener(e -> browse());
-        JButton test = new JButton("Test");
+        JButton test = new JButton(tr("Test"));
         test.addActionListener(e -> test());
 
         JPanel pathRow = new JPanel(new BorderLayout(4, 0));
@@ -66,14 +87,16 @@ public class ToolDialog extends JDialog {
         pathRow.add(pathButtons, BorderLayout.EAST);
 
         JPanel settings = new JPanel(new BorderLayout(0, 4));
-        settings.setBorder(BorderFactory.createTitledBorder("Settings"));
-        settings.add(new JLabel(tool.name() + " executable:"), BorderLayout.NORTH);
+        settings.setBorder(BorderFactory.createTitledBorder(tr("Settings")));
+        settings.add(new JLabel(tr("{0} executable:", tool.name())), BorderLayout.NORTH);
         settings.add(pathRow, BorderLayout.CENTER);
         settings.add(lblStatus, BorderLayout.SOUTH);
 
         JPanel top = new JPanel();
         top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
-        for (JComponent c : new JComponent[]{intro, link, howTo}) {
+        JComponent[] parts = null != download ? new JComponent[]{intro, btnDownload, link, howTo}
+                : new JComponent[]{intro, link, howTo};
+        for (JComponent c : parts) {
             c.setAlignmentX(LEFT_ALIGNMENT);
             top.add(c);
             top.add(Box.createVerticalStrut(6));
@@ -84,7 +107,7 @@ public class ToolDialog extends JDialog {
             accepted = true;
             dispose();
         });
-        JButton cancel = new JButton("Cancel");
+        JButton cancel = new JButton(tr("Cancel"));
         cancel.addActionListener(e -> dispose());
         getRootPane().setDefaultButton(ok);
         getRootPane().registerKeyboardAction(e -> dispose(), KeyStroke.getKeyStroke("ESCAPE"),
@@ -99,8 +122,8 @@ public class ToolDialog extends JDialog {
         content.add(settings, BorderLayout.CENTER);
         content.add(buttons, BorderLayout.SOUTH);
         setContentPane(content);
-        showStatus(null != active ? "In use: " + tool.name() + " " + tool.version().apply(active) + " (" + active + ")"
-                : tool.name() + " wasn't found.", null != active);
+        showStatus(null != active ? tr("In use: {0} {1} ({2})", tool.name(), tool.version().apply(active), active)
+                : tr("{0} wasn't found.", tool.name()), null != active);
         pack();
         setResizable(false);
         setLocationRelativeTo(owner);
@@ -110,6 +133,12 @@ public class ToolDialog extends JDialog {
     public String showDialog() {
         setVisible(true);
         return accepted ? tfPath.getText().strip() : null;
+    }
+
+    /** Whether {@code executable} was downloaded by ExifTweaker. */
+    private static boolean downloaded(String executable) {
+        return java.nio.file.Path.of(executable).toAbsolutePath().normalize()
+                .startsWith(me.rothens.gpsexif.tools.ToolInstaller.defaultToolsDir().toAbsolutePath().normalize());
     }
 
     static boolean isWindows() {
@@ -131,12 +160,12 @@ public class ToolDialog extends JDialog {
         }
         Toolkit.getDefaultToolkit().getSystemClipboard()
                 .setContents(new java.awt.datatransfer.StringSelection(tool.downloadUrl()), null);
-        showStatus("Couldn't open a browser - the link was copied to the clipboard.", false);
+        showStatus(tr("Couldn't open a browser - the link was copied to the clipboard."), false);
     }
 
     private void browse() {
         JFileChooser chooser = new JFileChooser(tfPath.getText().isBlank() ? null : new File(tfPath.getText()));
-        chooser.setDialogTitle("Select the " + tool.name() + " executable");
+        chooser.setDialogTitle(tr("Select the {0} executable", tool.name()));
         if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             tfPath.setText(chooser.getSelectedFile().getPath());
             test();
@@ -148,11 +177,11 @@ public class ToolDialog extends JDialog {
         String executable = tool.locate().apply(path);
         String name = tool.name();
         if (null == executable) {
-            showStatus(path.isEmpty() ? name + " wasn't found on the PATH." : "That doesn't run as " + name + ".", false);
+            showStatus(path.isEmpty() ? tr("{0} wasn't found on the PATH.", name) : tr("That doesn't run as {0}.", name), false);
         } else if (!path.isEmpty() && !executable.equals(path)) {
-            showStatus("That doesn't run as " + name + " (but " + executable + " on the PATH would be used).", false);
+            showStatus(tr("That doesn't run as {0} (but {1} on the PATH would be used).", name, executable), false);
         } else {
-            showStatus("Works: " + name + " " + tool.version().apply(executable) + " (" + executable + ")", true);
+            showStatus(tr("Works: {0} {1} ({2})", name, tool.version().apply(executable), executable), true);
         }
     }
 
