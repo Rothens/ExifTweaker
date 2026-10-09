@@ -20,6 +20,7 @@ public class SettingsDialog extends JDialog {
             Settings.MIN_PHOTO_MARKERS, Settings.MAX_PHOTO_MARKERS_LIMIT, 10));
     private final JButton btnClearCache = new JButton("Clear map cache");
     private final JCheckBox chkPlaces = new JCheckBox("Add the place name when saving a location");
+    private final JCheckBox chkUpdates = new JCheckBox("Tell me when a new version is out (checked once a day)");
     private final JCheckBox chkTour = new JCheckBox("Show the guided tour again on the next start");
     private final TileDiskCache tileCache;
     private boolean accepted;
@@ -167,6 +168,17 @@ public class SettingsDialog extends JDialog {
         c.insets = new Insets(0, 28, 4, 4);
         form.add(tourHint, c);
 
+        chkUpdates.setSelected(settings.isUpdateCheck());
+        c.gridy = 15;
+        c.insets = new Insets(8, 4, 0, 4);
+        form.add(chkUpdates, c);
+        JLabel updatesHint = new JLabel("Asks GitHub for the latest release; nothing is installed by itself.");
+        updatesHint.putClientProperty("FlatLaf.styleClass", "small");
+        updatesHint.setEnabled(false);
+        c.gridy = 16;
+        c.insets = new Insets(0, 28, 4, 4);
+        form.add(updatesHint, c);
+
         JButton ok = new JButton("OK");
         JButton cancel = new JButton("Cancel");
         ok.addActionListener(e -> {
@@ -177,6 +189,7 @@ public class SettingsDialog extends JDialog {
             settings.setTileCacheMaxMb((Integer) spCacheLimit.getValue());
             settings.setMaxPhotoMarkers((Integer) spMaxMarkers.getValue());
             settings.setTutorialShown(!chkTour.isSelected());
+            settings.setUpdateCheck(chkUpdates.isSelected());
             tileCache.scheduleMaintenance();
             accepted = true;
             dispose();

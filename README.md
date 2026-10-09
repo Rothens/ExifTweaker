@@ -212,7 +212,9 @@ On macOS use Cmd instead of Ctrl.
 - Light or dark theme (or following the system), OpenStreetMap or satellite imagery, the size of the map cache, and
   where ExifTool and FFmpeg are, in **Settings**.
 - ExifTweaker goes online only for map tiles (OpenStreetMap, Esri), place search and place names (OpenStreetMap
-  Nominatim: only the coordinates are sent). Your photos never leave your computer.
+  Nominatim: only the coordinates are sent), and once a day to ask GitHub whether a new version is out (a note at
+  the top then links to it; nothing is installed by itself; can be turned off in Settings, or checked any time with
+  **Help → Check for updates**). Your photos never leave your computer.
 
 ## Building from source
 

@@ -41,6 +41,7 @@ import me.rothens.gpsexif.util.ExitWatchdog;
 import me.rothens.gpsexif.util.PhotoLoader;
 import me.rothens.gpsexif.util.PositionUtil;
 import me.rothens.gpsexif.util.Settings;
+import me.rothens.gpsexif.util.UpdateCheck;
 import me.rothens.gpsexif.util.ThumbnailCache;
 import me.rothens.gpsexif.util.TripMarkStore;
 import me.rothens.gpsexif.model.TripMark;
@@ -126,6 +127,8 @@ public class ExifTweaker {
     private final Settings settings = new Settings(Preferences.userNodeForPackage(ExifTweaker.class));
     private final RoutingBackend backend = new RoutingBackend();
     private final JPanel exifToolBanner = new JPanel(new BorderLayout(8, 0));
+    private final JPanel updateBanner = new JPanel(new BorderLayout(8, 0));
+    private final JLabel updateText = new JLabel();
     private boolean bannerDismissed;
     private final EditHistory history = new EditHistory();
     private final PhotoWriter writer = new PhotoWriter(history, settings::isBackupsEnabled);
@@ -224,6 +227,7 @@ public class ExifTweaker {
         updateUndo();
 
         detectExifTool();
+        checkForUpdates(false);
 
         tfFolder.setText(settings.getLastDirectory());
         tfCoordinate.setToolTipText("Latitude;Longitude in decimal degrees, or e.g. 47°29'52\"N 19°2'24\"E");
@@ -333,12 +337,116 @@ public class ExifTweaker {
         return exifToolBanner;
     }
 
-    /** Warning colours that work in the light and the dark theme. */
+    /** Warning colours that work in the light and the dark theme; the update note in blue. */
     private void styleBanner() {
         boolean dark = FlatLaf.isLafDark();
         exifToolBanner.setBackground(dark ? new Color(84, 68, 20) : new Color(255, 244, 206));
         for (Component c : exifToolBanner.getComponents()) {
             c.setForeground(dark ? new Color(245, 225, 160) : new Color(90, 70, 0));
+        }
+        updateBanner.setBackground(dark ? new Color(26, 58, 94) : new Color(221, 236, 255));
+        for (Component c : updateBanner.getComponents()) {
+            c.setForeground(dark ? new Color(190, 220, 255) : new Color(10, 60, 130));
+        }
+    }
+
+    /** The "new version available" note: clicking it opens the release page, × hides it for this version. */
+    private JPanel createUpdateBanner() {
+        updateText.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        JButton close = new JButton("\u00d7");
+        close.setToolTipText("Don't remind me of this version");
+        close.putClientProperty("JButton.buttonType", "toolBarButton");
+        close.addActionListener(e -> {
+            settings.setDismissedVersion(settings.getLatestVersion());
+            updateBanner.setVisible(false);
+        });
+        updateBanner.add(updateText, BorderLayout.CENTER);
+        updateBanner.add(close, BorderLayout.EAST);
+        updateBanner.setBorder(BorderFactory.createEmptyBorder(3, 8, 3, 3));
+        updateBanner.setOpaque(true);
+        updateBanner.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        java.awt.event.MouseAdapter open = new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                openReleasePage();
+            }
+        };
+        updateBanner.addMouseListener(open);
+        updateText.addMouseListener(open);
+        updateBanner.setVisible(false);
+        return updateBanner;
+    }
+
+    /** This build's version, or {@code null} when running from the sources. */
+    private static String currentVersion() {
+        return ExifTweaker.class.getPackage().getImplementationVersion();
+    }
+
+    /**
+     * Looks for a newer release on GitHub, in the background. Automatically (at start) at most once a day and only
+     * if it isn't turned off; the note then appears unless that version was dismissed. {@code manual} (Help → Check
+     * for updates) always asks, and says what it found.
+     */
+    private void checkForUpdates(boolean manual) {
+        String current = currentVersion();
+        if (!manual) {
+            showUpdateNote(); // what an earlier check found
+            boolean due = System.currentTimeMillis() - settings.getUpdateCheckedAt() >= UpdateCheck.INTERVAL.toMillis();
+            if (!settings.isUpdateCheck() || !due || null == current) {
+                return;
+            }
+        }
+        new SwingWorker<UpdateCheck.Release, Void>() {
+            @Override
+            protected UpdateCheck.Release doInBackground() throws Exception {
+                return new UpdateCheck(USER_AGENT).latest();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    UpdateCheck.Release latest = get();
+                    settings.setLatestRelease(latest.version(), latest.url(), System.currentTimeMillis());
+                    if (manual) {
+                        settings.setDismissedVersion("");
+                    }
+                    boolean newer = UpdateCheck.isNewer(latest.version(), current);
+                    showUpdateNote();
+                    if (manual && !newer) {
+                        JOptionPane.showMessageDialog(frame, null == current
+                                        ? "The latest release is " + latest.version() + ". (This is a development build.)"
+                                        : "You have the latest version (" + current + ").",
+                                "Check for updates", JOptionPane.INFORMATION_MESSAGE);
+                    }
+                } catch (InterruptedException | ExecutionException e) {
+                    if (manual) {
+                        showError("Couldn't check for updates:\n"
+                                + (null == e.getCause() ? e.getMessage() : e.getCause().getMessage()));
+                    }
+                }
+            }
+        }.execute();
+    }
+
+    /** Shows the note if the latest known release is newer than this build and wasn't dismissed. */
+    private void showUpdateNote() {
+        String latest = settings.getLatestVersion();
+        boolean show = settings.isUpdateCheck() && UpdateCheck.isNewer(latest, currentVersion())
+                && !latest.equals(settings.getDismissedVersion());
+        if (show) {
+            updateText.setText("ExifTweaker " + latest + " is out (you have " + currentVersion()
+                    + "). Click here to see what's new and download it.");
+        }
+        updateBanner.setVisible(show);
+    }
+
+    private void openReleasePage() {
+        String url = settings.getLatestUrl().startsWith("https://github.com/") ? settings.getLatestUrl()
+                : UpdateCheck.RELEASES_PAGE;
+        try {
+            Desktop.getDesktop().browse(java.net.URI.create(url));
+        } catch (IOException | RuntimeException e) {
+            showError("Couldn't open the browser. The new version is at:\n" + url);
         }
     }
 
@@ -662,6 +770,7 @@ public class ExifTweaker {
         JMenu help = new JMenu("Help");
         help.setMnemonic('H');
         help.add(menuItem("Show tutorial", null, e -> startTutorial()));
+        help.add(menuItem("Check for updates...", null, e -> checkForUpdates(true)));
         if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.APP_ABOUT)) {
             help.add(menuItem("About " + APP_NAME, null, e -> showAbout()));
         }
@@ -980,7 +1089,11 @@ public class ExifTweaker {
         top.add(tfFolder, BorderLayout.CENTER);
         top.add(topButtons, BorderLayout.EAST);
         JPanel north = new JPanel(new BorderLayout(0, 4));
-        north.add(createExifToolBanner(), BorderLayout.NORTH);
+        JPanel banners = new JPanel();
+        banners.setLayout(new BoxLayout(banners, BoxLayout.Y_AXIS)); // hidden banners take no room
+        banners.add(createUpdateBanner());
+        banners.add(createExifToolBanner());
+        north.add(banners, BorderLayout.NORTH);
         north.add(top, BorderLayout.CENTER);
 
         JPanel filePanel = new JPanel(new BorderLayout(0, 2));
