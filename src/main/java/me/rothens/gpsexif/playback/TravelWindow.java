@@ -1,6 +1,6 @@
 package me.rothens.gpsexif.playback;
 
-import me.rothens.gpsexif.gpx.GpxParser;
+import me.rothens.gpsexif.gpx.TrackReader;
 import me.rothens.gpsexif.gpx.Track;
 import me.rothens.gpsexif.gpx.TrackPoint;
 import me.rothens.gpsexif.model.ImageFile;
@@ -147,11 +147,11 @@ public class TravelWindow extends JFrame {
     }
 
     private JPanel createSettingsPanel() {
-        JButton btnLoad = new JButton("Load GPX...");
+        JButton btnLoad = new JButton("Load track...");
         btnLoad.setToolTipText("Let the marker follow the track you recorded instead of straight lines");
         btnLoad.addActionListener(e -> loadGpx());
         JButton btnStraight = new JButton("Straight lines");
-        btnStraight.setToolTipText("Forget the GPX track");
+        btnStraight.setToolTipText("Forget the track");
         btnStraight.addActionListener(e -> {
             tracks.clear();
             rebuild();
@@ -307,7 +307,8 @@ public class TravelWindow extends JFrame {
         List<Track> loaded = new ArrayList<>();
         for (File f : files) {
             try {
-                loaded.add(GpxParser.parse(f.toPath()));
+                loaded.add(TrackReader.read(f.toPath(), TrackReader.around(
+                        photos.stream().map(ImageFile::getTaken).toList(), Duration.ofDays(3))));
             } catch (IOException e) {
                 JOptionPane.showMessageDialog(this, e.getMessage(), getTitle(), JOptionPane.WARNING_MESSAGE);
             }
@@ -336,7 +337,7 @@ public class TravelWindow extends JFrame {
         spStayMinutes.setEnabled(chkSqueeze.isSelected());
         spStayKm.setEnabled(chkSqueeze.isSelected());
         spJourney.setEnabled(chkJourney.isSelected());
-        lblRoute.setText(timeline.usesTrack() ? "Route: GPX track (" + tracks.size()
+        lblRoute.setText(timeline.usesTrack() ? "Route: recorded track (" + tracks.size()
                 + (tracks.size() == 1 ? " file)" : " files)") : "Route: straight lines between the photos");
         lblSummary.setText(timeline.summary());
 

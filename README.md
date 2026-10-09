@@ -90,10 +90,13 @@ e.g. `{date} {place} {n:000}` gives `2026-07-11 Tihany 001.jpg`. The new names a
 ### Geotag from a GPX track
 
 If your phone, watch or GPS logger recorded where you went, ExifTweaker can work out where each photo was taken
-from the time it was taken.
+from the time it was taken. It reads **GPX**, **KML/KMZ**, **TCX** and **FIT** files (Garmin, Strava, Wahoo, ...)
+and your **Google Maps location history**: Takeout's `Records.json`, or the Timeline export from the phone
+(Android: Settings → Location → Timeline → Export; iPhone: Google Maps → Your Timeline → Export). Only the days around
+the photos are read from a history of many years.
 
 1. Select the photos (or none, for all of them) and choose **File → Geotag from GPX** (Ctrl+G).
-2. **Add GPX files...**: the track appears on the map.
+2. **Add track files...**: the track appears on the map.
 3. Pick the **camera time zone** - the time zone the camera's clock was set to.
 4. If the camera's clock was off, enter by how much, or let ExifTweaker work it out: **From clock photo...** (a photo
    of a clock showing the right time) or **From map...** (a photo whose location you know: right-click it on the

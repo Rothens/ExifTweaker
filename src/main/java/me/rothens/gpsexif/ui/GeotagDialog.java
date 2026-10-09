@@ -1,6 +1,6 @@
 package me.rothens.gpsexif.ui;
 
-import me.rothens.gpsexif.gpx.GpxParser;
+import me.rothens.gpsexif.gpx.TrackReader;
 import me.rothens.gpsexif.gpx.PhotoTrack;
 import me.rothens.gpsexif.gpx.PhotoTime;
 import me.rothens.gpsexif.gpx.Track;
@@ -72,7 +72,7 @@ public class GeotagDialog extends JDialog {
     private TrackMatcher matcher = new TrackMatcher(List.of());
     private Duration clockOffset = Duration.ZERO;
 
-    private final JLabel lblTracks = new JLabel("No GPX file loaded");
+    private final JLabel lblTracks = new JLabel("No track loaded");
     private final JComboBox<String> cbZone;
     private final JTextField tfOffset = new JTextField("+0:00:00", 8);
     private final JSpinner spMaxGap;
@@ -111,7 +111,9 @@ public class GeotagDialog extends JDialog {
         tfOffset.setToolTipText("How far the camera's clock was AHEAD of the real time (negative if behind), "
                 + "e.g. +3:12, -1:00:00 or 2h 5m");
 
-        JButton btnAdd = new JButton("Add GPX files...");
+        JButton btnAdd = new JButton("Add track files...");
+        btnAdd.setToolTipText("<html>GPX, KML/KMZ, TCX, FIT (Garmin, Strava, Wahoo),<br>"
+                + "or your Google Maps location history (Takeout's Records.json, the Timeline export)</html>");
         btnAdd.addActionListener(e -> addFiles());
         JButton btnPhotos = new JButton("Use photos with a location...");
         btnPhotos.setToolTipText("<html>Taken with a phone as well? Its photos know where they were taken:<br>"
@@ -240,12 +242,9 @@ public class GeotagDialog extends JDialog {
         List<String> errors = new ArrayList<>();
         for (File file : files) {
             try {
-                Track track = GpxParser.parse(file.toPath());
-                if (track.pointCount() == 0) {
-                    errors.add(file.getName() + ": no track points");
-                } else {
-                    tracks.add(track);
-                }
+                // A location history can span years: only the days around the photos are kept
+                tracks.add(TrackReader.read(file.toPath(), TrackReader.around(
+                        rows.stream().map(r -> r.image.getTaken()).toList(), java.time.Duration.ofDays(3))));
             } catch (IOException e) {
                 errors.add(e.getMessage());
             }
@@ -348,7 +347,7 @@ public class GeotagDialog extends JDialog {
     private void updateTrackLabel() {
         List<Track> all = allTracks();
         if (all.isEmpty()) {
-            lblTracks.setText("No GPX file loaded");
+            lblTracks.setText("No track loaded");
             return;
         }
         int points = all.stream().mapToInt(Track::pointCount).sum();
@@ -427,7 +426,7 @@ public class GeotagDialog extends JDialog {
         StringBuilder sb = new StringBuilder();
         if (!matcher.hasTimedPoints()) {
             sb.append(tracks.isEmpty() && referencePhotos.isEmpty()
-                    ? "Add a GPX file recorded while taking the photos, or use photos that have a location."
+                    ? "Add a track recorded while taking the photos, or use photos that have a location."
                     : "The loaded tracks have no times, so photos can't be matched.");
         } else {
             sb.append(matched).append(" of ").append(rows.size()).append(" photos matched");
@@ -488,7 +487,7 @@ public class GeotagDialog extends JDialog {
         Row row = selectedRow();
         GeoPosition picked = host.pickedPosition();
         if (null == row || null == row.image.getTaken() || null == picked || !matcher.hasTimedPoints()) {
-            message("Load a GPX track, select a photo with a date in the table, and right-click on the main map "
+            message("Load a track, select a photo with a date in the table, and right-click on the main map "
                     + "where that photo was taken. Then press this button again.");
             return;
         }

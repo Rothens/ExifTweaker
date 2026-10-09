@@ -985,7 +985,7 @@ public class ExifTweaker {
         steps.add(Tutorial.Step.explain(() -> file, "Tag a whole trip from a GPS track",
                 "Recorded where you went with a phone, watch or GPS logger? <b>File → Geotag from GPX</b> ("
                         + ctrl + "+G) places all photos at once from the track's times."
-                        + "<br><br>The sample folder has one to try: <b>balaton.gpx</b> - <i>Add GPX files</i> opens "
+                        + "<br><br>The sample folder has one to try: <b>balaton.gpx</b> - <i>Add track files</i> opens "
                         + "right in the photos' folder."));
         steps.add(Tutorial.Step.explain(() -> view, "Relive the trip",
                 "<b>View → Play photos</b> (F5) shows the photos in order with a map, and <b>Travel mode</b> "
