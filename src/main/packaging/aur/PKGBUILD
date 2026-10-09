@@ -1,0 +1,58 @@
+# Maintainer: Rothens <roth3ns at gmail dot com>
+#
+# The AUR package exiftweaker-bin, built from the runnable jar of a GitHub release. The AUR workflow
+# (.github/workflows/aur.yml) sets pkgver and the checksums when a release is published.
+pkgname=exiftweaker-bin
+_pkgname=exiftweaker
+pkgver=1.5.0
+pkgrel=1
+pkgdesc="Put your photos on the map: set GPS locations, match GPX tracks, rename by date and place, play trips back"
+arch=('any')
+url="https://github.com/Rothens/ExifTweaker"
+license=('MIT')
+depends=('java-runtime>=17' 'hicolor-icon-theme')
+optdepends=('perl-image-exiftool: RAW files, XMP sidecars, HEIC and more formats'
+            'ffmpeg: export Play photos and Travel mode as videos')
+provides=("$_pkgname")
+conflicts=("$_pkgname")
+source=("$_pkgname-$pkgver.jar::$url/releases/download/v$pkgver/$_pkgname-$pkgver-all.jar"
+        "LICENSE-$pkgver::https://raw.githubusercontent.com/Rothens/ExifTweaker/v$pkgver/LICENSE")
+noextract=("$_pkgname-$pkgver.jar")
+sha256sums=('SKIP'
+            'SKIP')
+
+prepare() {
+  # The icons are inside the jar
+  bsdtar -xf "$_pkgname-$pkgver.jar" 'me/rothens/gpsexif/icons/*.png'
+}
+
+package() {
+  install -Dm644 "$_pkgname-$pkgver.jar" "$pkgdir/usr/share/java/$_pkgname/$_pkgname.jar"
+
+  install -Dm755 /dev/stdin "$pkgdir/usr/bin/$_pkgname" <<'LAUNCHER'
+#!/bin/sh
+exec java -jar /usr/share/java/exiftweaker/exiftweaker.jar "$@"
+LAUNCHER
+
+  local size
+  for size in 16 32 48 64 128 256; do
+    install -Dm644 "me/rothens/gpsexif/icons/icon-$size.png" \
+      "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/$_pkgname.png"
+  done
+
+  install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/$_pkgname.desktop" <<'DESKTOP'
+[Desktop Entry]
+Type=Application
+Name=ExifTweaker
+GenericName=Photo geotagger
+Comment=Put your photos on the map
+Exec=exiftweaker
+Icon=exiftweaker
+Terminal=false
+Categories=Graphics;Photography;
+Keywords=GPS;EXIF;geotag;GPX;photo;map;
+StartupWMClass=me-rothens-gpsexif-ExifTweaker
+DESKTOP
+
+  install -Dm644 "LICENSE-$pkgver" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

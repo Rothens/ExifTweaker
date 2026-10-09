@@ -1,0 +1,103 @@
+name: AUR
+
+# Updates the AUR package exiftweaker-bin when a release is published (the release workflow makes drafts, whose
+# files can't be downloaded until they're published): sets the version and checksums in
+# src/main/packaging/aur/PKGBUILD, builds the package to check it, and keeps PKGBUILD and .SRCINFO as an artifact.
+#
+# Pushing to the AUR is optional: it happens only when the repository has an AUR_SSH_PRIVATE_KEY secret (the
+# private half of an SSH key added to the AUR account). Without it, download the artifact and push it by hand.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version of a published release, e.g. 1.5.0'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  aur:
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    env:
+      AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+      VERSION: ${{ github.event.inputs.version || github.event.release.tag_name }}
+    steps:
+      - name: Tools
+        run: pacman -Syu --noconfirm --needed git openssh
+
+      - uses: actions/checkout@v5
+
+      - name: PKGBUILD for this version
+        run: |
+          version="${VERSION#v}"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          useradd -m builder
+          mkdir /aur
+          cp src/main/packaging/aur/PKGBUILD /aur/
+          sed -i -e "s/^pkgver=.*/pkgver=$version/" -e "s/^pkgrel=.*/pkgrel=1/" /aur/PKGBUILD
+          chown -R builder /aur
+          cd /aur
+          # Downloads the release's jar and LICENSE and writes their checksums in place of the sha256sums=(...)
+          su builder -c 'makepkg -g' > sums
+          awk -v sums="$(cat sums)" '
+            /^sha256sums=\(/ { print sums; skipping = 1 }
+            skipping { if (/\)/) skipping = 0; next }
+            { print }' PKGBUILD > PKGBUILD.new
+          mv PKGBUILD.new PKGBUILD
+          rm sums
+          chown builder PKGBUILD
+          grep -q "^sha256sums=('[0-9a-f]\{64\}'" PKGBUILD
+          # The runtime dependencies (Java) aren't needed to build
+          su builder -c 'makepkg --nodeps --noconfirm'
+          su builder -c 'makepkg --printsrcinfo > .SRCINFO'
+          cat PKGBUILD .SRCINFO
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aur-exiftweaker-bin-${{ env.VERSION }}
+          path: |
+            /aur/PKGBUILD
+            /aur/.SRCINFO
+
+      - name: No AUR key
+        if: env.AUR_SSH_PRIVATE_KEY == ''
+        run: >
+          echo "::notice::The AUR package wasn't pushed: add an AUR_SSH_PRIVATE_KEY secret to push it automatically.
+          Its PKGBUILD and .SRCINFO are in this run's artifacts."
+
+      - name: Push to the AUR
+        if: env.AUR_SSH_PRIVATE_KEY != ''
+        env:
+          GIT_NAME: ${{ vars.AUR_GIT_NAME || github.repository_owner }}
+          GIT_EMAIL: ${{ vars.AUR_GIT_EMAIL || format('{0}@users.noreply.github.com', github.repository_owner) }}
+        run: |
+          home=/home/builder
+          install -d -m 700 -o builder "$home/.ssh"
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > "$home/.ssh/aur"
+          printf 'Host aur.archlinux.org\n  User aur\n  IdentityFile ~/.ssh/aur\n' > "$home/.ssh/config"
+          ssh-keyscan -t ed25519,rsa aur.archlinux.org > "$home/.ssh/known_hosts"
+          chown -R builder "$home/.ssh"
+          chmod 600 "$home/.ssh/aur" "$home/.ssh/config"
+          cat > /tmp/push.sh <<'PUSH'
+          set -eu
+          cd ~
+          git clone ssh://aur@aur.archlinux.org/exiftweaker-bin.git aur-repo
+          cd aur-repo
+          git config user.name "$GIT_NAME"
+          git config user.email "$GIT_EMAIL"
+          cp /aur/PKGBUILD /aur/.SRCINFO .
+          git add PKGBUILD .SRCINFO
+          if git diff --cached --quiet; then
+            echo "The AUR package is up to date."
+          else
+            git commit -m "Update to $VERSION"
+            git push origin HEAD:master
+          fi
+          PUSH
+          # su keeps the environment (GIT_NAME, GIT_EMAIL, VERSION) and sets HOME to the builder's
+          su builder -c 'sh /tmp/push.sh'
